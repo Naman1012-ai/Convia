@@ -15,6 +15,7 @@ import { CreateIdeaModal } from '../../features/ideas/CreateIdeaModal';
 import { ErrorBoundary } from '../../components/feedback/ErrorBoundary';
 import { formatTimestamp } from '../../utils/formatting';
 import { safeText } from '../../utils/safeRender';
+import { useUserProfile } from '../../hooks/useUserProfile';
 import {
   Lightbulb,
   Plus,
@@ -66,6 +67,9 @@ function IdeaBoardContent() {
   };
 
   const selectedMvp = stats?.selectedMvp;
+  const { displayName: mvpAuthorName } = useUserProfile(selectedMvp?.authorId, {
+    fallbackName: selectedMvp?.authorName || 'Team Member',
+  });
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
@@ -165,8 +169,8 @@ function IdeaBoardContent() {
               </p>
 
               <div className="flex items-center gap-2 text-xs text-slate-400 pt-1">
-                <Avatar name={safeText(selectedMvp.authorName, 'Collaborator')} size="xs" />
-                <span>Proposed by <strong className="text-white">{safeText(selectedMvp.authorName, 'Team Member')}</strong></span>
+                <Avatar name={mvpAuthorName} size="xs" />
+                <span>Proposed by <strong className="text-white">{mvpAuthorName}</strong></span>
               </div>
             </div>
 
@@ -214,7 +218,7 @@ function IdeaBoardContent() {
             {[
               { id: 'all', label: `All Proposals (${ideas.length})`, icon: Lightbulb },
               { id: 'selected', label: selectedMvp ? '🏆 Winning MVP' : '🏆 Winning MVP (0)', icon: Trophy },
-              { id: 'top', label: '🔥 Top Voted', icon: Flame },
+              { id: 'top', label: `🔥 Top Voted (${stats?.topVotedCount || 0})`, icon: Flame },
               { id: 'mine', label: `👤 My Proposals (${stats?.myIdeasCount || 0})`, icon: Users },
             ].map((tab) => {
               const Icon = tab.icon;

@@ -10,7 +10,7 @@ export const UserContext = createContext({
 });
 
 export function UserProvider({ children }) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, updateCurrentUserProfile } = useAuth();
   const [userProfile, setUserProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
@@ -56,9 +56,23 @@ export function UserProvider({ children }) {
   const updateProfile = useCallback(
     async (data) => {
       if (!user) return;
+      // 1. Update RTDB profile node
       await profileService.updateUserProfile(user.uid, data);
+
+      // 2. Sync to Firebase Auth if displayName or photoURL is modified
+      if (data.displayName !== undefined || data.photoURL !== undefined) {
+        if (typeof updateCurrentUserProfile === 'function') {
+          await updateCurrentUserProfile({
+            displayName: data.displayName,
+            photoURL: data.photoURL,
+          }).catch((err) => console.warn('[UserContext] auth update error:', err));
+        }
+      }
+
+      // 3. Update local state immediately for zero-lag reactivity
+      setUserProfile((prev) => (prev ? { ...prev, ...data } : data));
     },
-    [user]
+    [user, updateCurrentUserProfile]
   );
 
   return (

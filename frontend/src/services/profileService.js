@@ -88,6 +88,19 @@ export const profileService = {
         updatedAt: rtdbService.getTimestamp(),
       };
       await rtdbService.updateData(`users/${uid}`, updates);
+
+      // Real-time cascade to organization member roster:
+      // If the user belongs to an organization, touch their member record
+      // so all team members in that workspace receive the updated details in real-time
+      const profile = await rtdbService.getData(`users/${uid}`);
+      if (profile?.organizationId) {
+        await rtdbService.updateData(
+          `organization_members/${profile.organizationId}/${uid}`,
+          {
+            updatedAt: rtdbService.getTimestamp(),
+          }
+        ).catch(() => {});
+      }
     } catch (error) {
       console.error('[profileService] updateUserProfile error:', error);
       throw new Error(getErrorMessage(error.code || 'default'));

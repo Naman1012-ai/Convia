@@ -100,6 +100,25 @@ export const reportService = {
 
       // 4. Create User Submission Confirmation Notification
       const notifId = `notif_${Date.now()}`;
+      await rtdbService.setData(`user_notifications/${user.uid}/${notifId}`, {
+        notificationId: notifId,
+        recipientId: user.uid,
+        type: 'ADMIN_BROADCAST',
+        title: 'Issue Report Submitted',
+        body: `Your issue report (${reportId}) has been received and queued for review.`,
+        previewText: `Your issue report (${reportId}) has been received.`,
+        senderId: user.uid,
+        actorId: user.uid,
+        senderName: user.displayName || 'Me',
+        actorName: user.displayName || 'Me',
+        resourceType: 'report',
+        resourceId: reportId,
+        read: false,
+        createdAt: timestamp,
+        actionUrl: '/dashboard',
+      }).catch((e) => console.warn('[reportService] Notification delivery warning:', e.message));
+
+      // Maintain legacy path for backward compatibility
       await rtdbService.setData(`notifications/${user.uid}/${notifId}`, {
         id: notifId,
         title: 'Issue Report Submitted',
@@ -107,7 +126,7 @@ export const reportService = {
         type: 'info',
         isRead: false,
         createdAt: timestamp,
-      }).catch(() => {});
+      }).catch((e) => console.warn('[reportService] Legacy notification delivery warning:', e.message));
 
       return reportData;
     } catch (error) {

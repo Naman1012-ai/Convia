@@ -74,7 +74,6 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
     }
 
     case 'notifications':
-    case 'user_notifications':
     case 'user_activity':
     case 'user_preferences':
     case 'user_announcements':
@@ -83,8 +82,72 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       const uid = arg1;
       if (operation === 'read') return { allowed: auth.uid === uid };
       if (operation === 'write') {
-        // Enforce strict ownership: User can only write to their own notifications
         return { allowed: auth.uid === uid };
+      }
+      break;
+    }
+
+    case 'user_notifications': {
+      const recipientUid = arg1;
+      const notifId = arg2;
+
+      // .read: auth != null && auth.uid === $uid
+      if (operation === 'read') {
+        return { allowed: auth.uid === recipientUid, reason: auth.uid === recipientUid ? null : 'FORBIDDEN_READ' };
+      }
+
+      if (operation === 'write') {
+        // Delete operation: !newData
+        if (data && !newData) {
+          const allowed = auth.uid === recipientUid;
+          return { allowed, reason: allowed ? null : 'CANNOT_DELETE_ANOTHER_USERS_NOTIFICATION' };
+        }
+
+        // Create operation: !data
+        if (!data && newData) {
+          if (newData.senderId !== auth.uid) {
+            return { allowed: false, reason: 'FORGED_SENDER_ID' };
+          }
+          if (newData.actorId && newData.actorId !== auth.uid) {
+            return { allowed: false, reason: 'FORGED_ACTOR_ID' };
+          }
+          if (!newData.type || typeof newData.type !== 'string') {
+            return { allowed: false, reason: 'INVALID_TYPE' };
+          }
+          if (typeof newData.createdAt !== 'number') {
+            return { allowed: false, reason: 'INVALID_CREATED_AT' };
+          }
+          // Workspace boundary: if orgId is provided, BOTH sender and recipient must belong
+          if (newData.orgId) {
+            const senderIsMember = isMemberOfOrg(newData.orgId, auth.uid) || isOwnerOfOrg(newData.orgId, auth.uid);
+            const recipientIsMember = isMemberOfOrg(newData.orgId, recipientUid) || isOwnerOfOrg(newData.orgId, recipientUid);
+            if (!senderIsMember || !recipientIsMember) {
+              return { allowed: false, reason: 'CROSS_WORKSPACE_INJECTION_DENIED' };
+            }
+          }
+          return { allowed: true };
+        }
+
+        // Update operation: data && newData
+        if (data && newData) {
+          // Only recipient can update
+          if (auth.uid !== recipientUid) {
+            return { allowed: false, reason: 'FORBIDDEN_UPDATE' };
+          }
+          // Protected fields are strictly immutable
+          const protectedFields = ['type', 'senderId', 'actorId', 'orgId', 'workspaceId', 'createdAt', 'title', 'body', 'notificationId', 'recipientId'];
+          for (const field of protectedFields) {
+            if (data[field] !== undefined && newData[field] !== undefined && data[field] !== newData[field]) {
+              return { allowed: false, reason: `CANNOT_MODIFY_${field.toUpperCase()}` };
+            }
+          }
+          if (newData.read !== undefined && typeof newData.read !== 'boolean') {
+            return { allowed: false, reason: 'READ_MUST_BE_BOOLEAN' };
+          }
+          return { allowed: true };
+        }
+
+        return { allowed: auth.uid === recipientUid };
       }
       break;
     }
@@ -128,7 +191,40 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       if (operation === 'write') {
         const isOwner = isOwnerOfOrg(orgId, auth.uid);
         const isSelf = auth.uid === targetUid;
-        return { allowed: isSelf || isOwner };
+
+        // Workspace member root deletion (e.g. deleting workspace)
+        if (!targetUid) {
+          if (!newData && isOwner) return { allowed: true };
+          return { allowed: false, reason: 'WORKSPACE_MEMBER_ROOT_WRITE_DENIED' };
+        }
+
+        // New membership creation (!data exists)
+        if (!data) {
+          if (!newData) return { allowed: false, reason: 'EMPTY_WRITE' };
+          // Only workspace owner can directly create a membership node (owner bootstrap)
+          if (!isOwner) return { allowed: false, reason: 'UNAUTHORIZED_MEMBERSHIP_CREATION' };
+          if (newData.uid !== targetUid) return { allowed: false, reason: 'FORGED_UID_MISMATCH' };
+          if (!['owner', 'admin', 'member'].includes(newData.role)) {
+            return { allowed: false, reason: 'INVALID_ROLE' };
+          }
+          return { allowed: true };
+        }
+
+        // Member deletion (!newData exists)
+        if (!newData) {
+          // Member can leave (isSelf) or Owner can remove member (isOwner)
+          if (isSelf || isOwner) return { allowed: true };
+          return { allowed: false, reason: 'UNAUTHORIZED_MEMBER_REMOVAL' };
+        }
+
+        // Member update (data exists && newData exists)
+        // Only owner can update member roles or attributes
+        if (!isOwner) return { allowed: false, reason: 'UNAUTHORIZED_ROLE_MUTATION' };
+        if (newData.uid !== data.uid) return { allowed: false, reason: 'IMMUTABLE_UID' };
+        if (!['owner', 'admin', 'member'].includes(newData.role)) {
+          return { allowed: false, reason: 'INVALID_ROLE' };
+        }
+        return { allowed: true };
       }
       break;
     }
@@ -140,17 +236,99 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       if (!hasAccess) return { allowed: false, reason: 'NOT_ORG_MEMBER' };
       if (operation === 'read') return { allowed: true };
       if (operation === 'write') {
+        const getMemberRole = (oId, uId) => {
+          const members = rootData['organization_members']?.[oId] || rootData['workspace_members']?.[oId] || {};
+          if (members[uId]?.role) return members[uId].role;
+          const org = rootData['organizations']?.[oId] || rootData['workspaces']?.[oId] || {};
+          if (org.ownerId === uId) return 'owner';
+          return null;
+        };
+
+        const role = getMemberRole(orgId, auth.uid);
+        if (role === 'viewer') return { allowed: false, reason: 'VIEWER_READ_ONLY' };
+
+        if (!ideaId) {
+          // Writing directly to ideas/$orgId
+          if (!newData && (isOwnerOfOrg(orgId, auth.uid) || role === 'owner')) {
+            return { allowed: true };
+          }
+          return { allowed: false, reason: 'FORBIDDEN_ROOT_WRITE' };
+        }
+
+        const isOwner = isOwnerOfOrg(orgId, auth.uid) || role === 'owner';
+        const isAdmin = role === 'admin';
+
         if (!data) {
           // Create
-          if (newData?.authorId !== auth.uid || newData?.orgId !== orgId) {
+          if (!newData || newData.authorId !== auth.uid || newData.orgId !== orgId) {
             return { allowed: false, reason: 'FORGED_AUTHOR_OR_ORG' };
           }
-        } else if (newData) {
-          // Update
-          if (newData.orgId !== data.orgId) {
-            return { allowed: false, reason: 'IMMUTABLE_ORG_ID' };
+          if (newData.createdBy && newData.createdBy !== auth.uid) {
+            return { allowed: false, reason: 'FORGED_CREATED_BY' };
           }
+          return { allowed: true };
         }
+
+        if (!newData) {
+          // Delete
+          const isAuthor = data.authorId === auth.uid;
+          if (isAuthor || isOwner || isAdmin) {
+            return { allowed: true };
+          }
+          return { allowed: false, reason: 'UNAUTHORIZED_IDEA_DELETION' };
+        }
+
+        // Update
+        if (newData.orgId !== data.orgId) {
+          return { allowed: false, reason: 'IMMUTABLE_ORG_ID' };
+        }
+        if (newData.authorId !== data.authorId) {
+          return { allowed: false, reason: 'IMMUTABLE_AUTHOR_ID' };
+        }
+        if (data.createdBy && newData.createdBy !== data.createdBy) {
+          return { allowed: false, reason: 'IMMUTABLE_CREATED_BY' };
+        }
+        if (data.createdAt && newData.createdAt !== data.createdAt) {
+          return { allowed: false, reason: 'IMMUTABLE_CREATED_AT' };
+        }
+        if (data.ideaId && newData.ideaId !== data.ideaId) {
+          return { allowed: false, reason: 'IMMUTABLE_IDEA_ID' };
+        }
+
+        const isAuthor = data.authorId === auth.uid;
+        if (isAuthor || isOwner || isAdmin) {
+          return { allowed: true };
+        }
+
+        // Non-author, non-admin member: can only update collaborative counters & timestamp
+        if (newData.title !== data.title) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_TITLE' };
+        }
+        if (data.problemStatement !== undefined && newData.problemStatement !== data.problemStatement) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_DESCRIPTION' };
+        }
+        if (data.proposedSolution !== undefined && newData.proposedSolution !== data.proposedSolution) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_PROPOSAL' };
+        }
+        if (data.techStack !== undefined && newData.techStack !== data.techStack) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_TECH_STACK' };
+        }
+        if (data.difficultyLevel !== undefined && newData.difficultyLevel !== data.difficultyLevel) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_DIFFICULTY' };
+        }
+        if (data.status !== undefined && newData.status !== data.status) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_STATUS' };
+        }
+        if (data.projectStatus !== undefined && newData.projectStatus !== data.projectStatus) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_PROJECT_STATUS' };
+        }
+        if (data.isSelected !== undefined && newData.isSelected !== data.isSelected) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_EDIT_ANOTHER_USERS_SELECTION' };
+        }
+        if (data.isDeleted !== undefined && newData.isDeleted !== data.isDeleted) {
+          return { allowed: false, reason: 'MEMBER_CANNOT_SOFT_DELETE_ANOTHER_USERS_IDEA' };
+        }
+
         return { allowed: true };
       }
       break;
@@ -212,7 +390,16 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       const orgId = arg1;
       const hasAccess = isMemberOfOrg(orgId, auth.uid);
       if (!hasAccess) return { allowed: false, reason: 'NOT_ORG_MEMBER' };
-      return { allowed: true };
+      if (operation === 'read') return { allowed: true };
+      if (operation === 'write') {
+        // Direct client-side creation or modification is strictly forbidden.
+        // Whole-node cascading deletion is permitted ONLY by the workspace owner.
+        if (!newData && isOwnerOfOrg(orgId, auth.uid)) {
+          return { allowed: true };
+        }
+        return { allowed: false, reason: 'CLIENT_BLUEPRINT_WRITE_FORBIDDEN' };
+      }
+      break;
     }
 
     case 'workspaceChats': {
@@ -221,8 +408,37 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       if (!hasAccess) return { allowed: false, reason: 'NOT_ORG_MEMBER' };
       if (operation === 'read') return { allowed: true };
       if (operation === 'write') {
-        if (!data) return { allowed: newData?.senderId === auth.uid || newData?.senderId === 'system' };
-        return { allowed: data.senderId === auth.uid || isOwnerOfOrg(orgId, auth.uid) };
+        const isOwner = isOwnerOfOrg(orgId, auth.uid);
+        if (!arg2) {
+          if (!newData && isOwner) return { allowed: true };
+          return { allowed: false, reason: 'ROOT_DELETION_ONLY_BY_OWNER' };
+        }
+        if (arg3 === 'metadata') {
+          return { allowed: true };
+        }
+        if (!data) {
+          if (!newData) return { allowed: false, reason: 'EMPTY_WRITE' };
+          if (newData.senderId === 'system' || newData.isSystem === true || newData.senderId !== auth.uid) {
+            return { allowed: false, reason: 'FORBIDDEN_SENDER_OR_SYSTEM_FORGERY' };
+          }
+          if (typeof newData.content !== 'string' || newData.content.length > 2000) {
+            return { allowed: false, reason: 'INVALID_OR_OVERSIZED_CONTENT' };
+          }
+          return { allowed: true };
+        }
+        if (!newData) {
+          return { allowed: data.senderId === auth.uid || isOwner };
+        }
+        if (newData.messageId !== data.messageId || newData.senderId !== data.senderId || newData.createdAt !== data.createdAt) {
+          return { allowed: false, reason: 'IMMUTABLE_FIELD_REWRITE' };
+        }
+        if (newData.deleted === true) {
+          return { allowed: data.senderId === auth.uid || isOwner };
+        }
+        if (data.senderId !== auth.uid || data.isSystem === true) {
+          return { allowed: false, reason: 'NOT_MESSAGE_AUTHOR' };
+        }
+        return { allowed: true };
       }
       break;
     }
@@ -384,6 +600,70 @@ describe('🧪 CONVIA SECURITY FIX 6 — RULES VERIFICATION & ATOMIC ENFORCEMENT
       assert.strictEqual(injectRes.allowed, false, 'Arbitrary cross-user notification injection must be denied');
     });
 
+    it('enforces hardened rules on user_notifications/$uid/$notifId', () => {
+      // 1. Reading own notifications allowed
+      const readOwn = evaluateSecurityRule({
+        path: 'user_notifications/user_alice/n1',
+        operation: 'read',
+        auth: userAlice,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(readOwn.allowed, true);
+
+      // 2. Reading another user's notifications denied
+      const readOther = evaluateSecurityRule({
+        path: 'user_notifications/user_bob/n1',
+        operation: 'read',
+        auth: userAlice,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(readOther.allowed, false);
+
+      // 3. Updating read state on own notification allowed
+      const updateRead = evaluateSecurityRule({
+        path: 'user_notifications/user_alice/n1',
+        operation: 'write',
+        auth: userAlice,
+        data: { notificationId: 'n1', type: 'IDEA_CREATED', title: 'Original', read: false },
+        newData: { notificationId: 'n1', type: 'IDEA_CREATED', title: 'Original', read: true, readAt: Date.now() },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(updateRead.allowed, true);
+
+      // 4. Tampering with protected fields on update denied
+      const tamperTitle = evaluateSecurityRule({
+        path: 'user_notifications/user_alice/n1',
+        operation: 'write',
+        auth: userAlice,
+        data: { notificationId: 'n1', type: 'IDEA_CREATED', title: 'Original', read: false },
+        newData: { notificationId: 'n1', type: 'IDEA_CREATED', title: 'TAMPERED TITLE', read: true },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(tamperTitle.allowed, false);
+
+      // 5. Forged senderId on create denied
+      const forgedSender = evaluateSecurityRule({
+        path: 'user_notifications/user_bob/n2',
+        operation: 'write',
+        auth: userAlice,
+        data: null,
+        newData: { type: 'CHAT_MESSAGE', senderId: 'user_charlie', createdAt: Date.now() },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(forgedSender.allowed, false);
+
+      // 6. Cross-workspace injection denied (if sender not in org)
+      const crossWsInject = evaluateSecurityRule({
+        path: 'user_notifications/user_bob/n3',
+        operation: 'write',
+        auth: userBob, // userBob is not in org_charlie
+        data: null,
+        newData: { type: 'IDEA_CREATED', senderId: 'user_bob', orgId: 'org_charlie', createdAt: Date.now() },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(crossWsInject.allowed, false);
+    });
+
     it('blocks User B from modifying User A profile in users/{uid}', () => {
       const writeRes = evaluateSecurityRule({ path: 'users/user_alice', operation: 'write', auth: userBob, rootData: mockRootData });
       assert.strictEqual(writeRes.allowed, false);
@@ -460,12 +740,30 @@ describe('🧪 CONVIA SECURITY FIX 6 — RULES VERIFICATION & ATOMIC ENFORCEMENT
   });
 
   describe('🔍 TEST ATOMIC: Multi-Location Updates Security', () => {
-    it('allows legitimate atomic workspace join update', () => {
+    it('BLOCKS unauthorized client from self-joining organization directly via atomic write', () => {
       const updates = {
         'organization_members/org_alpha/user_bob': { uid: 'user_bob', role: 'member' },
       };
+      // userBob is not owner of org_alpha; direct client self-join is blocked
       const res = evaluateMultiLocationUpdate({ updates, auth: userBob, rootData: mockRootData });
-      assert.strictEqual(res.allowed, true);
+      assert.strictEqual(res.allowed, false, 'Direct client self-join must be rejected by RTDB security rules');
+      assert.strictEqual(res.failedPath, 'organization_members/org_alpha/user_bob');
+    });
+
+    it('allows legitimate atomic workspace creation update by owner', () => {
+      const updates = {
+        'organizations/org_new': { orgId: 'org_new', name: 'New Org', ownerId: 'user_bob' },
+        'organization_members/org_new/user_bob': { uid: 'user_bob', role: 'owner' },
+      };
+      const newRootData = {
+        ...mockRootData,
+        organizations: {
+          ...mockRootData.organizations,
+          org_new: { orgId: 'org_new', name: 'New Org', ownerId: 'user_bob' },
+        },
+      };
+      const res = evaluateMultiLocationUpdate({ updates, auth: userBob, rootData: newRootData });
+      assert.strictEqual(res.allowed, true, 'Owner workspace creation update must be allowed');
     });
 
     it('REJECTS malicious multi-location update containing a forbidden path', () => {

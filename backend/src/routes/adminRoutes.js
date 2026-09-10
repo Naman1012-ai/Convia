@@ -10,6 +10,8 @@ import { rtdbService } from '../services/rtdbService.js';
 import { validatePathSegment } from '../utils/blueprintPathBuilder.js';
 import { adminRateLimiter } from '../middleware/rateLimitMiddleware.js';
 import { securityAuditService } from '../services/securityAuditService.js';
+import { notificationService } from '../services/notificationService.js';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants.js';
 
 export const adminRouter = express.Router();
 
@@ -289,7 +291,23 @@ adminRouter.post('/announcements/broadcast', async (req, res) => {
     const timestamp = Date.now();
     const notifId = `notif_bcast_${timestamp}`;
 
-    const promises = userList.map((u) => {
+    // Canonical in-app notification center delivery
+    const userUids = userList.map((u) => u.uid).filter(Boolean);
+    await notificationService.createNotificationsForRecipients(userUids, {
+      notificationId: notifId,
+      type: NOTIFICATION_TYPES.ADMIN_BROADCAST,
+      title: String(title).trim(),
+      body: String(message).trim(),
+      actorId: 'system',
+      actorName: req.user.name || req.user.email || 'Convia Admin',
+      resourceType: 'system',
+      resourceId: notifId,
+      actionUrl: '/dashboard',
+      createdAt: timestamp,
+    });
+
+    // Backward-compatibility write for legacy notification consumers
+    const legacyPromises = userList.map((u) => {
       return rtdbService.setData(`notifications/${u.uid}/${notifId}`, {
         id: notifId,
         title: String(title).trim(),
@@ -298,10 +316,10 @@ adminRouter.post('/announcements/broadcast', async (req, res) => {
         isRead: false,
         createdAt: timestamp,
         sender: req.user.name || req.user.email || 'Admin',
-      }).catch(() => {});
+      }).catch((err) => console.warn(`[adminRoutes] Legacy broadcast error for ${u.uid}:`, err.message));
     });
 
-    await Promise.all(promises);
+    await Promise.all(legacyPromises);
     await logAdminAudit(req.user, 'BROADCAST_NOTIFICATION', notifId, `Broadcasted notification "${title}" to ${userList.length} users.`);
 
     return res.json({
@@ -477,6 +495,19 @@ adminRouter.post('/users/:userId/warning', async (req, res) => {
     await rtdbService.setData(`user_admin_warnings/${userId}/${warningId}`, warningData);
 
     const notifId = `notif_${timestamp}`;
+    await notificationService.createNotification(userId, {
+      notificationId: notifId,
+      type: NOTIFICATION_TYPES.ADMIN_BROADCAST,
+      title: `Official Warning (${severity} Severity)`,
+      body: `Administrator notice: ${String(reason).trim()}`,
+      actorId: 'system',
+      actorName: req.user.name || req.user.email || 'Convia Admin',
+      resourceType: 'system',
+      resourceId: warningId,
+      actionUrl: '/dashboard',
+      createdAt: timestamp,
+    });
+
     await rtdbService.setData(`notifications/${userId}/${notifId}`, {
       id: notifId,
       title: `Official Warning (${severity} Severity)`,
@@ -484,7 +515,7 @@ adminRouter.post('/users/:userId/warning', async (req, res) => {
       type: 'warning',
       isRead: false,
       createdAt: timestamp,
-    }).catch(() => {});
+    }).catch((e) => console.warn(`[adminRoutes] Legacy warning notification warning for ${userId}:`, e.message));
 
     await logAdminAudit(req.user, 'ISSUE_WARNING', userId, `Issued ${severity} warning: ${reason}`);
 
@@ -527,6 +558,7 @@ adminRouter.delete('/users/:userId', async (req, res) => {
       rtdbService.removeData(`user_reports/${userId}`),
       rtdbService.removeData(`user_admin_notes/${userId}`),
       rtdbService.removeData(`user_admin_warnings/${userId}`),
+      rtdbService.removeData(`user_notifications/${userId}`),
       rtdbService.removeData(`notifications/${userId}`),
     ]);
 
@@ -803,6 +835,19 @@ adminRouter.patch('/reports/:reportId/status', async (req, res) => {
 
     if (targetUid) {
       const notifId = `notif_${Date.now()}`;
+      await notificationService.createNotification(targetUid, {
+        notificationId: notifId,
+        type: NOTIFICATION_TYPES.ADMIN_BROADCAST,
+        title: 'Report Status Updated',
+        body: `Your issue report (${reportId}) status has been updated to "${newStatus}".`,
+        actorId: 'system',
+        actorName: req.user.name || req.user.email || 'Convia Admin',
+        resourceType: 'report',
+        resourceId: reportId,
+        actionUrl: '/dashboard',
+        createdAt: timestamp,
+      });
+
       await rtdbService.setData(`notifications/${targetUid}/${notifId}`, {
         id: notifId,
         title: 'Report Status Updated',
@@ -810,7 +855,7 @@ adminRouter.patch('/reports/:reportId/status', async (req, res) => {
         type: 'info',
         isRead: false,
         createdAt: timestamp,
-      }).catch(() => {});
+      }).catch((e) => console.warn(`[adminRoutes] Legacy report status notification warning for ${targetUid}:`, e.message));
     }
 
     await logAdminAudit(req.user, 'UPDATE_REPORT_STATUS', reportId, `Updated status to "${newStatus}"`);

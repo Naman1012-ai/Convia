@@ -36,6 +36,29 @@ export const dashboardService = {
   },
 
   /**
+   * Invalidate and remove cached dashboard snapshot for a specific user.
+   */
+  clearCachedDashboardData: (userId) => {
+    if (!userId) {
+      try {
+        Object.keys(localStorage).forEach((k) => {
+          if (k.startsWith(CACHE_PREFIX)) {
+            localStorage.removeItem(k);
+          }
+        });
+      } catch (e) {
+        console.warn('[dashboardService] Failed to clear localStorage cache:', e);
+      }
+      return;
+    }
+    try {
+      localStorage.removeItem(`${CACHE_PREFIX}${userId}`);
+    } catch (e) {
+      console.warn('[dashboardService] Failed to clear localStorage cache for user:', e);
+    }
+  },
+
+  /**
    * Fetch workspace metrics & stats for a specific organization/idea project dashboard.
    */
   getDashboardStats: async (orgId, ideaId = null) => {

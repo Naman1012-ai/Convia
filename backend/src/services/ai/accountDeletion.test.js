@@ -118,6 +118,7 @@ export function planAccountDeletion(mockDatabase, tokenUser, requestBody = {}) {
 
   // 8. Personal Subtrees cleanup
   rtdbUpdates[`users/${verifiedUid}`] = null;
+  rtdbUpdates[`user_notifications/${verifiedUid}`] = null;
   rtdbUpdates[`notifications/${verifiedUid}`] = null;
   rtdbUpdates[`user_activity/${verifiedUid}`] = null;
   rtdbUpdates[`user_preferences/${verifiedUid}`] = null;

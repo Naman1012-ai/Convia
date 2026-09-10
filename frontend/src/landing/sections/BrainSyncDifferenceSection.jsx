@@ -60,13 +60,13 @@ export function ConviaDifferenceSection() {
 
         {/* Comparison Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {TOOL_STACK.map((item, idx) => {
+          {PIPELINE_NODES.map((item, idx) => {
             const Icon = item.icon;
             return (
               <div
                 key={idx}
                 className={`p-6 rounded-3xl border transition-all duration-200 ${
-                  item.isPrimary
+                  item.highlight
                     ? 'bg-slate-900/90 border-purple-500/50 shadow-xl shadow-purple-950/40 ring-1 ring-purple-500/30'
                     : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
                 }`}

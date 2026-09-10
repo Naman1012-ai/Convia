@@ -94,7 +94,7 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            label="Display Name *"
+            label="Display Name"
             placeholder="e.g. Alex Johnson"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}

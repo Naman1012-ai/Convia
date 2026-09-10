@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '../hooks/useUser';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
 import {
@@ -23,6 +24,7 @@ import {
 
 export function AdminLayout() {
   const { user } = useAuth();
+  const { userProfile } = useUser();
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -85,7 +87,7 @@ export function AdminLayout() {
             </Badge>
 
             <div className="flex items-center gap-3 border-l border-slate-800 pl-4">
-              <Avatar name={user?.displayName || user?.email} size="sm" />
+              <Avatar name={userProfile?.displayName || user?.displayName || user?.email} size="sm" />
               <button
                 onClick={() => navigate('/dashboard')}
                 className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-200 hover:text-white transition-all bg-indigo-950/80 hover:bg-indigo-900 px-3.5 py-1.5 rounded-xl border border-indigo-700/60 shadow-sm"

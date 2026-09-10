@@ -1,0 +1,86 @@
+import { Router } from 'express';
+import { workspaceDashboardController } from '../controllers/workspaceDashboardController.js';
+import { workspaceMembershipController } from '../controllers/workspaceMembershipController.js';
+import { activityController } from '../controllers/activityController.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
+import { standardRateLimiter } from '../middleware/rateLimitMiddleware.js';
+import { validatePathSegment } from '../utils/blueprintPathBuilder.js';
+
+export const workspaceDashboardRouter = Router();
+
+workspaceDashboardRouter.use(requireAuth);
+workspaceDashboardRouter.use(standardRateLimiter);
+
+/**
+ * POST /api/workspace/join
+ * Server-authorized workspace joining via 8-character invite code.
+ * Identity is derived strictly from verified Firebase token (req.user.uid).
+ */
+workspaceDashboardRouter.post('/join', async (req, res) => {
+  try {
+    const verifiedUserUid = req.user.uid;
+    const { inviteCode } = req.body || {};
+
+    const result = await workspaceMembershipController.joinWorkspaceByCodeHandler(
+      verifiedUserUid,
+      inviteCode,
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    console.error(`🚨 [Join Workspace API Error] User: ${req.user?.uid} | Error:`, err.message);
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'JOIN_WORKSPACE_ERROR' },
+    });
+  }
+});
+
+/**
+ * GET /api/workspace/:workspaceId/dashboard
+ * Authenticated workspace dashboard overview.
+ */
+workspaceDashboardRouter.get('/:workspaceId/dashboard', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const verifiedUserUid = req.user.uid;
+
+    if (!rawWorkspaceId || typeof rawWorkspaceId !== 'string' || !rawWorkspaceId.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'A valid Workspace ID is required.', code: 'INVALID_PARAMETERS' },
+      });
+    }
+
+    const resolvedWorkspaceId = validatePathSegment(rawWorkspaceId, 'workspaceId');
+
+    const result = await workspaceDashboardController.getWorkspaceDashboardHandler(
+      resolvedWorkspaceId,
+      verifiedUserUid
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    console.error(`🚨 [Dashboard API Error] Workspace: ${req.params?.workspaceId} | Error:`, err.message);
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'DASHBOARD_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/:workspaceId/activity
+ * Authoritative activity recording endpoint enforcing token identity, membership, and server timestamp.
+ */
+workspaceDashboardRouter.post('/:workspaceId/activity', activityController.recordActivityHandler);
+
+/**
+ * GET /api/workspace/:workspaceId/activity
+ * Authenticated workspace activity retrieval with limit and beforeTimestamp pagination.
+ */
+workspaceDashboardRouter.get('/:workspaceId/activity', activityController.getWorkspaceActivitiesHandler);
+

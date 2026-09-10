@@ -1,7 +1,8 @@
-import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserProvider } from './contexts/UserContext';
+import { UserProfileSyncProvider } from './contexts/UserProfileSyncContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { PlatformSettingsProvider } from './contexts/PlatformSettingsContext';
 import { AuthLayout } from './layouts/AuthLayout';
@@ -13,6 +14,19 @@ import { PublicOnlyGuard } from './features/auth/PublicOnlyGuard';
 import { AdminGuard } from './features/admin/AdminGuard';
 import { Spinner } from './components/feedback/Spinner';
 import { ErrorBoundary } from './components/feedback/ErrorBoundary';
+
+/**
+ * RouteCleanup: Resets body overflow and transient global UI side effects on navigation.
+ */
+function RouteCleanup() {
+  const location = useLocation();
+
+  useEffect(() => {
+    document.body.style.overflow = '';
+  }, [location.pathname]);
+
+  return null;
+}
 
 // Route Code Splitting (Lazy Loading)
 const LandingPage = lazy(() => import('./landing/pages/LandingPage'));
@@ -34,6 +48,7 @@ const TaskBoardPage = lazy(() => import('./pages/organization/TaskBoardPage'));
 const ProgressDashboardPage = lazy(() => import('./pages/organization/ProgressDashboardPage'));
 const MembersPage = lazy(() => import('./pages/organization/MembersPage'));
 const WorkspaceChatPage = lazy(() => import('./pages/organization/WorkspaceChatPage'));
+const WorkspaceActivityPage = lazy(() => import('./pages/organization/WorkspaceActivityPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SettingsPage = lazy(() => import('./pages/organization/SettingsPage'));
 
@@ -62,9 +77,11 @@ export function App() {
     <ToastProvider>
       <AuthProvider>
         <UserProvider>
-          <PlatformSettingsProvider>
-            <BrowserRouter>
-          <Suspense
+          <UserProfileSyncProvider>
+            <PlatformSettingsProvider>
+              <BrowserRouter>
+                <RouteCleanup />
+                <Suspense
             fallback={
               <div className="flex h-screen w-screen items-center justify-center bg-slate-50">
                 <Spinner size="lg" />
@@ -111,6 +128,7 @@ export function App() {
                   <Route path="tasks" element={<TaskBoardPage />} />
                   <Route path="members" element={<MembersPage />} />
                   <Route path="chat" element={<WorkspaceChatPage />} />
+                  <Route path="activity" element={<WorkspaceActivityPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                 </Route>
 
@@ -126,6 +144,7 @@ export function App() {
                   <Route path="tasks" element={<TaskBoardPage />} />
                   <Route path="members" element={<MembersPage />} />
                   <Route path="chat" element={<WorkspaceChatPage />} />
+                  <Route path="activity" element={<WorkspaceActivityPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                 </Route>
 
@@ -175,8 +194,9 @@ export function App() {
           </Suspense>
         </BrowserRouter>
       </PlatformSettingsProvider>
-    </UserProvider>
-  </AuthProvider>
+    </UserProfileSyncProvider>
+  </UserProvider>
+</AuthProvider>
 </ToastProvider>
   );
 }

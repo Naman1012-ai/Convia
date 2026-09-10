@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../hooks/useAuth';
-import { voteService } from '../../services/voteService';
+import { useProposalVote } from '../../hooks/useProposalVote';
 import { orgService } from '../../services/orgService';
 import { publicIdeaService } from '../../services/publicIdeaService';
 import { Modal } from '../../components/ui/Modal';
@@ -14,13 +14,20 @@ import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { formatTimestamp } from '../../utils/formatting';
 import { safeText } from '../../utils/safeRender';
 import { Globe, ThumbsUp, UserCheck, FolderPlus, Trash2 } from 'lucide-react';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
-export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {} }) {
+export function PublicIdeaDetailModal({
+  isOpen,
+  idea,
+  onClose,
+  onToast = () => {},
+  onOpenCommunityChat = null,
+}) {
   const { user } = useAuth();
 
-  const [hasVoted, setHasVoted] = useState(false);
-  const [voteCount, setVoteCount] = useState(0);
-  const [isVoting, setIsVoting] = useState(false);
+  const { displayName: authorDisplayName } = useUserProfile(idea?.authorId, {
+    fallbackName: idea?.authorName || 'Anonymous Innovator',
+  });
 
   // User Workspaces lookup for Import workflow
   const [userWorkspaces, setUserWorkspaces] = useState([]);
@@ -30,19 +37,26 @@ export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {
   const [isDeletingConfirmOpen, setIsDeletingConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    if (idea) {
-      setVoteCount(idea.voteCount || 0);
-    }
-  }, [idea]);
+  // High-Performance Optimistic Voting with Real-Time Synchronization
+  const {
+    hasVoted,
+    voteCount,
+    isVoting,
+    toggleVote: handleVoteToggle,
+  } = useProposalVote(idea?.ideaId, {
+    isPublic: true,
+    orgId: null,
+    externalVoteCount: idea?.voteCount || 0,
+    onFeedback: onToast,
+  });
 
+  // Clean up nested modal states whenever parent modal closes
   useEffect(() => {
-    if (!user || !idea || !idea.ideaId) return;
-    const unsubscribe = voteService.subscribeToUserVote(idea.ideaId, user.uid, (voted) => {
-      setHasVoted(voted);
-    });
-    return () => unsubscribe();
-  }, [user, idea]);
+    if (!isOpen) {
+      setIsImportModalOpen(false);
+      setIsDeletingConfirmOpen(false);
+    }
+  }, [isOpen]);
 
   // Fetch active workspaces where current user holds active membership
   useEffect(() => {
@@ -66,30 +80,7 @@ export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {
     };
   }, [user]);
 
-  if (!idea) return null;
-
-  const isAuthor = user && user.uid === idea.authorId;
-
-  const handleVoteToggle = async () => {
-    if (!user || !idea.ideaId || isVoting) return;
-
-    setIsVoting(true);
-    try {
-      const result = await voteService.toggleVote(
-        idea.ideaId,
-        user.uid,
-        true, // isPublic = true
-        null
-      );
-      setHasVoted(result.voted);
-      setVoteCount(result.voteCount);
-      onToast(result.voted ? '👍 Vote recorded!' : 'Vote removed.');
-    } catch (err) {
-      onToast(err.message || 'Failed to update vote.');
-    } finally {
-      setIsVoting(false);
-    }
-  };
+  const isAuthor = user && user.uid === idea?.authorId;
 
   const handleConfirmDelete = async () => {
     if (!idea || isDeleting) return;
@@ -105,6 +96,8 @@ export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {
       setIsDeleting(false);
     }
   };
+
+  if (!isOpen || !idea) return null;
 
   return (
     <>
@@ -123,13 +116,13 @@ export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {
               <h1 className="text-2xl font-extrabold text-slate-900 mb-2">{idea.title}</h1>
 
               <div className="flex items-center gap-2.5">
-                <Avatar name={isAuthor ? user.displayName || user.email : idea.authorName} size="sm" />
+                <Avatar name={isAuthor ? user.displayName || user.email : authorDisplayName} size="sm" />
                 {isAuthor ? (
                   <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md flex items-center gap-1">
                     <UserCheck className="h-3 w-3 text-indigo-600" /> Created by You
                   </span>
                 ) : (
-                  <span className="text-sm font-semibold text-slate-800">{idea.authorName}</span>
+                  <span className="text-sm font-semibold text-slate-800">{authorDisplayName}</span>
                 )}
                 <span className="text-xs text-slate-400">· {formatTimestamp(idea.createdAt)}</span>
               </div>
@@ -227,9 +220,22 @@ export function PublicIdeaDetailModal({ isOpen, idea, onClose, onToast = () => {
 
           {/* Interactive Discussion & Suggestion Section */}
           <div className="pt-4 border-t border-slate-200 space-y-4">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              💡 Suggestions & Community Feedback
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                💡 Suggestions & Community Feedback
+              </h2>
+              {onOpenCommunityChat && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<Globe className="h-4 w-4 text-emerald-600" />}
+                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 text-xs font-semibold"
+                  onClick={() => onOpenCommunityChat(idea)}
+                >
+                  Join Live Discussion Channel
+                </Button>
+              )}
+            </div>
             <DiscussionPanel idea={idea} onToast={onToast} />
           </div>
         </div>
@@ -264,4 +270,5 @@ PublicIdeaDetailModal.propTypes = {
   idea: PropTypes.object,
   onClose: PropTypes.func.isRequired,
   onToast: PropTypes.func,
+  onOpenCommunityChat: PropTypes.func,
 };

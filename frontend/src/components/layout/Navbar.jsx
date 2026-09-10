@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -20,6 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { ReportIssueModal } from '../../features/reports/ReportIssueModal';
+import { NotificationDropdown } from './NotificationDropdown';
 
 export function Navbar({ onMobileMenuToggle = () => {} }) {
   const { user, signOut } = useAuth();
@@ -30,6 +31,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
 
   const adminEnvEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'admin@convia.dev').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
@@ -42,6 +44,8 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
 
   const handleSignOut = async () => {
     try {
+      setIsUserMenuOpen(false);
+      setIsMobileMenuOpen(false);
       await signOut();
       toast.info('Signed out successfully.');
       navigate('/');
@@ -52,6 +56,37 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
   };
 
   const isCurrentPath = (path) => location.pathname === path;
+
+  // Reset all transient UI states immediately whenever the route changes
+  useEffect(() => {
+    setIsUserMenuOpen(false);
+    setIsMobileMenuOpen(false);
+    setIsReportModalOpen(false);
+  }, [location.pathname]);
+
+  // Click outside and Escape key listeners for User Profile dropdown
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
 
   useEffect(() => {
     if (isMobileMenuOpen) {
@@ -153,15 +188,18 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                 </Link>
               )}
 
-              <div className="relative">
+              {/* Phase 7: Real-Time In-App Notification Center */}
+              <NotificationDropdown />
+
+              <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
                   className="flex items-center gap-2.5 rounded-full p-1 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                   aria-label="User profile menu"
                 >
-                  <Avatar name={user.displayName || user.email} size="sm" />
+                  <Avatar name={userProfile?.displayName || user?.displayName || user?.email} size="sm" />
                   <span className="hidden sm:inline-block text-sm font-semibold text-slate-700 max-w-[120px] truncate">
-                    {user.displayName || user.email.split('@')[0]}
+                    {userProfile?.displayName || user?.displayName || user?.email.split('@')[0]}
                   </span>
                 </button>
 
@@ -171,7 +209,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                     <div className="px-3 py-2 border-b border-slate-100">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-slate-900 truncate">
-                          {user.displayName || 'User'}
+                          {userProfile?.displayName || user?.displayName || 'User'}
                         </p>
                         {isAdmin && (
                           <span className="text-[9px] font-mono font-bold uppercase bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">

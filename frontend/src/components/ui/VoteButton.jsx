@@ -1,46 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../hooks/useAuth';
-import { voteService } from '../../services/voteService';
+import { useProposalVote } from '../../hooks/useProposalVote';
 import { ThumbsUp } from 'lucide-react';
 
 export function VoteButton({ ideaId, isPublic = false, orgId = null, initialCount = 0, size = 'md' }) {
   const { user } = useAuth();
-  const [hasVoted, setHasVoted] = useState(false);
-  const [voteCount, setVoteCount] = useState(initialCount);
-  const [isVoting, setIsVoting] = useState(false);
 
-  useEffect(() => {
-    setVoteCount(initialCount);
-  }, [initialCount]);
-
-  useEffect(() => {
-    if (!user || !ideaId) return;
-    const unsubscribe = voteService.subscribeToUserVote(ideaId, user.uid, (voted) => {
-      setHasVoted(voted);
-    });
-    return () => unsubscribe();
-  }, [user, ideaId]);
-
-  const handleVoteToggle = async (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!user || isVoting) return;
-
-    setIsVoting(true);
-    try {
-      const result = await voteService.toggleVote(ideaId, user.uid, isPublic, orgId);
-      setHasVoted(result.voted);
-      setVoteCount(result.voteCount);
-    } catch (err) {
-      console.error('[VoteButton] Vote toggle error:', err);
-    } finally {
-      setIsVoting(false);
-    }
-  };
+  const {
+    hasVoted,
+    voteCount,
+    isVoting,
+    toggleVote: handleVoteToggle,
+  } = useProposalVote(ideaId, {
+    orgId,
+    isPublic,
+    externalVoteCount: initialCount,
+  });
 
   const isSmall = size === 'sm';
 

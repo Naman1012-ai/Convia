@@ -1,7 +1,14 @@
 import { rtdbService } from './rtdbService';
+import { apiClient } from './apiClient';
 import { chatService } from './chatService';
 import { generateInviteCode } from '../utils/inviteCode';
 import { getErrorMessage } from '../utils/errorMessages';
+import { getWorkspaceChatRootPath } from '../constants/databasePaths';
+import { resolveMemberDisplayName } from '../utils/memberIdentity';
+import { activityService } from './activityService';
+import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 
 /**
  * High-Performance Service Layer for Organization Management.
@@ -76,62 +83,34 @@ export const orgService = {
   },
 
   /**
-   * Join an organization using an 8-character invite code.
+   * Join an organization using an 8-character invite code via server-authorized backend.
    */
   joinOrganization: async (uid, inviteCode) => {
     if (!uid || !inviteCode) throw new Error('User ID and Invite Code are required.');
     const cleanCode = inviteCode.trim().toUpperCase();
 
-    // Enforce Platform Settings Validation
-    const platformSettings = await rtdbService.getData('platform_settings');
-    const wSettings = platformSettings?.workspaces || {};
-
-    if (wSettings.allowWorkspaceJoining === false) {
-      throw new Error('Workspace joining has been disabled by the platform administrator.');
-    }
-
     try {
-      const codeRecord = await rtdbService.getData(`invite_codes/${cleanCode}`);
-      if (!codeRecord || !codeRecord.orgId) {
-        throw new Error('Invalid invite code. Please check and try again.');
-      }
-
-      const orgId = codeRecord.orgId;
-      const org = await rtdbService.getData(`organizations/${orgId}`);
-      if (!org) {
-        throw new Error('Organization not found.');
-      }
-
-      const existingMember = await rtdbService.getData(`organization_members/${orgId}/${uid}`);
-      if (existingMember) {
-        await rtdbService.updateData(`users/${uid}`, { organizationId: orgId });
-        return orgId;
-      }
-
-      const memberCount = org.memberCount || 0;
-      const teamSizeLimit = org.teamSizeLimit || 5;
-      const maxAllowedMembers = Math.min(teamSizeLimit, wSettings.maxMembersPerOrg ?? 20);
-
-      if (memberCount >= maxAllowedMembers) {
-        throw new Error(`Team is full! Maximum team size limit reached (${maxAllowedMembers} members).`);
-      }
-
-      const timestamp = Date.now();
-      await rtdbService.setData(`organization_members/${orgId}/${uid}`, {
-        uid,
-        role: 'member',
-        joinedAt: timestamp,
+      const response = await apiClient.post('/api/workspace/join', {
+        inviteCode: cleanCode,
       });
-      await rtdbService.updateData(`organizations/${orgId}`, {
-        memberCount: memberCount + 1,
-        updatedAt: timestamp,
-      });
-      await rtdbService.updateData(`users/${uid}`, {
-        organizationId: orgId,
-      });
+
+      const orgId = response.orgId || response.data?.orgId || (typeof response === 'string' ? response : null);
+      if (!orgId) {
+        throw new Error('Failed to resolve workspace from server join response.');
+      }
 
       // Send System Chat Event
       chatService.sendSystemEvent(orgId, 'general', 'A new member joined the workspace team.', 'member_joined').catch(() => {});
+
+      // Phase 7: Notify existing workspace members
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED,
+        {
+          workspaceId: orgId,
+          orgName: 'Workspace',
+        },
+        { uid, displayName: 'A new member' }
+      ).catch(() => {});
 
       return orgId;
     } catch (error) {
@@ -161,16 +140,26 @@ export const orgService = {
       const timestamp = Date.now();
       const newMemberCount = Math.max(0, (org.memberCount || 1) - 1);
 
-      if (memberUids.length <= 1 && isOwner) {
-        await rtdbService.setData(`organizations/${orgId}`, null);
-        await rtdbService.setData(`invite_codes/${org.inviteCode}`, null);
-      } else {
-        await rtdbService.setData(`organization_members/${orgId}/${uid}`, null);
-        await rtdbService.updateData(`organizations/${orgId}`, {
-          memberCount: newMemberCount,
-          updatedAt: timestamp,
-        });
-      }
+      // Phase 8: Record workspace.member_removed activity event BEFORE removing membership
+      // This guarantees the user is still verified as an active member in RTDB security rules
+      await activityService.recordWorkspaceActivity(orgId, {
+        eventType: ACTIVITY_EVENT_TYPES.WORKSPACE_MEMBER_REMOVED,
+        actorId: uid,
+        actorType: 'user',
+        actorName: org.members?.[uid]?.name || 'Team Member',
+        resourceType: 'workspace',
+        resourceId: orgId,
+        resourceTitle: org.name || 'Workspace',
+        summary: `A member left the workspace`,
+        createdAt: timestamp,
+      }).catch((actErr) => console.warn('⚠️ [Member Left Activity Warning]', actErr));
+
+      // Remove member from organization_members and update count
+      await rtdbService.setData(`organization_members/${orgId}/${uid}`, null);
+      await rtdbService.updateData(`organizations/${orgId}`, {
+        memberCount: newMemberCount,
+        updatedAt: timestamp,
+      });
 
       await rtdbService.updateData(`users/${uid}`, { organizationId: null });
     } catch (error) {
@@ -204,6 +193,18 @@ export const orgService = {
         memberCount: newMemberCount,
         updatedAt: timestamp,
       });
+
+      // Phase 8: Record workspace.member_removed activity event
+      activityService.recordWorkspaceActivity(orgId, {
+        eventType: ACTIVITY_EVENT_TYPES.WORKSPACE_MEMBER_REMOVED,
+        actorId: ownerUid,
+        actorType: 'user',
+        actorName: 'Workspace Owner',
+        resourceType: 'workspace',
+        resourceId: orgId,
+        resourceTitle: org.name || 'Workspace',
+        summary: `A member was removed from the workspace`,
+      }).catch((actErr) => console.warn('⚠️ [Member Removed Activity Warning]', actErr));
     } catch (error) {
       console.error('[orgService] removeMember error:', error);
       throw error;
@@ -244,9 +245,11 @@ export const orgService = {
    * Subscribe to real-time member roster of an organization.
    */
   subscribeToOrgMembers: (orgId, callback) => {
-    return rtdbService.subscribe(`organization_members/${orgId}`, async (membersObj) => {
+    let isSubscribed = true;
+    const unsub = rtdbService.subscribe(`organization_members/${orgId}`, async (membersObj) => {
+      if (!isSubscribed) return;
       if (!membersObj) {
-        callback([]);
+        if (isSubscribed) callback([]);
         return;
       }
 
@@ -254,14 +257,18 @@ export const orgService = {
       const memberProfiles = await Promise.all(
         uids.map(async (uid) => {
           const profile = (await rtdbService.getData(`users/${uid}`)) || {};
+          const resolvedDisplayName = resolveMemberDisplayName(profile);
           return {
             uid,
             id: uid,
-            name: profile.displayName || profile.name || (profile.email ? profile.email.split('@')[0] : 'Team Member'),
+            name: resolvedDisplayName,
+            displayName: resolvedDisplayName,
+            username: profile.username || '',
+            avatar: profile.avatar || profile.photoURL || '',
+            photoURL: profile.photoURL || profile.avatar || '',
             role: membersObj[uid].role || 'member',
             workspaceRole: membersObj[uid].role || 'member',
             joinedAt: membersObj[uid].joinedAt,
-            displayName: profile.displayName || 'Team Member',
             email: profile.email || '',
             onlineStatus: profile.onlineStatus || 'offline',
             skills: profile.skills || '',
@@ -273,8 +280,15 @@ export const orgService = {
         })
       );
 
-      callback(memberProfiles);
+      if (isSubscribed) {
+        callback(memberProfiles);
+      }
     });
+
+    return () => {
+      isSubscribed = false;
+      unsub();
+    };
   },
 
   /**
@@ -484,6 +498,7 @@ export const orgService = {
     updates[`blueprints/${orgId}`] = null;
     updates[`tasks/${orgId}`] = null;
     updates[`ideas/${orgId}`] = null;
+    updates[getWorkspaceChatRootPath(orgId)] = null;
 
     // Delete comments, discussions, and user votes for each idea
     for (const ideaId of ideaIds) {

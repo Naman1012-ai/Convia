@@ -238,8 +238,10 @@ export function validateAndSynthesizeQuestions(rawQuestions = [], context = {}, 
   rawList.forEach((item, idx) => {
     if (!item) return;
 
-    let id = item.id ? String(item.id).trim().toUpperCase() : `Q-0${idx + 1}`;
-    if (!id.startsWith('Q-')) id = `Q-${id.replace(/^[^0-9]+/, '') || idx + 1}`;
+    let id = item.id ? String(item.id).trim() : `Q-0${idx + 1}`;
+    if (!id.toUpperCase().startsWith('Q-') && !id.toLowerCase().startsWith('disc_')) {
+      id = `Q-${id.replace(/^[^0-9]+/, '') || idx + 1}`;
+    }
 
     if (seenIds.has(id)) {
       id = `${id}_${Math.random().toString(36).substring(2, 6).toUpperCase()}`;

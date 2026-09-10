@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { authService } from '../services/authService';
+import { dashboardService } from '../services/dashboardService';
 
 export const AuthContext = createContext({
   user: null,
@@ -10,6 +11,7 @@ export const AuthContext = createContext({
   signInWithGoogle: async () => {},
   signOut: async () => {},
   resetPassword: async () => {},
+  updateCurrentUserProfile: async () => {},
 });
 
 export function AuthProvider({ children }) {
@@ -46,12 +48,27 @@ export function AuthProvider({ children }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    try {
+      if (user?.uid) {
+        dashboardService.clearCachedDashboardData(user.uid);
+      }
+    } catch (e) {
+      console.warn('[AuthContext] Error clearing dashboard cache on signOut:', e);
+    }
     await authService.signOut();
     setUser(null);
-  }, []);
+  }, [user]);
 
   const resetPassword = useCallback(async (email) => {
     await authService.resetPassword(email);
+  }, []);
+
+  const updateCurrentUserProfile = useCallback(async (profileData) => {
+    const updated = await authService.updateUserProfile(profileData);
+    if (updated) {
+      setUser({ ...updated });
+    }
+    return updated;
   }, []);
 
   return (
@@ -64,6 +81,7 @@ export function AuthProvider({ children }) {
         signInWithGoogle,
         signOut,
         resetPassword,
+        updateCurrentUserProfile,
       }}
     >
       {children}

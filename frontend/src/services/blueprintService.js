@@ -90,12 +90,8 @@ export const blueprintService = {
         },
       };
 
-      // 5. Save Initial MVP Blueprint under per-MVP node and active pointers
-      await Promise.all([
-        rtdbService.setData(`blueprints/${orgId}/${winningIdeaId}`, blueprintData),
-        rtdbService.setData(`blueprints/${orgId}/current`, blueprintData),
-        rtdbService.setData(`blueprints/${orgId}/active`, blueprintData),
-      ]);
+      // 5. Blueprint document is authoritatively created via backend AI generation endpoint.
+      // Direct client RTDB writes to blueprints are disabled under hardened security rules.
 
       // 6. Archive other organization ideas & mark winning idea as selected
       const allOrgIdeas = (await rtdbService.getData(`ideas/${orgId}`)) || {};
@@ -309,39 +305,70 @@ export const blueprintService = {
       return list;
     };
 
-    const unsubMvp = mvpIdeaId
-      ? rtdbService.subscribe(`blueprints/${orgId}/${mvpIdeaId}/versions`, (mvpVers) => {
-          const list = parseVersions(mvpVers);
-          if (list.length > 0) {
-            callback(list);
-          } else {
-            rtdbService.getData(`blueprints/${orgId}/versions`).then((rootVers) => {
-              callback(parseVersions(rootVers));
-            });
-          }
-        })
-      : rtdbService.subscribe(`blueprints/${orgId}/versions`, (rootVers) => {
-          callback(parseVersions(rootVers));
+    let latestMvpRaw = null;
+    let latestRootRaw = null;
+
+    const emitMerged = () => {
+      const combined = {};
+      if (latestRootRaw && typeof latestRootRaw === 'object') {
+        const src = latestRootRaw.versions && typeof latestRootRaw.versions === 'object' ? latestRootRaw.versions : latestRootRaw;
+        Object.entries(src).forEach(([k, v]) => {
+          if (v && typeof v === 'object') combined[k] = v;
         });
+      }
+      if (latestMvpRaw && typeof latestMvpRaw === 'object') {
+        const src = latestMvpRaw.versions && typeof latestMvpRaw.versions === 'object' ? latestMvpRaw.versions : latestMvpRaw;
+        Object.entries(src).forEach(([k, v]) => {
+          if (v && typeof v === 'object') combined[k] = v;
+        });
+      }
+      callback(parseVersions(combined));
+    };
+
+    let unsubMvp = () => {};
+    let unsubRoot = () => {};
+
+    if (mvpIdeaId) {
+      unsubMvp = rtdbService.subscribe(`blueprints/${orgId}/${mvpIdeaId}/versions`, (mvpVers) => {
+        latestMvpRaw = mvpVers;
+        emitMerged();
+      });
+      unsubRoot = rtdbService.subscribe(`blueprints/${orgId}/versions`, (rootVers) => {
+        latestRootRaw = rootVers;
+        emitMerged();
+      });
+    } else {
+      unsubRoot = rtdbService.subscribe(`blueprints/${orgId}/versions`, (rootVers) => {
+        callback(parseVersions(rootVers));
+      });
+    }
 
     return () => {
-      if (unsubMvp) unsubMvp();
+      if (typeof unsubMvp === 'function') unsubMvp();
+      if (typeof unsubRoot === 'function') unsubRoot();
     };
   },
 
   /**
-   * Fetch all blueprint versions snapshot once.
+   * Fetch all blueprint versions snapshot once, merging dual paths.
    */
   getBlueprintVersions: async (orgId, mvpIdeaId = null) => {
     if (!orgId) return [];
     try {
-      const path = mvpIdeaId ? `blueprints/${orgId}/${mvpIdeaId}/versions` : `blueprints/${orgId}/versions`;
-      const versionsObj = await rtdbService.getData(path);
-      if (!versionsObj && mvpIdeaId) {
-        const rootVersionsObj = await rtdbService.getData(`blueprints/${orgId}/versions`);
-        return Object.values(rootVersionsObj || {});
+      const [mvpObj, rootObj] = await Promise.all([
+        mvpIdeaId ? rtdbService.getData(`blueprints/${orgId}/${mvpIdeaId}/versions`).catch(() => null) : null,
+        rtdbService.getData(`blueprints/${orgId}/versions`).catch(() => null),
+      ]);
+      const combined = {};
+      if (rootObj && typeof rootObj === 'object') {
+        const src = rootObj.versions && typeof rootObj.versions === 'object' ? rootObj.versions : rootObj;
+        Object.entries(src).forEach(([k, v]) => { if (v) combined[k] = v; });
       }
-      return Object.values(versionsObj || {});
+      if (mvpObj && typeof mvpObj === 'object') {
+        const src = mvpObj.versions && typeof mvpObj.versions === 'object' ? mvpObj.versions : mvpObj;
+        Object.entries(src).forEach(([k, v]) => { if (v) combined[k] = v; });
+      }
+      return Object.values(combined);
     } catch (err) {
       console.error('[blueprintService] getBlueprintVersions error:', err);
       return [];

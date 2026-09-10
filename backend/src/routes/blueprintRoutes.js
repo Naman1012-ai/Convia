@@ -95,7 +95,6 @@ blueprintRouter.post('/version/compare', asyncAuthenticatedRoute((workspaceId, u
 // Phase 11: Formal Human Approval & Readiness Gates
 blueprintRouter.post('/version/approve', highCostRateLimiter, asyncAuthenticatedRoute((workspaceId, userUid, payload) => blueprintController.approveBlueprintVersionHandler(workspaceId, userUid, payload)));
 blueprintRouter.post('/version/approval-readiness', asyncAuthenticatedRoute((workspaceId, userUid, payload) => blueprintController.checkApprovalReadinessHandler(workspaceId, userUid, payload)));
-blueprintRouter.post('/version/approval-readiness', asyncAuthenticatedRoute((workspaceId, userUid, payload) => blueprintController.checkApprovalReadinessHandler(workspaceId, userUid, payload)));
 
 
 

@@ -7,6 +7,8 @@ import { authMiddleware } from './middleware/authMiddleware.js';
 import { blueprintRouter } from './routes/blueprintRoutes.js';
 import { adminRouter } from './routes/adminRoutes.js';
 import { userRouter } from './routes/userRoutes.js';
+import { searchRouter } from './routes/searchRoutes.js';
+import { workspaceDashboardRouter } from './routes/workspaceDashboardRoutes.js';
 import { uploadthingExpressHandler } from './routes/uploadthingRouter.js';
 import { globalStatsService } from './services/globalStatsService.js';
 
@@ -86,6 +88,8 @@ app.get('/api/stats/global', publicRateLimiter, async (req, res) => {
 app.use('/api/blueprint', blueprintRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/user', userRouter);
+app.use('/api/search', searchRouter);
+app.use('/api/workspace', workspaceDashboardRouter);
 app.use('/api/uploadthing', uploadthingExpressHandler);
 
 // Safe Production Error Handler (Masks stack traces and internal secrets)

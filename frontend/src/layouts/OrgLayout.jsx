@@ -9,7 +9,8 @@ import { ErrorMessage } from '../components/feedback/ErrorMessage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ideaService } from '../services/ideaService';
-import { ChevronRight, Lock } from 'lucide-react';
+import { ChevronRight, Lock, Search, Command } from 'lucide-react';
+import { WorkspaceSearchModal } from '../components/search/WorkspaceSearchModal';
 
 function OrgLayoutContent() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -20,6 +21,19 @@ function OrgLayoutContent() {
   const { user } = useAuth();
   const { orgId, ideaId } = useParams();
   const [activeIdea, setActiveIdea] = useState(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global Ctrl+K / Cmd+K Search Command Palette Shortcut
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!orgId || !ideaId) {
@@ -88,11 +102,15 @@ function OrgLayoutContent() {
 
   // Parse path to determine sub-page mapping
   const currentPath = location.pathname;
-  let segmentLabel = 'Idea Board';
-  let segmentSubtitle = 'Propose, evaluate, and vote on hackathon project ideas';
+  let segmentLabel = 'Workspace Dashboard';
+  let segmentSubtitle = 'Unified activity overview, collaboration insights & project status';
   let isSubpage = false;
 
-  if (currentPath.includes('/blueprint')) {
+  if (currentPath.includes('/ideas') && !ideaId) {
+    segmentLabel = 'Idea Board';
+    segmentSubtitle = 'Propose, evaluate, and vote on hackathon project ideas';
+    isSubpage = true;
+  } else if (currentPath.includes('/blueprint')) {
     segmentLabel = 'Project Blueprint';
     segmentSubtitle = 'Authoritative build specification compiled from selected MVP';
     isSubpage = true;
@@ -111,6 +129,10 @@ function OrgLayoutContent() {
   } else if (currentPath.includes('/chat')) {
     segmentLabel = 'Workspace Team Chat';
     segmentSubtitle = `Real-time channel messaging & collaboration for ${org.name}`;
+    isSubpage = true;
+  } else if (currentPath.includes('/activity')) {
+    segmentLabel = 'Workspace Activity';
+    segmentSubtitle = `Real-time audit log of all collaboration events for ${org.name}`;
     isSubpage = true;
   } else if (currentPath.includes('/settings')) {
     segmentLabel = 'Workspace Settings';
@@ -143,7 +165,7 @@ function OrgLayoutContent() {
                 Workspaces
               </Link>
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-              <Link to={`${workspaceRootPath}/ideas`} className="hover:text-indigo-600 transition-colors font-semibold">
+              <Link to={workspaceRootPath} className="hover:text-indigo-600 transition-colors font-semibold">
                 {org.name}
               </Link>
               {isIdeaActive && (
@@ -177,6 +199,23 @@ function OrgLayoutContent() {
                 </h1>
                 <p className="text-xs text-slate-500 mt-1 font-medium">{segmentSubtitle}</p>
               </div>
+
+              {/* Workspace Search Trigger Button */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSearchOpen(true)}
+                  className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:text-indigo-600 shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Search workspace resources"
+                >
+                  <Search className="h-4 w-4 text-slate-400" />
+                  <span className="hidden sm:inline">Search workspace...</span>
+                  <span className="sm:hidden">Search</span>
+                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                    ⌘K
+                  </kbd>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -185,6 +224,12 @@ function OrgLayoutContent() {
           </div>
         </main>
       </div>
+
+      <WorkspaceSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        workspaceId={org.orgId}
+      />
     </div>
   );
 }
@@ -193,7 +238,7 @@ export function OrgLayout() {
   const { orgId } = useParams();
 
   return (
-    <OrgProvider orgId={orgId}>
+    <OrgProvider key={orgId} orgId={orgId}>
       <OrgLayoutContent />
     </OrgProvider>
   );

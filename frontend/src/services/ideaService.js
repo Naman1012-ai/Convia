@@ -1,5 +1,9 @@
 import { rtdbService } from './rtdbService';
 import { getErrorMessage } from '../utils/errorMessages';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
+import { activityService } from './activityService';
+import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants';
 
 /**
  * Service Layer for Idea Board Management using Firebase Realtime Database.
@@ -65,6 +69,33 @@ export const ideaService = {
 
     try {
       await rtdbService.setData(`ideas/${orgId}/${ideaId}`, newIdea);
+
+      // Phase 7: Asynchronously dispatch IDEA_CREATED notification to workspace members
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.IDEA_CREATED,
+        {
+          workspaceId: orgId,
+          ideaId,
+          title: newIdea.title,
+        },
+        author
+      ).catch((notifErr) => {
+        console.warn('⚠️ [Idea Created Notification Warning]', notifErr.message);
+      });
+
+      // Phase 8: Record idea.created workspace activity event
+      activityService.recordWorkspaceActivity(orgId, {
+        eventType: ACTIVITY_EVENT_TYPES.IDEA_CREATED,
+        actorId: author.uid,
+        actorType: 'user',
+        actorName: author.displayName || 'Team Member',
+        actorPhotoURL: author.photoURL || null,
+        resourceType: 'idea',
+        resourceId: ideaId,
+        resourceTitle: newIdea.title,
+        summary: `${author.displayName || 'Team Member'} created proposal "${newIdea.title}"`,
+      }).catch((actErr) => console.warn('⚠️ [Idea Created Activity Warning]', actErr));
+
       return newIdea;
     } catch (error) {
       console.error('[ideaService] createIdea error:', error);
@@ -134,11 +165,17 @@ export const ideaService = {
 
       // 3. If idea is the selected MVP, clear workspace MVP references, blueprint, and tasks
       if (isMvp) {
+        const timestamp = Date.now();
         await Promise.all([
+          rtdbService.updateData(`organizations/${orgId}`, {
+            activeProjectId: null,
+            status: 'ideation',
+            updatedAt: timestamp,
+          }).catch(() => {}),
           rtdbService.updateData(`workspaces/${orgId}/metadata`, {
             selectedIdeaId: null,
             status: 'active',
-            updatedAt: Date.now(),
+            updatedAt: timestamp,
           }).catch(() => {}),
           rtdbService.removeData(`blueprints/${orgId}`).catch(() => {}),
           rtdbService.removeData(`tasks/${orgId}`).catch(() => {}),
@@ -262,6 +299,18 @@ export const ideaService = {
           updatedAt: timestamp,
         }).catch(() => {}),
       ]);
+
+      // Phase 8: Record idea.selected_as_mvp workspace activity event
+      activityService.recordWorkspaceActivity(orgId, {
+        eventType: ACTIVITY_EVENT_TYPES.IDEA_SELECTED_AS_MVP,
+        actorId: targetIdea.authorId || 'member',
+        actorType: 'user',
+        actorName: targetIdea.authorName || 'Team Member',
+        resourceType: 'idea',
+        resourceId: ideaId,
+        resourceTitle: targetIdea.title,
+        summary: `Proposal "${targetIdea.title}" was selected as the active Workspace MVP`,
+      }).catch((actErr) => console.warn('⚠️ [Idea Selected MVP Activity Warning]', actErr));
     } else if (targetIdea.isSelected) {
       // Clear active project metadata if demoting the current MVP
       await Promise.all([
@@ -339,8 +388,8 @@ export const ideaService = {
     const importedWorkspaceIdea = {
       ideaId: newIdeaId,
       orgId: workspaceId,
-      authorId: publicIdea.authorId || publicIdea.createdBy || memberUser.uid,
-      authorName: publicIdea.authorName || 'Original Innovator',
+      authorId: memberUser.uid,
+      authorName: memberUser.displayName || publicIdea.authorName || 'Team Member',
       title: publicIdea.title.trim(),
       description: (publicIdea.description || publicIdea.problemStatement || '').trim(),
       problemStatement: (publicIdea.problemStatement || '').trim(),

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { useParams } from 'react-router-dom';
 import { useOrg } from '../hooks/useOrg';
@@ -13,11 +13,19 @@ export function DashboardProvider({ children }) {
   const [stats, setStats] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const sessionRef = useRef(0);
 
   const orgId = routeOrgId || org?.orgId;
 
   useEffect(() => {
+    const currentSession = ++sessionRef.current;
+
+    // Reset workspace-scoped dashboard stats and recent activity immediately on orgId change
+    setStats(null);
+    setRecentActivity([]);
+
     if (orgLoading || !orgId) {
+      setLoading(false);
       return;
     }
 
@@ -28,12 +36,17 @@ export function DashboardProvider({ children }) {
         const aggregatedStats = await dashboardService.getDashboardStats(orgId, ideaId);
         const timeline = await dashboardService.getRecentActivity(orgId, ideaId);
 
+        if (sessionRef.current !== currentSession) return;
         setStats(aggregatedStats);
         setRecentActivity(timeline);
       } catch (err) {
-        console.error('[DashboardProvider] Subscription evaluation error:', err);
+        if (sessionRef.current === currentSession) {
+          console.error('[DashboardProvider] Subscription evaluation error:', err);
+        }
       } finally {
-        setLoading(false);
+        if (sessionRef.current === currentSession) {
+          setLoading(false);
+        }
       }
     };
 
@@ -44,16 +57,24 @@ export function DashboardProvider({ children }) {
         const aggregatedStats = await dashboardService.getDashboardStats(orgId, ideaId);
         const timeline = await dashboardService.getRecentActivity(orgId, ideaId);
 
+        if (sessionRef.current !== currentSession) return;
         setStats(aggregatedStats);
         setRecentActivity(timeline);
       } catch (err) {
-        console.error('[DashboardProvider] Subscription evaluation error:', err);
+        if (sessionRef.current === currentSession) {
+          console.error('[DashboardProvider] Subscription evaluation error:', err);
+        }
       } finally {
-        setLoading(false);
+        if (sessionRef.current === currentSession) {
+          setLoading(false);
+        }
       }
     });
 
-    return () => unsubscribeTasks();
+    return () => {
+      sessionRef.current++;
+      unsubscribeTasks();
+    };
   }, [orgId, ideaId, orgLoading]);
 
   return (

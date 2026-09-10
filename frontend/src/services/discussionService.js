@@ -5,6 +5,10 @@ import {
   getDiscussionPath,
 } from '../constants/databasePaths';
 import { getErrorMessage } from '../utils/errorMessages';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
+import { activityService } from './activityService';
+import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants';
 
 /**
  * Service Layer for Unified Discussion System (Comments, Suggestions, Questions, Replies).
@@ -89,6 +93,88 @@ export const discussionService = {
 
       // Recalculate and update type counters on parent idea
       await discussionService.recalculateCounters(orgId, ideaId, isPublic);
+
+      // Phase 7: Dispatch in-app notifications asynchronously (non-blocking)
+      (async () => {
+        try {
+          const ideaDoc = await rtdbService.getData(
+            isPublic ? `publicIdeas/${ideaId}` : `ideas/${orgId}/${ideaId}`
+          );
+          let targetAuthorId = ideaDoc?.authorId;
+
+          if (parentId) {
+            const parentPath = isPublic
+              ? getPublicDiscussionPath(ideaId, parentId)
+              : getWorkspaceDiscussionPath(orgId, ideaId, parentId);
+            const parentDoc = await rtdbService.getData(parentPath);
+            if (parentDoc?.authorId) {
+              targetAuthorId = parentDoc.authorId;
+            }
+          }
+
+          if (targetAuthorId && targetAuthorId !== author.uid) {
+            const discType = type || 'comment';
+            let eventType = NOTIFICATION_TYPES.COMMENT_CREATED;
+            if (discType === 'suggestion') {
+              eventType = NOTIFICATION_TYPES.IDEA_SUGGESTION_CREATED;
+            } else if (discType === 'question') {
+              eventType = NOTIFICATION_TYPES.QUESTION_CREATED;
+            }
+
+            await inAppNotificationService.dispatchNotificationEvent(
+              eventType,
+              {
+                workspaceId: isPublic ? null : orgId,
+                ideaId,
+                ideaAuthorId: targetAuthorId,
+                targetAuthorId,
+                suggestionSnippet: message.trim(),
+                commentSnippet: message.trim(),
+                questionSnippet: message.trim(),
+                discussionId,
+                isReply: Boolean(parentId),
+                isAnswer: Boolean(parentId),
+              },
+              author
+            );
+          }
+        } catch (notifErr) {
+          console.warn('⚠️ [Discussion Notification Warning]', notifErr.message);
+        }
+      })();
+
+      // Phase 8: Record Workspace Activity for non-public discussions
+      if (!isPublic && orgId) {
+        const discType = type || 'comment';
+        let actType = ACTIVITY_EVENT_TYPES.COMMENT_CREATED;
+        let resType = 'comment';
+        if (discType === 'suggestion') {
+          actType = ACTIVITY_EVENT_TYPES.SUGGESTION_CREATED;
+          resType = 'suggestion';
+        } else if (discType === 'question') {
+          actType = parentId ? ACTIVITY_EVENT_TYPES.QUESTION_ANSWERED : ACTIVITY_EVENT_TYPES.QUESTION_CREATED;
+          resType = 'question';
+        }
+
+        activityService.recordWorkspaceActivity(orgId, {
+          eventType: actType,
+          actorId: author.uid,
+          actorType: 'user',
+          actorName: author.displayName || 'Team Member',
+          actorPhotoURL: author.photoURL || null,
+          resourceType: resType,
+          resourceId: discussionId,
+          parentResourceId: ideaId,
+          summary: `${author.displayName || 'Team Member'} ${
+            discType === 'suggestion'
+              ? 'suggested an improvement'
+              : discType === 'question'
+              ? (parentId ? 'answered a question' : 'asked a question')
+              : 'commented'
+          } on proposal`,
+          metadata: { ideaId, discussionId, parentId },
+        }).catch((actErr) => console.warn('⚠️ [Discussion Activity Warning]', actErr));
+      }
 
       return newDiscussion;
     } catch (error) {
@@ -258,6 +344,23 @@ export const discussionService = {
         isAccepted: !currentAccepted,
         updatedAt: Date.now(),
       });
+
+      await discussionService.recalculateCounters(orgId, ideaId, isPublic);
+
+      // Phase 8: Record suggestion.accepted activity event when marked accepted
+      if (!currentAccepted && !isPublic && orgId) {
+        activityService.recordWorkspaceActivity(orgId, {
+          eventType: ACTIVITY_EVENT_TYPES.SUGGESTION_ACCEPTED,
+          actorId: 'owner',
+          actorType: 'user',
+          actorName: 'Proposal Author',
+          resourceType: 'suggestion',
+          resourceId: discussionId,
+          parentResourceId: ideaId,
+          summary: `A suggestion was accepted on proposal`,
+          metadata: { ideaId, discussionId },
+        }).catch((actErr) => console.warn('⚠️ [Suggestion Accepted Activity Warning]', actErr));
+      }
     } catch (error) {
       console.error('[discussionService] toggleAcceptSuggestion error:', error);
       throw error;
@@ -288,11 +391,17 @@ export const discussionService = {
       let commentCount = 0;
       let suggestionCount = 0;
       let questionCount = 0;
+      let acceptedSuggestionCount = 0;
 
       activeItems.forEach((item) => {
-        if (item.type === 'suggestion') suggestionCount++;
-        else if (item.type === 'question') questionCount++;
-        else commentCount++;
+        if (item.type === 'suggestion') {
+          suggestionCount++;
+          if (item.isAccepted) acceptedSuggestionCount++;
+        } else if (item.type === 'question') {
+          questionCount++;
+        } else {
+          commentCount++;
+        }
       });
 
       const ideaPath = isPublic || !orgId
@@ -303,6 +412,8 @@ export const discussionService = {
         commentCount,
         suggestionCount,
         questionCount,
+        acceptedSuggestionCount,
+        updatedAt: Date.now(),
       });
     } catch (error) {
       console.error('[discussionService] recalculateCounters error:', error);

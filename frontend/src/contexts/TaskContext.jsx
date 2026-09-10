@@ -44,19 +44,32 @@ export function TaskProvider({ children }) {
   const [sortBy, setSortBy] = useState('priority'); // 'priority' | 'due_date' | 'updated'
 
   useEffect(() => {
+    // Reset workspace-scoped task state and filters on orgId change
+    setTasks([]);
+    setSearchQuery('');
+    setStatusFilter('all');
+    setPriorityFilter('all');
+    setAssigneeFilter('all');
+    setSortBy('priority');
+
     if (!orgId) {
-      setTasks([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    let isSubscribed = true;
+
     const unsubscribe = taskService.subscribeToTasks(orgId, (taskList) => {
-      setTasks(taskList);
+      if (!isSubscribed) return;
+      setTasks(taskList || []);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, [orgId]);
 
   const createTask = useCallback(

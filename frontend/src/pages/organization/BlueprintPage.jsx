@@ -102,6 +102,18 @@ export default function BlueprintPage() {
 
   // 1. Subscribe to Organization & Active MVP Resolution
   useEffect(() => {
+    // Reset workspace-scoped blueprint state on orgId transition
+    setOrg(null);
+    setBlueprint(null);
+    setMvpIdea(null);
+    setActiveMvpId(null);
+    setBlueprintVersions([]);
+    setLiveExecutionTasks([]);
+    setOrgMembers([]);
+    setEditForm(null);
+    setSelectedVersionKey(null);
+    setSelectedEntityForDrawer(null);
+
     if (!orgId) return;
     setLoadingOrg(true);
 
@@ -280,7 +292,17 @@ export default function BlueprintPage() {
 
   // 1. Authoritative Active Version of the workspace
   const activeVersion = useMemo(() => {
+    if (blueprint?.activeVersionId || blueprint?.activeVersionNumber) {
+      return String(blueprint.activeVersionId || blueprint.activeVersionNumber);
+    }
+    if (blueprint?.version && (blueprint.approvalStatus === 'approved' || blueprint.lifecycleState === 'active')) {
+      return String(blueprint.version);
+    }
     if (effectiveBlueprintVersions && effectiveBlueprintVersions.length > 0) {
+      const approvedEntry = effectiveBlueprintVersions.find(
+        (v) => v.approvalStatus === 'approved' || v.lifecycleState === 'active' || v.status === 'approved'
+      );
+      if (approvedEntry) return String(approvedEntry.version);
       return String(effectiveBlueprintVersions[0].version || '1.0');
     }
     return blueprint?.version ? String(blueprint.version) : '1.0';

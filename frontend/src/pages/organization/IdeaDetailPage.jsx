@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../hooks/useToast';
 import { ideaService } from '../../services/ideaService';
-import { voteService } from '../../services/voteService';
+import { useProposalVote } from '../../hooks/useProposalVote';
 import { rtdbService } from '../../services/rtdbService';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -25,15 +26,22 @@ import {
 } from 'lucide-react';
 
 import { orgService } from '../../services/orgService';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 export default function IdeaDetailPage() {
   const { orgId, ideaId } = useParams();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [idea, setIdea] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+
+  // Real-time author profile resolution from canonical users/{uid}
+  const { displayName: authorDisplayName } = useUserProfile(idea?.authorId, {
+    fallbackName: idea?.authorName || 'Team Member',
+  });
 
   useEffect(() => {
     if (!orgId || !user) return;
@@ -50,56 +58,29 @@ export default function IdeaDetailPage() {
   const [originalPublicIdea, setOriginalPublicIdea] = useState(null);
   const [isOriginalPublicIdeaModalOpen, setIsOriginalPublicIdeaModalOpen] = useState(false);
 
-  // Voting State
-  const [hasVoted, setHasVoted] = useState(false);
-  const [voteCount, setVoteCount] = useState(0);
-  const [isVoting, setIsVoting] = useState(false);
-
   useEffect(() => {
     if (!orgId || !ideaId) return;
 
     setLoading(true);
     const unsubscribe = ideaService.subscribeToIdea(orgId, ideaId, (ideaData) => {
       setIdea(ideaData);
-      if (ideaData) {
-        setVoteCount(ideaData.voteCount || 0);
-      }
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [orgId, ideaId]);
 
-  useEffect(() => {
-    if (!user || !ideaId) return;
-    const unsubscribe = voteService.subscribeToUserVote(ideaId, user.uid, (voted) => {
-      setHasVoted(voted);
-    });
-    return () => unsubscribe();
-  }, [user, ideaId]);
-
-  const handleVoteToggle = async () => {
-    if (!user || !ideaId || isVoting) return;
-
-    setIsVoting(true);
-    try {
-      const result = await voteService.toggleVote(
-        ideaId,
-        user.uid,
-        false,
-        orgId
-      );
-      setHasVoted(result.voted);
-      setVoteCount(result.voteCount);
-      setToastMessage(
-        result.voted ? '👍 Vote recorded!' : 'Vote removed.'
-      );
-    } catch (err) {
-      setToastMessage(err.message || 'Failed to update vote.');
-    } finally {
-      setIsVoting(false);
-    }
-  };
+  // High-Performance Optimistic Voting with Real-Time Synchronization
+  const {
+    hasVoted,
+    voteCount,
+    isVoting,
+    toggleVote: handleVoteToggle,
+  } = useProposalVote(ideaId, {
+    orgId,
+    isPublic: false,
+    externalVoteCount: idea?.voteCount || 0,
+  });
 
   const handleViewOriginalPublicIdea = async () => {
     const pubId = idea.importedFromPublicId || idea.origin?.publicIdeaId;
@@ -111,7 +92,7 @@ export default function IdeaDetailPage() {
         setOriginalPublicIdea(pubData);
         setIsOriginalPublicIdeaModalOpen(true);
       } else {
-        setToastMessage('Original public proposal is no longer available.');
+        toast.error('Original public proposal is no longer available.');
       }
     } catch (err) {
       console.error('[IdeaDetailPage] Error loading original public idea:', err);
@@ -158,13 +139,13 @@ export default function IdeaDetailPage() {
     try {
       await ideaService.updateIdeaStatus(orgId, ideaId, newStatus);
       if (newStatus === 'Selected MVP') {
-        setToastMessage('✓ Idea selected as the Workspace MVP.');
+        toast.success('✓ Idea selected as the Workspace MVP.');
       } else {
-        setToastMessage(`✓ Project status updated to "${newStatus}".`);
+        toast.success(`✓ Project status updated to "${newStatus}".`);
       }
     } catch (err) {
       console.warn('[IdeaDetailPage] Status update error:', err);
-      setToastMessage(err.message || 'Unable to update project status. Please try again.');
+      toast.error(err.message || 'Unable to update project status. Please try again.');
     } finally {
       setUpdatingStatus(false);
     }
@@ -247,9 +228,9 @@ export default function IdeaDetailPage() {
             <h1 className="text-2xl font-bold text-slate-900">{idea.title}</h1>
 
             <div className="flex items-center gap-2.5">
-              <Avatar name={idea.authorName} size="sm" />
+              <Avatar name={isAuthor ? 'You' : authorDisplayName} size="sm" />
               <span className="text-sm font-medium text-slate-700">
-                {isAuthor ? 'Created by You' : idea.authorName}
+                {isAuthor ? 'Created by You' : authorDisplayName}
               </span>
               <span className="text-xs text-slate-400">· {formatTimestamp(idea.createdAt)}</span>
             </div>

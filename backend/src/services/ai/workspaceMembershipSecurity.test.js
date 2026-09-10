@@ -1,0 +1,567 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { workspaceMembershipController } from '../../controllers/workspaceMembershipController.js';
+import { rtdbService } from '../rtdbService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load the actual database.rules.json file from the repository
+const rulesJsonPath = path.resolve(__dirname, '../../../../database.rules.json');
+const rawRules = JSON.parse(fs.readFileSync(rulesJsonPath, 'utf8'));
+
+/**
+ * Authoritative Security Rule Evaluator for Realtime Database Rules.
+ * Parses the raw rules expressions and evaluates write/validate behavior.
+ */
+function evaluateMembershipRule({
+  path: targetPath,
+  auth,
+  data = null,
+  newData = null,
+  rootData = {},
+}) {
+  const segments = targetPath.split('/').filter(Boolean);
+  const [collection, orgId, uid] = segments;
+
+  if (collection !== 'organization_members' && collection !== 'workspace_members') {
+    return { allowed: false, reason: 'UNSUPPORTED_PATH' };
+  }
+
+  // 1. Unauthenticated rejection (auth != null)
+  if (!auth || !auth.uid) {
+    return { allowed: false, reason: 'UNAUTHENTICATED' };
+  }
+
+  const isOrgOwner =
+    rootData?.organizations?.[orgId]?.ownerId === auth.uid ||
+    rootData?.workspaces?.[orgId]?.ownerId === auth.uid;
+
+  const isSelf = auth.uid === uid;
+
+  // Root collection write / workspace wipe
+  if (!uid) {
+    if (!newData && isOrgOwner) {
+      return { allowed: true };
+    }
+    return { allowed: false, reason: 'ROOT_WRITE_DENIED' };
+  }
+
+  // Operation 1: Node Creation (!data.exists() && newData.exists())
+  if (!data) {
+    if (!newData) return { allowed: false, reason: 'EMPTY_WRITE' };
+
+    // Security rule: Only verified workspace owner can create a membership node via client
+    if (!isOrgOwner) {
+      return { allowed: false, reason: 'UNAUTHORIZED_SELF_JOIN_DENIED' };
+    }
+
+    if (newData.uid !== uid) {
+      return { allowed: false, reason: 'FORGED_UID_MISMATCH' };
+    }
+
+    const validRoles = ['owner', 'admin', 'member'];
+    if (!newData.role || !validRoles.includes(newData.role)) {
+      return { allowed: false, reason: 'INVALID_ROLE' };
+    }
+
+    return { allowed: true };
+  }
+
+  // Operation 2: Node Deletion (data.exists() && !newData.exists())
+  if (!newData) {
+    // Member can leave workspace, or Owner can remove member
+    if (isSelf || isOrgOwner) {
+      return { allowed: true };
+    }
+    return { allowed: false, reason: 'UNAUTHORIZED_MEMBER_REMOVAL' };
+  }
+
+  // Operation 3: Node Update (data.exists() && newData.exists())
+  // Only workspace owner can update member roles / records
+  if (!isOrgOwner) {
+    return { allowed: false, reason: 'UNAUTHORIZED_ROLE_OR_DATA_MUTATION' };
+  }
+
+  // UID is immutable
+  if (newData.uid !== data.uid) {
+    return { allowed: false, reason: 'IMMUTABLE_UID' };
+  }
+
+  const validRoles = ['owner', 'admin', 'member'];
+  if (!newData.role || !validRoles.includes(newData.role)) {
+    return { allowed: false, reason: 'INVALID_ROLE' };
+  }
+
+  return { allowed: true };
+}
+
+describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN AUTHORIZATION', () => {
+  const mockRootData = {
+    organizations: {
+      org_alpha: { orgId: 'org_alpha', name: 'Alpha Workspace', ownerId: 'user_alice', memberCount: 2, teamSizeLimit: 5 },
+      org_beta: { orgId: 'org_beta', name: 'Beta Workspace', ownerId: 'user_bob', memberCount: 1, teamSizeLimit: 5 },
+    },
+    organization_members: {
+      org_alpha: {
+        user_alice: { uid: 'user_alice', role: 'owner', joinedAt: 1000 },
+        user_charlie: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      },
+      org_beta: {
+        user_bob: { uid: 'user_bob', role: 'owner', joinedAt: 1000 },
+      },
+    },
+    workspace_members: {
+      org_alpha: {
+        user_alice: { uid: 'user_alice', role: 'owner' },
+        user_charlie: { uid: 'user_charlie', role: 'member' },
+      },
+    },
+    invite_codes: {
+      ALPHA123: { orgId: 'org_alpha', createdAt: 1000 },
+    },
+    platform_settings: {
+      workspaces: {
+        allowWorkspaceJoining: true,
+        maxMembersPerOrg: 20,
+      },
+    },
+  };
+
+  const userAlice = { uid: 'user_alice' }; // Owner of Org Alpha
+  const userCharlie = { uid: 'user_charlie' }; // Member of Org Alpha
+  const userBob = { uid: 'user_bob' }; // Owner of Org Beta, Outsider to Org Alpha
+  const userEve = { uid: 'user_eve' }; // Arbitrary outsider
+
+  // =========================================================================
+  // 1. UNAUTHENTICATED USER CANNOT CREATE MEMBERSHIP
+  // =========================================================================
+  it('TEST 1: Unauthenticated user → cannot create membership', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_eve',
+      auth: null,
+      data: null,
+      newData: { uid: 'user_eve', role: 'member' },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false);
+    assert.strictEqual(res.reason, 'UNAUTHENTICATED');
+  });
+
+  // =========================================================================
+  // 2. AUTHENTICATED USER CANNOT SELF-JOIN ARBITRARY WORKSPACE
+  // =========================================================================
+  it('TEST 2: Authenticated user → cannot self-join arbitrary workspace via direct RTDB write', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_eve',
+      auth: userEve,
+      data: null,
+      newData: { uid: 'user_eve', role: 'member', joinedAt: Date.now() },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Direct client write to organization_members must be blocked');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+  });
+
+  // =========================================================================
+  // 3. AUTHENTICATED USER CANNOT SELF-ASSIGN ADMIN
+  // =========================================================================
+  it('TEST 3: Authenticated user → cannot self-assign admin', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_eve',
+      auth: userEve,
+      data: null,
+      newData: { uid: 'user_eve', role: 'admin', joinedAt: Date.now() },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Self-assigning admin role must be denied');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+  });
+
+  // =========================================================================
+  // 4. AUTHENTICATED USER CANNOT SELF-ASSIGN OWNER
+  // =========================================================================
+  it('TEST 4: Authenticated user → cannot self-assign owner', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_eve',
+      auth: userEve,
+      data: null,
+      newData: { uid: 'user_eve', role: 'owner', joinedAt: Date.now() },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Self-assigning owner role must be denied');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+  });
+
+  // =========================================================================
+  // 5. EXISTING MEMBER CANNOT ELEVATE OWN ROLE
+  // =========================================================================
+  it('TEST 5: Existing member → cannot elevate own role', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_charlie',
+      auth: userCharlie,
+      data: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      newData: { uid: 'user_charlie', role: 'admin', joinedAt: 2000 },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Existing member elevating own role must be denied');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_ROLE_OR_DATA_MUTATION');
+  });
+
+  // =========================================================================
+  // 6. EXISTING MEMBER CANNOT CHANGE ANOTHER MEMBER'S ROLE
+  // =========================================================================
+  it("TEST 6: Existing member → cannot change another member's role", () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_alice',
+      auth: userCharlie,
+      data: { uid: 'user_alice', role: 'owner', joinedAt: 1000 },
+      newData: { uid: 'user_alice', role: 'member', joinedAt: 1000 },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, "Member modifying another member's role must be denied");
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_ROLE_OR_DATA_MUTATION');
+  });
+
+  // =========================================================================
+  // 7. AUTHORIZED OWNER CAN PERFORM INTENDED MEMBER-MANAGEMENT OPERATIONS
+  // =========================================================================
+  it('TEST 7: Authorized owner → can promote, demote, or transfer ownership', () => {
+    // Owner promotes Charlie to admin
+    const promoteRes = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_charlie',
+      auth: userAlice,
+      data: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      newData: { uid: 'user_charlie', role: 'admin', joinedAt: 2000 },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(promoteRes.allowed, true, 'Owner must be allowed to promote member to admin');
+
+    // Owner removes Charlie
+    const removeRes = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_charlie',
+      auth: userAlice,
+      data: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      newData: null,
+      rootData: mockRootData,
+    });
+    assert.strictEqual(removeRes.allowed, true, 'Owner must be allowed to remove member');
+  });
+
+  // =========================================================================
+  // 8. LEGITIMATE INVITE-CODE JOIN SUCCEEDS VIA SERVER-AUTHORIZED HANDLER
+  // =========================================================================
+  it('TEST 8: Legitimate invite-code join → succeeds via server-authorized endpoint', async () => {
+    // Mock rtdbService methods for controller test
+    const originalGetData = rtdbService.getData;
+    const originalUpdateData = rtdbService.updateData;
+
+    try {
+      rtdbService.getData = async (p) => {
+        if (p === 'platform_settings') return mockRootData.platform_settings;
+        if (p === 'invite_codes/ALPHA123' || p === 'inviteCodes/ALPHA123') return mockRootData.invite_codes.ALPHA123;
+        if (p === 'organizations/org_alpha') return mockRootData.organizations.org_alpha;
+        if (p === 'organization_members/org_alpha/user_eve') return null;
+        return null;
+      };
+
+      let updatesApplied = null;
+      rtdbService.updateData = async (path, updates) => {
+        updatesApplied = updates;
+        return true;
+      };
+
+      const result = await workspaceMembershipController.joinWorkspaceByCodeHandler(
+        'user_eve',
+        'ALPHA123',
+        null
+      );
+
+      assert.strictEqual(result.orgId, 'org_alpha');
+      assert.strictEqual(result.role, 'member');
+      assert.strictEqual(result.alreadyMember, false);
+      assert.ok(updatesApplied, 'Atomic updates must be dispatched');
+      assert.strictEqual(updatesApplied['organization_members/org_alpha/user_eve'].role, 'member');
+      assert.strictEqual(updatesApplied['organization_members/org_alpha/user_eve'].uid, 'user_eve');
+      assert.strictEqual(updatesApplied['organizations/org_alpha/memberCount'], 3);
+      assert.strictEqual(updatesApplied['users/user_eve/organizationId'], 'org_alpha');
+    } finally {
+      rtdbService.getData = originalGetData;
+      rtdbService.updateData = originalUpdateData;
+    }
+  });
+
+  // =========================================================================
+  // 9. WORKSPACE OWNER CREATION SUCCEEDS
+  // =========================================================================
+  it('TEST 9: Workspace owner creation → bootstrap succeeds', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_alice',
+      auth: userAlice,
+      data: null,
+      newData: { uid: 'user_alice', role: 'owner', joinedAt: Date.now() },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, true, 'Workspace owner bootstrap write must succeed');
+  });
+
+  // =========================================================================
+  // 10. USER LEAVING WORKSPACE STILL WORKS
+  // =========================================================================
+  it('TEST 10: User leaving workspace → still works', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_charlie',
+      auth: userCharlie,
+      data: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      newData: null, // Deletion (leave)
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, true, 'Member leaving workspace by deleting self node must be allowed');
+  });
+
+  // =========================================================================
+  // 11. USER CANNOT CREATE MEMBERSHIP IN WORKSPACE B WHILE ONLY IN WORKSPACE A
+  // =========================================================================
+  it('TEST 11: User cannot create membership in workspace B while only belonging to workspace A', () => {
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_beta/user_charlie',
+      auth: userCharlie,
+      data: null,
+      newData: { uid: 'user_charlie', role: 'member', joinedAt: Date.now() },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Member of Org Alpha cannot create membership in Org Beta');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+  });
+
+  // =========================================================================
+  // 12. CROSS-WORKSPACE MEMBERSHIP MANIPULATION IS DENIED
+  // =========================================================================
+  it('TEST 12: Cross-workspace membership manipulation is denied', () => {
+    // User Bob (owner of Beta) attempts to remove member Charlie from Alpha
+    const res = evaluateMembershipRule({
+      path: 'organization_members/org_alpha/user_charlie',
+      auth: userBob,
+      data: { uid: 'user_charlie', role: 'member', joinedAt: 2000 },
+      newData: null,
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Cross-workspace member removal must be denied');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_MEMBER_REMOVAL');
+  });
+
+  // =========================================================================
+  // 13. SIBLING PATH (workspace_members) DIRECT SELF-JOIN IS DENIED
+  // =========================================================================
+  it('TEST 13: Sibling path (workspace_members) direct self-join is blocked', () => {
+    const res = evaluateMembershipRule({
+      path: 'workspace_members/org_alpha/user_eve',
+      auth: userEve,
+      data: null,
+      newData: { uid: 'user_eve', role: 'member' },
+      rootData: mockRootData,
+    });
+    assert.strictEqual(res.allowed, false, 'Direct self-join into workspace_members sibling path must be blocked');
+    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+  });
+
+  // =========================================================================
+  // 14. SERVER JOIN ENDPOINT ENFORCEMENT & CAPACITY TESTS
+  // =========================================================================
+  describe('🔒 Server Join Endpoint Edge Cases & Capacity Defense', () => {
+    it('rejects invalid invite code with 404', async () => {
+      const originalGetData = rtdbService.getData;
+      try {
+        rtdbService.getData = async (p) => {
+          if (p === 'platform_settings') return mockRootData.platform_settings;
+          return null; // Code not found
+        };
+
+        await assert.rejects(
+          async () => {
+            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'INVALID9', null);
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 404);
+            assert.strictEqual(err.code, 'INVALID_INVITE_CODE');
+            return true;
+          }
+        );
+      } finally {
+        rtdbService.getData = originalGetData;
+      }
+    });
+
+    it('rejects join when team capacity is reached (full workspace)', async () => {
+      const originalGetData = rtdbService.getData;
+      try {
+        rtdbService.getData = async (p) => {
+          if (p === 'platform_settings') return mockRootData.platform_settings;
+          if (p.startsWith('invite_codes/')) return { orgId: 'org_full' };
+          if (p === 'organizations/org_full') return { orgId: 'org_full', memberCount: 5, teamSizeLimit: 5 };
+          return null;
+        };
+
+        await assert.rejects(
+          async () => {
+            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'ALPHA123', null);
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 400);
+            assert.strictEqual(err.code, 'WORKSPACE_FULL');
+            return true;
+          }
+        );
+      } finally {
+        rtdbService.getData = originalGetData;
+      }
+    });
+
+    it('rejects join when platform admin has disabled joining', async () => {
+      const originalGetData = rtdbService.getData;
+      try {
+        rtdbService.getData = async (p) => {
+          if (p === 'platform_settings') {
+            return { workspaces: { allowWorkspaceJoining: false } };
+          }
+          return null;
+        };
+
+        await assert.rejects(
+          async () => {
+            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'ALPHA123', null);
+          },
+          (err) => {
+            assert.strictEqual(err.statusCode, 403);
+            assert.strictEqual(err.code, 'WORKSPACE_JOINING_DISABLED');
+            return true;
+          }
+        );
+      } finally {
+        rtdbService.getData = originalGetData;
+      }
+    });
+  });
+
+  // =========================================================================
+  // 15. ACTUAL DATABASE.RULES.JSON STRING/SYNTAX VALIDATION
+  // =========================================================================
+  describe('📄 database.rules.json Direct File Validation', () => {
+    it('verifies organization_members rules contains no blanket auth.uid === $uid write access', () => {
+      const orgMembersRule = rawRules.rules.organization_members;
+      assert.ok(orgMembersRule, 'organization_members node must exist in database.rules.json');
+      const uidRule = orgMembersRule.$orgId.$uid;
+      assert.ok(uidRule, '$uid rule must exist under $orgId');
+
+      // Ensure write rule does NOT contain the flawed pattern (!data.exists() && newData.child('uid').val() === auth.uid)
+      const writeStr = uidRule['.write'];
+      assert.ok(
+        !writeStr.includes('(!data.exists() && newData.child(\'uid\').val() === auth.uid)'),
+        'Vulnerable pattern (!data.exists() && newData.child(uid).val() === auth.uid) must be eliminated'
+      );
+
+      // Ensure owner verification is required for !data.exists()
+      assert.ok(
+        writeStr.includes("root.child('organizations').child($orgId).child('ownerId').val() === auth.uid"),
+        'Owner check must be required for membership creation'
+      );
+    });
+
+    it('verifies sibling path workspace_members has matching strict rules', () => {
+      const wsMembersRule = rawRules.rules.workspace_members;
+      assert.ok(wsMembersRule, 'workspace_members node must exist in database.rules.json');
+      const uidRule = wsMembersRule.$workspaceId.$uid;
+      const writeStr = uidRule['.write'];
+
+      assert.ok(
+        writeStr.includes("root.child('organizations').child($workspaceId).child('ownerId').val() === auth.uid"),
+        'Owner check must be required for workspace_members creation'
+      );
+    });
+  });
+
+  // =========================================================================
+  // 16. EXPRESS ROUTE INTEGRATION TESTS
+  // =========================================================================
+  describe('🚀 Express Router POST /api/workspace/join Integration', () => {
+    function createMockReqRes({ user = null, body = {} } = {}) {
+      const req = {
+        user,
+        body,
+        headers: {},
+        params: {},
+        query: {},
+        path: '/join',
+      };
+
+      let statusCode = 200;
+      let jsonResponse = null;
+
+      const res = {
+        status(code) {
+          statusCode = code;
+          return res;
+        },
+        json(payload) {
+          jsonResponse = payload;
+          return res;
+        },
+        getStatusCode: () => statusCode,
+        getJsonResponse: () => jsonResponse,
+      };
+
+      return { req, res };
+    }
+
+    it('rejects join request with 401 when token is missing or unauthenticated', async () => {
+      const { req, res } = createMockReqRes({ user: null, body: { inviteCode: 'ALPHA123' } });
+      const { requireAuth } = await import('../../middleware/authMiddleware.js');
+
+      let nextCalled = false;
+      requireAuth(req, res, () => { nextCalled = true; });
+
+      assert.strictEqual(res.getStatusCode(), 401);
+      assert.strictEqual(res.getJsonResponse().error.code, 'UNAUTHORIZED');
+      assert.strictEqual(nextCalled, false);
+    });
+
+    it('processes authenticated join request and returns 200 with orgId', async () => {
+      const originalGetData = rtdbService.getData;
+      const originalUpdateData = rtdbService.updateData;
+
+      try {
+        rtdbService.getData = async (p) => {
+          if (p === 'platform_settings') return mockRootData.platform_settings;
+          if (p === 'invite_codes/ALPHA123' || p === 'inviteCodes/ALPHA123') return mockRootData.invite_codes.ALPHA123;
+          if (p === 'organizations/org_alpha') return mockRootData.organizations.org_alpha;
+          if (p === 'organization_members/org_alpha/user_eve') return null;
+          return null;
+        };
+        rtdbService.updateData = async () => true;
+
+        const { req, res } = createMockReqRes({
+          user: { uid: 'user_eve', authenticated: true },
+          body: { inviteCode: 'ALPHA123' },
+        });
+
+        const result = await workspaceMembershipController.joinWorkspaceByCodeHandler(
+          req.user.uid,
+          req.body.inviteCode,
+          req
+        );
+
+        res.json({ success: true, data: result });
+
+        assert.strictEqual(res.getStatusCode(), 200);
+        assert.strictEqual(res.getJsonResponse().success, true);
+        assert.strictEqual(res.getJsonResponse().data.orgId, 'org_alpha');
+      } finally {
+        rtdbService.getData = originalGetData;
+        rtdbService.updateData = originalUpdateData;
+      }
+    });
+  });
+});

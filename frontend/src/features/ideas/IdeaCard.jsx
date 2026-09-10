@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrg } from '../../hooks/useOrg';
-import { voteService } from '../../services/voteService';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { useProposalVote } from '../../hooks/useProposalVote';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
@@ -28,50 +29,25 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
 
   const isAuthor = user && user.uid === idea.authorId;
   const canEdit = isAuthor && !isFrozen;
+
+  // Real-time author profile resolution from canonical users/{uid}
+  const { displayName: authorDisplayName } = useUserProfile(idea.authorId, {
+    fallbackName: idea.authorName || 'Team Member',
+  });
   const canDelete = (isAuthor || isLeader) && !isFrozen;
   const canSelectMvp = isLeader && !isFrozen && !idea.isSelected && Boolean(onSelectMvp);
 
-  // Real-time Vote State
-  const [hasVoted, setHasVoted] = useState(false);
-  const [voteCount, setVoteCount] = useState(idea.voteCount || 0);
-  const [isVoting, setIsVoting] = useState(false);
-
-  useEffect(() => {
-    setVoteCount(idea.voteCount || 0);
-  }, [idea.voteCount]);
-
-  useEffect(() => {
-    if (!user || !idea.ideaId) return;
-    const unsubscribe = voteService.subscribeToUserVote(
-      idea.ideaId,
-      user.uid,
-      (voted) => setHasVoted(voted)
-    );
-    return () => unsubscribe();
-  }, [user, idea.ideaId]);
-
-  const handleVoteToggle = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!user || isVoting) return;
-
-    setIsVoting(true);
-    try {
-      const result = await voteService.toggleVote(
-        idea.ideaId,
-        user.uid,
-        !idea.orgId,
-        idea.orgId || orgId || null
-      );
-      setHasVoted(result.voted);
-      setVoteCount(result.voteCount);
-    } catch (err) {
-      console.error('[IdeaCard] Vote toggle error:', err);
-    } finally {
-      setIsVoting(false);
-    }
-  };
+  // High-Performance Optimistic Voting with Real-Time Synchronization
+  const {
+    hasVoted,
+    voteCount,
+    isVoting,
+    toggleVote: handleVoteToggle,
+  } = useProposalVote(idea.ideaId, {
+    orgId: idea.orgId || orgId || null,
+    isPublic: !idea.orgId,
+    externalVoteCount: idea.voteCount || 0,
+  });
 
   const difficultyVariants = {
     Easy: 'success',
@@ -187,10 +163,10 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
       <div className="pt-4 border-t border-slate-100 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Avatar name={idea.authorName} size="sm" />
+            <Avatar name={isAuthor ? 'You' : authorDisplayName} size="sm" />
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-slate-800 leading-none">
-                {isAuthor ? 'Created by You' : idea.authorName}
+                {isAuthor ? 'Created by You' : authorDisplayName}
               </span>
               <span className="text-[11px] text-slate-400 mt-0.5">
                 {formatTimestamp(idea.createdAt)}

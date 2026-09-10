@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
+import { WorkspaceActivityFeed } from '../../components/activity/WorkspaceActivityFeed';
 import { formatTimestamp } from '../../utils/formatting';
 import {
   TrendingUp,
@@ -217,38 +218,22 @@ function DashboardContent() {
           {/* 4. Recent Activity Widget */}
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-4 rounded-2xl h-full flex flex-col justify-between">
             <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-                <Clock className="h-4 w-4 text-indigo-600" /> Activity Timeline
-              </h3>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-indigo-600" /> Workspace Activity
+                </h3>
+                <Link
+                  to={`/workspaces/${orgId}/activity`}
+                  className="text-[11px] font-mono font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-0.5"
+                >
+                  <span>View All</span>
+                  <ChevronRight className="h-3 w-3" />
+                </Link>
+              </div>
 
-              {!recentActivity || recentActivity.length === 0 ? (
-                <p className="text-xs text-slate-500 italic py-8 text-center font-medium">
-                  No task activities or sprint progress recorded for this project yet.
-                </p>
-              ) : (
-                <div className="space-y-4 mt-4 overflow-y-auto max-h-[320px] pr-1">
-                  {recentActivity.map((activity, index) => {
-                    let typeBadgeColor = 'bg-slate-100 text-slate-700';
-                    if (activity.type === 'complete') {
-                      typeBadgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100 border';
-                    } else if (activity.type === 'create') {
-                      typeBadgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-100 border';
-                    }
-
-                    return (
-                      <div key={index} className="flex flex-col gap-1 text-xs border-b border-slate-50 pb-3 last:border-b-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide shrink-0 ${typeBadgeColor}`}>
-                            {activity.type}
-                          </span>
-                          <span className="text-slate-400 font-semibold font-mono">{formatTimestamp(activity.timestamp)}</span>
-                        </div>
-                        <p className="text-slate-700 font-bold leading-relaxed">{activity.title}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="mt-3 overflow-y-auto max-h-[360px] pr-1">
+                <WorkspaceActivityFeed workspaceId={orgId} maxItems={10} compact={true} showFilters={false} />
+              </div>
             </div>
 
             {currentIdeaId && (

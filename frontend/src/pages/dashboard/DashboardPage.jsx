@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useUser } from '../../hooks/useUser';
 import { dashboardService } from '../../services/dashboardService';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Modal } from '../../components/ui/Modal';
@@ -37,6 +38,7 @@ import { AnnouncementBanner } from '../../components/announcements/AnnouncementB
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { userProfile } = useUser();
   const navigate = useNavigate();
 
   // SWR Initializer: Synchronously read cached data on Frame 1
@@ -140,7 +142,7 @@ export default function DashboardPage() {
         {/* Left Column: User Profile */}
         <div className="flex items-center gap-4 z-10">
           <Avatar
-            name={user?.displayName || user?.email}
+            name={userProfile?.displayName || user?.displayName || user?.email}
             size="lg"
             className="border-2 border-indigo-500/60 ring-4 ring-indigo-500/20 shrink-0"
           />
@@ -148,7 +150,7 @@ export default function DashboardPage() {
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
               Welcome back,{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-300">
-                {user?.displayName || user?.email?.split('@')[0]}
+                {userProfile?.displayName || user?.displayName || user?.email?.split('@')[0]}
               </span>
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-400 font-medium leading-relaxed">

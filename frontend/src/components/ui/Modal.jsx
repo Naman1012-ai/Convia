@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -24,7 +25,7 @@ export function Modal({
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -35,9 +36,10 @@ export function Modal({
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -75,7 +77,8 @@ export function Modal({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -83,7 +86,7 @@ Modal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   title: PropTypes.string,
-  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  size: PropTypes.oneOf(['sm', 'md', 'lg', 'xl']),
   children: PropTypes.node.isRequired,
   className: PropTypes.string,
 };

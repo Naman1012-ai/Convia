@@ -82,6 +82,24 @@ export const authService = {
   },
 
   /**
+   * Update Firebase Auth profile attributes (displayName, photoURL) on current user.
+   */
+  updateUserProfile: async ({ displayName, photoURL }) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('No authenticated user found.');
+    try {
+      const updateData = {};
+      if (displayName !== undefined) updateData.displayName = displayName;
+      if (photoURL !== undefined) updateData.photoURL = photoURL;
+      await updateProfile(user, updateData);
+      return auth.currentUser;
+    } catch (error) {
+      console.error('[authService] updateUserProfile error:', error);
+      throw new Error(getErrorMessage(error.code));
+    }
+  },
+
+  /**
    * Reload current user status from Firebase Auth server.
    */
   reloadUser: async () => {

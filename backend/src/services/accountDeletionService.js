@@ -53,6 +53,7 @@ export const accountDeletionService = {
           rtdbUpdates[`blueprints/${orgId}`] = null;
           rtdbUpdates[`workspaceChats/${orgId}`] = null;
           rtdbUpdates[`discussions/${orgId}`] = null;
+          rtdbUpdates[`workspace_activity/${orgId}`] = null;
           if (org.inviteCode) {
             rtdbUpdates[`invite_codes/${org.inviteCode}`] = null;
           }
@@ -149,6 +150,7 @@ export const accountDeletionService = {
 
     // 7. DISCOVERY: Direct Personal User Subtrees
     rtdbUpdates[`users/${cleanUid}`] = null;
+    rtdbUpdates[`user_notifications/${cleanUid}`] = null;
     rtdbUpdates[`notifications/${cleanUid}`] = null;
     rtdbUpdates[`user_activity/${cleanUid}`] = null;
     rtdbUpdates[`user_preferences/${cleanUid}`] = null;

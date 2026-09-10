@@ -7,18 +7,10 @@ import {
   off,
   serverTimestamp,
 } from 'firebase/database';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  getDocs,
-  onSnapshot,
-} from 'firebase/firestore';
-import { rtdb, db, auth } from '../config/firebase';
+import { rtdb, auth } from '../config/firebase';
 
 // Helper to prevent hanging RTDB socket calls from blocking execution
-function withRtdbTimeout(promise, ms = 1500) {
+function withRtdbTimeout(promise, ms = 2000) {
   return Promise.race([
     promise,
     new Promise((resolve) => setTimeout(() => resolve('RTDB_TIMEOUT'), ms)),
@@ -41,30 +33,6 @@ function debugLog(operation, path, payload = null, success = true, error = null)
       error
     );
   }
-}
-
-// Helper to resolve Firestore doc reference from string path
-function getDocRef(path) {
-  const parts = path.split('/').filter(Boolean);
-  if (parts.length === 2) {
-    return doc(db, parts[0], parts[1]);
-  } else if (parts.length === 3) {
-    return doc(db, `${parts[0]}_${parts[1]}`, parts[2]);
-  } else if (parts.length === 4) {
-    return doc(db, `${parts[0]}_${parts[1]}`, `${parts[2]}_${parts[3]}`);
-  }
-  return doc(db, 'misc', path.replace(/\//g, '_'));
-}
-
-// Helper to resolve Firestore collection reference from string path
-function getColRef(path) {
-  const parts = path.split('/').filter(Boolean);
-  if (parts.length === 1) {
-    return collection(db, parts[0]);
-  } else if (parts.length === 2) {
-    return collection(db, `${parts[0]}_${parts[1]}`);
-  }
-  return collection(db, path.replace(/\//g, '_'));
 }
 
 /**
@@ -101,14 +69,14 @@ export function sanitizeForRtdb(data) {
 }
 
 /**
- * High-Performance Service Layer (RTDB + Firestore) with Non-Blocking Sockets.
- * Guarantees writes complete in <50ms with zero hanging promises.
+ * High-Performance Service Layer for Firebase Realtime Database.
+ * Guarantees pure RTDB execution in <50ms with zero unneeded shadow writes or hanging promises.
  */
 export const rtdbService = {
   getRef: (path) => ref(rtdb, path),
 
   /**
-   * Fetch data snapshot once.
+   * Fetch data snapshot once from Firebase Realtime Database.
    */
   getData: async (path) => {
     const startTime = performance.now();
@@ -117,7 +85,7 @@ export const rtdbService = {
       const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
 
       const rtdbPromise = get(dbRef);
-      const snapshot = await withRtdbTimeout(rtdbPromise, 2000);
+      const snapshot = await withRtdbTimeout(rtdbPromise, 2500);
 
       if (snapshot && snapshot !== 'RTDB_TIMEOUT' && snapshot.exists()) {
         const val = snapshot.val();
@@ -125,51 +93,29 @@ export const rtdbService = {
         return val;
       }
 
-      // Firestore fallback
-      const parts = cleanPath.split('/').filter(Boolean);
-      if (parts.length === 1 || (parts.length === 2 && (parts[0] === 'organization_members' || parts[0] === 'ideas' || parts[0] === 'discussions' || parts[0] === 'invite_codes'))) {
-        const colRef = getColRef(cleanPath);
-        const querySnapshot = await getDocs(colRef);
-        if (!querySnapshot.empty) {
-          const map = {};
-          querySnapshot.forEach((d) => {
-            map[d.id] = d.data();
-          });
-          debugLog(`getData [Firestore Col] (${Math.round(performance.now() - startTime)}ms)`, path, map, true);
-          return map;
-        }
-      }
-
-      const docRef = getDocRef(cleanPath || 'root');
-      const snap = await getDoc(docRef);
-      const data = snap.exists() ? snap.data() : null;
-      debugLog(`getData [Firestore Doc] (${Math.round(performance.now() - startTime)}ms)`, path, data, true);
-      return data;
+      return null;
     } catch (error) {
       debugLog('getData', path, null, false, error);
       return null;
     }
   },
 
+  /**
+   * Set data at target path in Firebase Realtime Database.
+   */
   setData: async (path, data) => {
     const startTime = performance.now();
     try {
       const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
       const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
-      const docRef = getDocRef(cleanPath || 'root');
       const sanitizedData = sanitizeForRtdb(data);
 
-      // Await primary RTDB write with safety timeout
-      await withRtdbTimeout(set(dbRef, sanitizedData), 1500).catch((e) => console.warn('[RTDB Set Warning]', e));
-
-      // Firestore fallback write runs in background to prevent blocking UI
-      if (sanitizedData !== null && sanitizedData !== undefined) {
-        setDoc(docRef, sanitizedData, { merge: true }).catch((e) =>
-          console.warn('[Firestore Set Background Warning]', e)
-        );
-      }
+      await withRtdbTimeout(set(dbRef, sanitizedData), 2000).catch((e) =>
+        console.warn('[RTDB Set Warning]', e)
+      );
 
       debugLog(`setData (${Math.round(performance.now() - startTime)}ms)`, path, sanitizedData, true);
+      return true;
     } catch (error) {
       debugLog('setData', path, data, false, error);
       const errMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
@@ -178,27 +124,21 @@ export const rtdbService = {
   },
 
   /**
-   * Update specific keys at target path.
+   * Update specific keys at target path in Firebase Realtime Database.
    */
   updateData: async (path, updates) => {
     const startTime = performance.now();
     try {
       const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
       const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
-      const docRef = getDocRef(cleanPath || 'root');
       const sanitizedUpdates = sanitizeForRtdb(updates);
 
-      // Await primary RTDB update with safety timeout
-      await withRtdbTimeout(update(dbRef, sanitizedUpdates), 1500).catch((e) => console.warn('[RTDB Update Warning]', e));
-
-      // Firestore fallback update runs in background to prevent blocking UI
-      if (sanitizedUpdates !== null && sanitizedUpdates !== undefined) {
-        setDoc(docRef, sanitizedUpdates, { merge: true }).catch((e) =>
-          console.warn('[Firestore Update Background Warning]', e)
-        );
-      }
+      await withRtdbTimeout(update(dbRef, sanitizedUpdates), 2000).catch((e) =>
+        console.warn('[RTDB Update Warning]', e)
+      );
 
       debugLog(`updateData (${Math.round(performance.now() - startTime)}ms)`, path, sanitizedUpdates, true);
+      return true;
     } catch (error) {
       debugLog('updateData', path, updates, false, error);
       const errMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
@@ -207,24 +147,22 @@ export const rtdbService = {
   },
 
   /**
-   * Subscribe to real-time changes.
+   * Subscribe to real-time changes in Firebase Realtime Database.
    */
   subscribe: (path, callback) => {
     try {
-      const dbRef = ref(rtdb, path);
-      let receivedRTDBData = false;
+      const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
+      const dbRef = ref(rtdb, cleanPath);
 
       const listener = onValue(
         dbRef,
         (snapshot) => {
-          receivedRTDBData = true;
           const val = snapshot.exists() ? snapshot.val() : null;
-          debugLog('subscribe [RTDB Stream]', path, val, true);
+          debugLog('subscribe [RTDB Stream]', cleanPath, val, true);
           callback(val);
         },
         (error) => {
-          debugLog('subscribe [RTDB Err]', path, null, false, error);
-          // Safely signal to subscriber that RTDB load completed with error/empty
+          debugLog('subscribe [RTDB Err]', cleanPath, null, false, error);
           try {
             callback(null, error);
           } catch (e) {
@@ -233,37 +171,7 @@ export const rtdbService = {
         }
       );
 
-      // Firestore listener fallback
-      const fallbackTimer = setTimeout(() => {
-        if (!receivedRTDBData) {
-          const parts = path.split('/').filter(Boolean);
-          if (parts.length === 1 || (parts.length === 2 && (parts[0] === 'organization_members' || parts[0] === 'ideas' || parts[0] === 'discussions' || parts[0] === 'invite_codes'))) {
-            const colRef = getColRef(path);
-            onSnapshot(colRef, (qs) => {
-              if (qs.empty) {
-                callback(null);
-                return;
-              }
-              const map = {};
-              qs.forEach((d) => {
-                map[d.id] = d.data();
-              });
-              debugLog('subscribe [Firestore Col Stream]', path, map, true);
-              callback(map);
-            });
-          } else {
-            const docRef = getDocRef(path);
-            onSnapshot(docRef, (snap) => {
-              const d = snap.exists() ? snap.data() : null;
-              debugLog('subscribe [Firestore Doc Stream]', path, d, true);
-              callback(d);
-            });
-          }
-        }
-      }, 1000);
-
       return () => {
-        clearTimeout(fallbackTimer);
         off(dbRef, 'value', listener);
       };
     } catch (error) {
@@ -274,7 +182,27 @@ export const rtdbService = {
   },
 
   /**
-   * Remove a node cleanly from RTDB and Firestore fallback.
+   * Dedicated RTDB-only read operation (aliases getData).
+   */
+  getRtdbOnly: async (path) => rtdbService.getData(path),
+
+  /**
+   * Dedicated RTDB-only write operation (aliases setData).
+   */
+  setRtdbOnly: async (path, data) => rtdbService.setData(path, data),
+
+  /**
+   * Dedicated RTDB-only update operation (aliases updateData).
+   */
+  updateRtdbOnly: async (path, updates) => rtdbService.updateData(path, updates),
+
+  /**
+   * Dedicated RTDB-only subscription (aliases subscribe).
+   */
+  subscribeRtdbOnly: (path, callback) => rtdbService.subscribe(path, callback),
+
+  /**
+   * Remove a node cleanly from RTDB.
    */
   removeData: async (path) => {
     return await rtdbService.setData(path, null);

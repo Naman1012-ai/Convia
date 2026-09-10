@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../hooks/useAuth';
 import { discussionService } from '../../services/discussionService';
+import { useUserProfile, useUserProfiles } from '../../hooks/useUserProfile';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -28,6 +29,19 @@ export function DiscussionThread({ discussion, idea, isIdeaOwner, onToast = () =
   const [isEditing, setIsEditing] = useState(false);
   const [editMessage, setEditMessage] = useState(discussion.message);
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  // Real-time parent discussion author resolution
+  const { displayName: authorDisplayName } = useUserProfile(discussion.authorId, {
+    fallbackName: discussion.authorName || 'Contributor',
+  });
+
+  // Real-time reply authors resolution
+  const replyAuthorIds = useMemo(() => {
+    if (!discussion.replies || !Array.isArray(discussion.replies)) return [];
+    return Array.from(new Set(discussion.replies.map((r) => r.authorId).filter(Boolean)));
+  }, [discussion.replies]);
+
+  const { resolveName } = useUserProfiles(replyAuthorIds);
 
   const isAuthor = user && user.uid === discussion.authorId;
   const isSuggestion = discussion.type === 'suggestion';
@@ -131,11 +145,11 @@ export function DiscussionThread({ discussion, idea, isIdeaOwner, onToast = () =
       {/* Header Info */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3">
-          <Avatar name={discussion.authorName} size="sm" />
+          <Avatar name={isAuthor ? 'You' : authorDisplayName} size="sm" />
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-slate-900">
-                {discussion.authorName}
+                {authorDisplayName}
               </span>
               {isAuthor && (
                 <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded">
@@ -249,7 +263,7 @@ export function DiscussionThread({ discussion, idea, isIdeaOwner, onToast = () =
       {isReplying && (
         <form onSubmit={handleReplySubmit} className="mt-3 space-y-3 pt-3 border-t border-slate-200">
           <Textarea
-            placeholder={`Reply to ${discussion.authorName}...`}
+            placeholder={`Reply to ${authorDisplayName}...`}
             value={replyMessage}
             onChange={(e) => setReplyMessage(e.target.value)}
             rows={2}
@@ -278,7 +292,9 @@ export function DiscussionThread({ discussion, idea, isIdeaOwner, onToast = () =
           {discussion.replies.map((reply) => (
             <div key={reply.discussionId} className="rounded-xl bg-slate-50 p-3 text-xs space-y-1">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-900">{reply.authorName}</span>
+                <span className="font-bold text-slate-900">
+                  {resolveName(reply.authorId, reply.authorName || 'Contributor')}
+                </span>
                 <span className="text-[10px] text-slate-400">
                   {formatTimestamp(reply.createdAt)}
                 </span>

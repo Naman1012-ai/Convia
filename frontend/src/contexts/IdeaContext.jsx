@@ -17,6 +17,10 @@ export const IdeaContext = createContext({
   stats: {
     totalIdeas: 0,
     totalVotes: 0,
+    totalSuggestions: 0,
+    totalAcceptedSuggestions: 0,
+    totalAcceptedIdeas: 0,
+    topVotedCount: 0,
     selectedMvp: null,
     myIdeasCount: 0,
   },
@@ -38,20 +42,30 @@ export function IdeaProvider({ children }) {
   const orgId = org?.orgId;
 
   useEffect(() => {
+    // Reset workspace-scoped idea state and filters on orgId change
+    setIdeas([]);
+    setSearchQuery('');
+    setActiveFilter('all');
+    setSortBy('most_voted');
+
     if (!orgId) {
-      setIdeas([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    let isSubscribed = true;
 
     const unsubscribe = ideaService.subscribeToIdeas(orgId, (ideasArray) => {
+      if (!isSubscribed) return;
       setIdeas(ideasArray || []);
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      isSubscribed = false;
+      unsubscribe();
+    };
   }, [orgId]);
 
   const createIdea = useCallback(
@@ -90,14 +104,24 @@ export function IdeaProvider({ children }) {
   const stats = useMemo(() => {
     const totalIdeas = ideas.length;
     const totalVotes = ideas.reduce((sum, item) => sum + (item.voteCount || 0), 0);
+    const totalSuggestions = ideas.reduce((sum, item) => sum + (item.suggestionCount || 0), 0);
+    const totalAcceptedSuggestions = ideas.reduce((sum, item) => sum + (item.acceptedSuggestionCount || 0), 0);
     const selectedMvp = ideas.find(
       (item) => item && !item.isDeleted && (item.isSelected || item.status === 'selected' || item.status === 'Selected MVP')
     ) || null;
+    const totalAcceptedIdeas = ideas.filter(
+      (item) => item && !item.isDeleted && (item.isSelected || item.status === 'selected' || item.status === 'Selected MVP' || item.projectStatus === 'Selected MVP' || item.projectStatus === 'Project')
+    ).length;
+    const topVotedCount = ideas.filter((item) => (item.voteCount || 0) > 0).length;
     const myIdeasCount = user ? ideas.filter((item) => item.authorId === user.uid).length : 0;
 
     return {
       totalIdeas,
       totalVotes,
+      totalSuggestions,
+      totalAcceptedSuggestions,
+      totalAcceptedIdeas,
+      topVotedCount,
       selectedMvp,
       myIdeasCount,
     };

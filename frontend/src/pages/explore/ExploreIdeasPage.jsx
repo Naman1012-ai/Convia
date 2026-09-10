@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { usePlatformSettings } from '../../hooks/usePlatformSettings';
 import { publicIdeaService } from '../../services/publicIdeaService';
@@ -16,7 +17,9 @@ import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { CreatePublicIdeaModal } from '../../features/ideas/CreatePublicIdeaModal';
 import { PublicIdeaDetailModal } from '../../features/ideas/PublicIdeaDetailModal';
 import { ImportToWorkspaceModal } from '../../features/ideas/ImportToWorkspaceModal';
+import { PublicIdeaChatDrawer } from '../../features/chat/PublicIdeaChatDrawer';
 import { formatTimestamp, truncateText } from '../../utils/formatting';
+import { useUserProfiles } from '../../hooks/useUserProfile';
 import {
   Globe,
   Plus,
@@ -33,12 +36,19 @@ import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 
 export default function ExploreIdeasPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const { canImportIdea, canCreateIdea } = usePlatformSettings();
 
   // Data States
   const [publicIdeas, setPublicIdeas] = useState([]);
   const [loadingPublic, setLoadingPublic] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const ideaAuthorIds = useMemo(() => {
+    return Array.from(new Set(publicIdeas.map((i) => i.authorId).filter(Boolean)));
+  }, [publicIdeas]);
+
+  const { resolveName } = useUserProfiles(ideaAuthorIds);
 
   // Selected Public Idea for Detail Flashcard Modal & Import Modal
   const [selectedPublicIdea, setSelectedPublicIdea] = useState(null);
@@ -56,6 +66,19 @@ export default function ExploreIdeasPage() {
 
   // Modals & Feedback
   const [isCreatePublicIdeaOpen, setIsCreatePublicIdeaOpen] = useState(false);
+  const [isCommunityChatOpen, setIsCommunityChatOpen] = useState(false);
+  const [communityChatContext, setCommunityChatContext] = useState(null);
+
+  // Dismiss all transient modals & drawers on route transition
+  useEffect(() => {
+    setSelectedPublicIdea(null);
+    setImportingIdea(null);
+    setIsImportModalOpen(false);
+    setDeletingPublicIdea(null);
+    setIsCreatePublicIdeaOpen(false);
+    setIsCommunityChatOpen(false);
+    setCommunityChatContext(null);
+  }, [location.pathname]);
 
   const handleOpenCreateModal = () => {
     const check = canCreateIdea();
@@ -153,15 +176,29 @@ export default function ExploreIdeasPage() {
         title="Explore Public Ideas"
         subtitle="Discover, vote, and suggest technical iterations on community proposal drafts"
         action={
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Plus className="h-4 w-4" />}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
-            onClick={handleOpenCreateModal}
-          >
-            + Post Public Proposal
-          </Button>
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Globe className="h-4 w-4 text-emerald-600" />}
+              className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-xs font-semibold"
+              onClick={() => {
+                setCommunityChatContext(null);
+                setIsCommunityChatOpen(true);
+              }}
+            >
+              Community Channel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus className="h-4 w-4" />}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+              onClick={handleOpenCreateModal}
+            >
+              + Post Public Proposal
+            </Button>
+          </div>
         }
       />
 
@@ -288,14 +325,14 @@ export default function ExploreIdeasPage() {
 
                   <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Avatar name={isAuthor ? user?.displayName || user?.email : idea.authorName} size="sm" />
+                      <Avatar name={isAuthor ? user?.displayName || user?.email : resolveName(idea.authorId, idea.authorName)} size="sm" />
                       {isAuthor ? (
                         <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md flex items-center gap-1">
                           <UserCheck className="h-3 w-3 text-indigo-600" /> Created by You
                         </span>
                       ) : (
                         <span className="text-xs font-semibold text-slate-800 truncate max-w-[120px]">
-                          {idea.authorName}
+                          {resolveName(idea.authorId, idea.authorName || 'Anonymous Innovator')}
                         </span>
                       )}
                     </div>
@@ -323,6 +360,11 @@ export default function ExploreIdeasPage() {
         idea={selectedPublicIdea}
         onClose={() => setSelectedPublicIdea(null)}
         onToast={(msg) => NotificationService.info(msg)}
+        onOpenCommunityChat={(idea) => {
+          setSelectedPublicIdea(null);
+          setCommunityChatContext(idea);
+          setIsCommunityChatOpen(true);
+        }}
       />
 
       {/* Direct Card Import Modal */}
@@ -335,6 +377,16 @@ export default function ExploreIdeasPage() {
           setImportingIdea(null);
         }}
         onToast={(msg) => NotificationService.info(msg)}
+      />
+
+      {/* Public Ideas Real-Time Community Channel Drawer */}
+      <PublicIdeaChatDrawer
+        isOpen={isCommunityChatOpen}
+        onClose={() => {
+          setIsCommunityChatOpen(false);
+          setCommunityChatContext(null);
+        }}
+        initialIdeaContext={communityChatContext}
       />
 
       {/* Public Idea Deletion Confirmation Modal */}
