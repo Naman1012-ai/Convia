@@ -291,17 +291,13 @@ export const inAppNotificationService = {
           if (m?.uid) memberUids.add(m.uid);
         });
       } else {
-        const [orgMembers, wsMembers, orgDoc] = await Promise.all([
+        const [orgMembers, orgDoc] = await Promise.all([
           rtdbService.getRtdbOnly(`organization_members/${workspaceId}`).catch(() => null),
-          rtdbService.getRtdbOnly(`workspace_members/${workspaceId}`).catch(() => null),
           rtdbService.getRtdbOnly(`organizations/${workspaceId}`).catch(() => null),
         ]);
 
         if (orgMembers && typeof orgMembers === 'object') {
           Object.keys(orgMembers).forEach((uid) => memberUids.add(uid));
-        }
-        if (wsMembers && typeof wsMembers === 'object') {
-          Object.keys(wsMembers).forEach((uid) => memberUids.add(uid));
         }
         if (orgDoc && typeof orgDoc === 'object') {
           if (orgDoc.ownerId) memberUids.add(orgDoc.ownerId);
@@ -578,16 +574,23 @@ export const inAppNotificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const deepLink = parentMessageId
-            ? `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${messageId}`
-            : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+          const isCommunity = workspaceId === 'community' || workspaceId === 'public';
+          const deepLink = isCommunity
+            ? (parentMessageId
+                ? `/community?threadId=${parentMessageId}&replyId=${messageId}`
+                : `/community?messageId=${messageId}`)
+            : (parentMessageId
+                ? `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${messageId}`
+                : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`);
 
           return await inAppNotificationService.createNotificationsForRecipients(validMentioned, {
             type: NOTIFICATION_TYPES.CHAT_MENTION,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
-            title: `${actorName} mentioned you in #${activeChannel}`,
+            title: isCommunity
+              ? `${actorName} mentioned you in the Community Hub`
+              : `${actorName} mentioned you in #${activeChannel}`,
             body: `${actorName}: ${preview}`,
             previewText: content,
             actorId: actorUid,
@@ -624,14 +627,19 @@ export const inAppNotificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${replyId}`;
+          const isCommunityReply = workspaceId === 'community' || workspaceId === 'public';
+          const deepLink = isCommunityReply
+            ? `/community?threadId=${parentMessageId}&replyId=${replyId}`
+            : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${replyId}`;
 
           return await inAppNotificationService.createNotificationsForRecipients(validRecipients, {
             type: NOTIFICATION_TYPES.MESSAGE_REPLY,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
-            title: `${actorName} replied to your message`,
+            title: isCommunityReply
+              ? `${actorName} replied to your community discussion`
+              : `${actorName} replied to your message`,
             body: `${actorName}: ${preview}`,
             previewText: content,
             actorId: actorUid,

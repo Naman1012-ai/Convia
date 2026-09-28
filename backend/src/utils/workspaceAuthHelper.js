@@ -9,7 +9,7 @@ import { validatePathSegment } from './blueprintPathBuilder.js';
  *
  * Adheres strictly to P0-01 and P1-05 security models:
  * - Checks both canonical 'organizations' and aliased 'workspaces' metadata.
- * - Checks both 'organization_members' and 'workspace_members' collections.
+ * - Checks canonical 'organization_members' collection.
  * - Enforces role hierarchy: owner > admin > member.
  */
 
@@ -47,12 +47,11 @@ export async function resolveWorkspaceMembership(rawWorkspaceId, rawUserUid) {
   const userUid = rawUserUid.trim();
 
   // Fetch workspace record and membership record in parallel across primary and alias paths
-  const [orgRecord, orgMember, wsMember] = await Promise.all([
+  const [orgRecord, orgMember] = await Promise.all([
     rtdbService.getData(`organizations/${workspaceId}`).then(
       (res) => res || rtdbService.getData(`workspaces/${workspaceId}`)
     ),
     rtdbService.getData(`organization_members/${workspaceId}/${userUid}`),
-    rtdbService.getData(`workspace_members/${workspaceId}/${userUid}`),
   ]);
 
   if (!orgRecord) {
@@ -67,7 +66,7 @@ export async function resolveWorkspaceMembership(rawWorkspaceId, rawUserUid) {
     };
   }
 
-  const memberRecord = orgMember || wsMember || null;
+  const memberRecord = orgMember || null;
   const isOwner = Boolean(
     orgRecord.ownerId === userUid ||
     orgRecord.createdBy === userUid ||

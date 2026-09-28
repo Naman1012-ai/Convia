@@ -20,7 +20,7 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
 
   const isMemberOfOrg = (orgId, uid) => {
     if (!orgId || !uid) return false;
-    const members = rootData['organization_members']?.[orgId] || rootData['workspace_members']?.[orgId] || {};
+    const members = rootData['organization_members']?.[orgId] || {};
     const org = rootData['organizations']?.[orgId] || rootData['workspaces']?.[orgId] || {};
     return Boolean(members[uid] || org.ownerId === uid);
   };
@@ -78,11 +78,18 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
     case 'user_preferences':
     case 'user_announcements':
     case 'user_reports':
-    case 'user_settings': {
+    case 'user_settings':
+    case 'user_saved_discussions': {
       const uid = arg1;
       if (operation === 'read') return { allowed: auth.uid === uid };
       if (operation === 'write') {
-        return { allowed: auth.uid === uid };
+        if (auth.uid !== uid) return { allowed: false, reason: 'FORBIDDEN_USER_WRITE' };
+        if (rootCollection === 'user_saved_discussions' && newData) {
+          if (typeof newData.savedAt !== 'number') {
+            return { allowed: false, reason: 'INVALID_SAVED_AT' };
+          }
+        }
+        return { allowed: true };
       }
       break;
     }
@@ -183,8 +190,7 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       break;
     }
 
-    case 'organization_members':
-    case 'workspace_members': {
+    case 'organization_members': {
       const orgId = arg1;
       const targetUid = arg2;
       if (operation === 'read') return { allowed: true }; // auth != null
@@ -237,7 +243,7 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       if (operation === 'read') return { allowed: true };
       if (operation === 'write') {
         const getMemberRole = (oId, uId) => {
-          const members = rootData['organization_members']?.[oId] || rootData['workspace_members']?.[oId] || {};
+          const members = rootData['organization_members']?.[oId] || {};
           if (members[uId]?.role) return members[uId].role;
           const org = rootData['organizations']?.[oId] || rootData['workspaces']?.[oId] || {};
           if (org.ownerId === uId) return 'owner';
@@ -774,6 +780,92 @@ describe('🧪 CONVIA SECURITY FIX 6 — RULES VERIFICATION & ATOMIC ENFORCEMENT
       const res = evaluateMultiLocationUpdate({ updates: maliciousUpdates, auth: userAlice, rootData: mockRootData });
       assert.strictEqual(res.allowed, false, 'Mixed multi-location write must be rejected');
       assert.strictEqual(res.failedPath, 'platform_settings/workspaces');
+    });
+  });
+
+  describe('🔍 TEST SAVED: User-Scoped Saved Discussions Isolation & Validation', () => {
+    it('allows User Alice to save a discussion to her own bookmarks', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice/msg_123',
+        operation: 'write',
+        auth: userAlice,
+        newData: { savedAt: Date.now(), messageId: 'msg_123' },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, true, 'Alice must be allowed to save discussions in own subtree');
+    });
+
+    it('allows User Alice to unsave (delete) a discussion from her own bookmarks', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice/msg_123',
+        operation: 'write',
+        auth: userAlice,
+        data: { savedAt: 123456789, messageId: 'msg_123' },
+        newData: null,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, true, 'Alice must be allowed to remove own saved discussion');
+    });
+
+    it('allows User Alice to read her own saved discussions subtree', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice',
+        operation: 'read',
+        auth: userAlice,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, true, 'Alice must be allowed to read her own saved discussions');
+    });
+
+    it('BLOCKS User Bob from reading Alice saved discussions', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice',
+        operation: 'read',
+        auth: userBob,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, false, 'Bob must NOT be allowed to read Alice saved discussions');
+    });
+
+    it('BLOCKS User Bob from saving a discussion into Alice subtree', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice/msg_456',
+        operation: 'write',
+        auth: userBob,
+        newData: { savedAt: Date.now(), messageId: 'msg_456' },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, false, 'Bob must NOT be allowed to write into Alice saved discussions');
+    });
+
+    it('BLOCKS unauthenticated users from reading or writing saved discussions', () => {
+      const readRes = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice',
+        operation: 'read',
+        auth: null,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(readRes.allowed, false, 'Unauthenticated read must be blocked');
+
+      const writeRes = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice/msg_123',
+        operation: 'write',
+        auth: null,
+        newData: { savedAt: Date.now() },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(writeRes.allowed, false, 'Unauthenticated write must be blocked');
+    });
+
+    it('validates that savedAt must be a valid number', () => {
+      const res = evaluateSecurityRule({
+        path: 'user_saved_discussions/user_alice/msg_123',
+        operation: 'write',
+        auth: userAlice,
+        newData: { savedAt: 'invalid-string-timestamp' },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(res.allowed, false, 'Validation must reject non-number savedAt');
     });
   });
 });

@@ -637,15 +637,20 @@ export const blueprintController = {
         console.warn('⚠️ [TaskSync Auto-trigger Warning]', syncErr.message);
       });
 
-      // Phase 7: Dispatch Blueprint Completed notification to workspace members and initiator
+      // Phase 7: Dispatch Blueprint Completed notification to initiator
       notificationService.dispatchNotificationEvent(
         NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
         {
           workspaceId,
+          mvpIdeaId: activeMvpId,
+          resourceId: completeBlueprintDocument.blueprintId || `bp_${workspaceId}_${activeMvpId}`,
           version: nextVersion,
+          secondaryEntityId: String(nextVersion),
           ideaTitle: mvpIdea?.title || 'Workspace MVP',
+          initiatorUid: userUid,
+          attemptId,
         },
-        { uid: userUid }
+        { uid: userUid, displayName: memberRecord?.displayName || 'Team Member' }
       ).catch((notifErr) => {
         console.warn('⚠️ [Blueprint Completed Notification Warning]', notifErr.message);
       });
@@ -746,8 +751,12 @@ export const blueprintController = {
         NOTIFICATION_TYPES.BLUEPRINT_FAILED,
         {
           workspaceId,
+          mvpIdeaId: activeMvpId,
+          resourceId: `bp_${workspaceId}_${activeMvpId}`,
           ideaTitle: existingBp?.ideaTitle || 'Workspace MVP',
           errorReason: friendlyError,
+          initiatorUid: userUid,
+          attemptId,
         },
         { uid: userUid }
       ).catch((notifErr) => {
@@ -1308,13 +1317,26 @@ export const blueprintController = {
       metadata: { version: verNumber, ideaId: activeMvpId },
     }).catch((actErr) => console.warn('⚠️ [Blueprint Approved Activity Warning]', actErr.message));
 
-    // Dispatch Blueprint Version Approved notification to workspace members
+    // Convia Phase 7B-2: Resolve original version creator or generation initiator
+    const targetCreatorUid = targetVersionDoc?.lineage?.generatedBy ||
+      targetVersionDoc?.generatedBy ||
+      targetVersionDoc?.createdBy ||
+      targetVersionDoc?.userId ||
+      currentBp?.lineage?.generatedBy ||
+      currentBp?.createdBy ||
+      mvpIdea?.createdBy;
+
+    // Dispatch Blueprint Version Approved notification to creator and workspace members
     notificationService.dispatchNotificationEvent(
       NOTIFICATION_TYPES.BLUEPRINT_VERSION_APPROVED,
       {
         workspaceId,
+        mvpIdeaId: activeMvpId,
+        resourceId: approvedDocument.blueprintId || `bp_${workspaceId}_${activeMvpId}`,
         version: verNumber,
+        secondaryEntityId: String(verNumber),
         ideaTitle: mvpIdea?.title || 'Workspace MVP',
+        creatorUid: targetCreatorUid,
         actorId: userUid,
         actorName: actorDisplayName,
       },
@@ -1602,14 +1624,13 @@ export const blueprintController = {
 
     let targetUserName = 'Unassigned';
     if (assignedUserId) {
-      const [targetMemberOrg, targetMemberWs, targetUser] = await Promise.all([
+      const [targetMemberOrg, targetUser] = await Promise.all([
         rtdbService.getData(`organization_members/${workspaceId}/${assignedUserId}`),
-        rtdbService.getData(`workspace_members/${workspaceId}/${assignedUserId}`),
         rtdbService.getData(`users/${assignedUserId}`),
       ]);
 
       const isTargetOwner = org.ownerId === assignedUserId || org.createdBy === assignedUserId || org.ownerUid === assignedUserId;
-      const isTargetMember = Boolean(targetMemberOrg || targetMemberWs || isTargetOwner || (org.members && org.members[assignedUserId]));
+      const isTargetMember = Boolean(targetMemberOrg || isTargetOwner || (org.members && org.members[assignedUserId]));
 
       if (!isTargetMember) {
         throw new Error('Target user is not a member of this workspace.');

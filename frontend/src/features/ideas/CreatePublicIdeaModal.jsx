@@ -20,7 +20,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
-export function CreatePublicIdeaModal({ isOpen, onClose, onSuccess = () => {} }) {
+export function CreatePublicIdeaModal({ isOpen, onClose, onSuccess = () => {}, initialValues = null }) {
   const { user } = useAuth();
 
   // Stage: 'form' | 'success'
@@ -40,6 +40,16 @@ export function CreatePublicIdeaModal({ isOpen, onClose, onSuccess = () => {} })
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync initialValues when opened from contextual community discussion
+  React.useEffect(() => {
+    if (isOpen && initialValues) {
+      if (initialValues.title) setTitle(initialValues.title);
+      if (initialValues.problemStatement) setProblemStatement(initialValues.problemStatement);
+      if (initialValues.proposedSolution) setProposedSolution(initialValues.proposedSolution);
+      if (initialValues.category) setCategory(initialValues.category);
+    }
+  }, [isOpen, initialValues]);
 
   const resetForm = () => {
     setTitle('');

@@ -24,10 +24,8 @@ import {
   getChannelMessagesPath,
   getMessagePath,
   getChannelMetadataPath,
-  getMessageRepliesPath,
   getMessageRepliesRootPath,
   getMessageReplyPath,
-  getMessageReactionsPath,
   getMessageReactionsRootPath,
   getMessageReactionPath,
   getChannelReadStatePath,
@@ -44,6 +42,16 @@ import {
   getPublicIdeasChatMessagePath,
   getPublicIdeasChatTypingRootPath,
   getPublicIdeasChatTypingPath,
+  getPublicIdeasChatRepliesRootPath,
+  getPublicIdeasChatMessageRepliesPath,
+  getPublicIdeasChatMessageReplyPath,
+  getPublicIdeasChatReactionsRootPath,
+  getPublicIdeasChatMessageReactionsPath,
+  getPublicIdeasChatMessageReactionPath,
+  getUserSavedDiscussionsPath,
+  getUserSavedDiscussionPath,
+  getPublicIdeasChatPinnedPath,
+  getPublicIdeasChatPinnedDiscussionPath,
 } from '../constants/databasePaths.js';
 import {
   DEFAULT_CHAT_CHANNEL_ID,
@@ -61,6 +69,7 @@ import {
   CHAT_NOTIFICATION_TYPES,
   SUPPORTED_REACTIONS,
   isValidReactionEmoji,
+  COMMUNITY_POST_TYPES,
 } from '../constants/chatSchema.js';
 import {
   validateSendMessage,
@@ -779,29 +788,6 @@ export const chatService = {
   },
 
   /**
-   * Subscribe to real-time reply count for a message.
-   */
-  subscribeToMessageReplyCount: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, callback) => {
-    if (!workspaceId || !parentMessageId) {
-      if (typeof callback === 'function') callback(0);
-      return () => {};
-    }
-    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
-    const repliesPath = getMessageRepliesPath(workspaceId, activeChannelId, parentMessageId);
-
-    return rtdbService.subscribeRtdbOnly(repliesPath, (rawReplies) => {
-      if (!rawReplies || typeof rawReplies !== 'object') {
-        if (typeof callback === 'function') callback(0);
-        return;
-      }
-
-      // Count active (non-deleted) replies
-      const activeCount = Object.values(rawReplies).filter((r) => r && r.replyId && !r.deleted).length;
-      if (typeof callback === 'function') callback(activeCount);
-    });
-  },
-
-  /**
    * Phase 8 / P1-04: Subscribe to real-time reply counts for an entire channel.
    * Eliminates the N+1 listener explosion by aggregating reply counts under a single channel-level listener.
    *
@@ -939,47 +925,6 @@ export const chatService = {
       await set(ref(rtdb, reactionPath), true);
       return { action: 'added', emoji: validation.cleanEmoji };
     }
-  },
-
-  /**
-   * Subscribe to real-time emoji reactions for a message.
-   */
-  subscribeToMessageReactions: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, messageId, callback) => {
-    if (!workspaceId || !messageId) {
-      callback({});
-      return () => {};
-    }
-
-    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
-    const reactionsPath = getMessageReactionsPath(workspaceId, activeChannelId, messageId);
-    return rtdbService.subscribeRtdbOnly(reactionsPath, (rawReactions) => {
-      if (!rawReactions || typeof rawReactions !== 'object') {
-        callback({});
-        return;
-      }
-
-      const summary = {};
-      Object.entries(rawReactions).forEach(([rawEmojiKey, uidsMap]) => {
-        let emoji = rawEmojiKey;
-        try {
-          emoji = decodeURIComponent(rawEmojiKey);
-        } catch {
-          // fallback
-        }
-
-        if (uidsMap && typeof uidsMap === 'object') {
-          const userIds = Object.keys(uidsMap).filter((uid) => uidsMap[uid] === true);
-          if (userIds.length > 0) {
-            summary[emoji] = {
-              count: userIds.length,
-              users: userIds,
-            };
-          }
-        }
-      });
-
-      callback(summary);
-    });
   },
 
   /**
@@ -1560,8 +1505,9 @@ export const chatService = {
   /**
    * Sends a message to the Public Ideas Community Chat.
    * Open to any authenticated Convia user.
+   * Supports optional postType ('discussion', 'idea', 'question', 'collaboration').
    */
-  sendPublicIdeaChatMessage: async (content, user, attachmentData = null) => {
+  sendPublicIdeaChatMessage: async (content, user, attachmentData = null, postType = 'discussion') => {
     if (!user?.uid) {
       throw new Error('Authenticated user is required to participate in community chat.');
     }
@@ -1574,20 +1520,28 @@ export const chatService = {
       attachment: attachmentData,
     });
 
+    const validPostTypes = Object.values(COMMUNITY_POST_TYPES || {});
+    const resolvedPostType = validPostTypes.includes(postType) ? postType : 'discussion';
+
     const messagesPath = getPublicIdeasChatMessagesPath();
     const newMsgRef = push(ref(rtdb, messagesPath));
     const messageId = newMsgRef.key;
 
-    const canonicalMsg = createCanonicalMessage({
-      messageId,
-      senderId: user.uid,
-      senderName: user.displayName || user.name || 'Community Member',
-      senderEmail: user.email || '',
-      senderAvatar: user.photoURL || '',
-      content: trimmedContent,
-      attachment: sanitizedAttachment,
-      createdAt: serverTimestamp(),
-    });
+    const canonicalMsg = {
+      ...createCanonicalMessage({
+        messageId,
+        senderId: user.uid,
+        senderName: user.displayName || user.name || 'Community Member',
+        senderEmail: user.email || '',
+        senderAvatar: user.photoURL || user.avatar || '',
+        content: trimmedContent,
+        attachment: sanitizedAttachment,
+        createdAt: serverTimestamp(),
+      }),
+      authorUid: user.uid,
+      authorId: user.uid,
+      postType: resolvedPostType,
+    };
 
     await set(newMsgRef, canonicalMsg);
     return messageId;
@@ -1634,7 +1588,7 @@ export const chatService = {
       await set(typingRef, {
         uid: user.uid,
         displayName: user.displayName || user.name || 'Community Member',
-        avatarUrl: user.photoURL || '',
+        avatarUrl: user.photoURL || user.avatar || '',
         startedAt: Date.now(),
       });
       onDisconnect(typingRef).remove();
@@ -1668,4 +1622,386 @@ export const chatService = {
       onTypersUpdate(typers);
     });
   },
+
+  /**
+   * Edit a community discussion message.
+   */
+  editPublicIdeaChatMessage: async (messageId, newContent, userId) => {
+    if (!messageId || !userId) throw new Error('Message ID and User ID are required.');
+    const trimmed = (newContent || '').trim();
+    if (!trimmed) throw new Error('Message content cannot be empty.');
+    if (trimmed.length > 2000) throw new Error('Message content exceeds 2000 character limit.');
+
+    const msgPath = getPublicIdeasChatMessagePath(messageId);
+    await rtdbService.updateRtdbOnly(msgPath, {
+      content: trimmed,
+      editedAt: Date.now(),
+      editedBy: userId,
+    });
+  },
+
+  /**
+   * Soft-delete a community discussion message.
+   */
+  deletePublicIdeaChatMessage: async (messageId, userId, isAdmin = false) => {
+    if (!messageId || !userId) throw new Error('Message ID and User ID are required.');
+    const msgPath = getPublicIdeasChatMessagePath(messageId);
+    await rtdbService.updateRtdbOnly(msgPath, {
+      content: 'This message was deleted',
+      deleted: true,
+      deletedAt: Date.now(),
+      deletedBy: userId,
+      attachment: null,
+    });
+  },
+
+  /**
+   * Send a reply to a parent community discussion message.
+   */
+  sendPublicIdeaReply: async (parentMessageId, content, user, parentMessage = null) => {
+    if (!user?.uid) throw new Error('Authenticated user is required to reply.');
+    if (!parentMessageId) throw new Error('Parent message ID is required.');
+    const trimmed = (content || '').trim();
+    if (!trimmed) throw new Error('Reply content cannot be empty.');
+    if (trimmed.length > 2000) throw new Error('Reply content exceeds 2000 character limit.');
+
+    const repliesPath = getPublicIdeasChatMessageRepliesPath(parentMessageId);
+    const newReplyRef = push(ref(rtdb, repliesPath));
+    const replyId = newReplyRef.key;
+
+    const canonicalReply = {
+      ...createCanonicalReply({
+        replyId,
+        parentMessageId,
+        senderId: user.uid,
+        senderName: resolveMemberDisplayName(user),
+        senderAvatar: user.photoURL || user.avatar || '',
+        content: trimmed,
+        createdAt: Date.now(),
+      }),
+      authorUid: user.uid,
+      authorId: user.uid,
+    };
+
+    await set(newReplyRef, canonicalReply);
+
+    // Dispatch in-app notification if parent message author is another user
+    try {
+      const parentAuthorId = parentMessage?.senderId || parentMessage?.authorId;
+      if (parentAuthorId && parentAuthorId !== user.uid && parentAuthorId !== 'system') {
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.MESSAGE_REPLY,
+          {
+            workspaceId: 'community',
+            channelId: 'general',
+            parentMessageId,
+            replyId,
+            content: trimmed,
+            parentAuthorId,
+          },
+          user
+        ).catch((e) => console.warn('[chatService] Public community reply notification error:', e));
+      }
+    } catch (err) {
+      console.warn('[chatService] Public community reply dispatch warning:', err.message);
+    }
+
+    return canonicalReply;
+  },
+
+  /**
+   * Load bounded batch of replies for a community discussion thread.
+   */
+  loadPublicIdeaReplies: async (parentMessageId, pageSize = CHAT_PAGE_SIZE) => {
+    if (!parentMessageId) return { replies: [], hasMore: false };
+    const repliesPath = getPublicIdeasChatMessageRepliesPath(parentMessageId);
+    const repliesRef = ref(rtdb, repliesPath);
+    const boundedQuery = query(repliesRef, orderByKey(), limitToLast(pageSize));
+    const snapshot = await get(boundedQuery);
+
+    if (!snapshot.exists()) {
+      return { replies: [], hasMore: false };
+    }
+
+    const repliesList = [];
+    snapshot.forEach((childSnap) => {
+      const normalized = normalizeChatReply(childSnap.val(), childSnap.key);
+      if (normalized) repliesList.push(normalized);
+    });
+
+    repliesList.sort(compareMessages);
+    return {
+      replies: repliesList,
+      hasMore: repliesList.length >= pageSize,
+    };
+  },
+
+  /**
+   * Subscribe to real-time live reply updates for a community discussion thread.
+   */
+  subscribeToPublicIdeaThread: (parentMessageId, callbacks = {}) => {
+    if (!parentMessageId) return () => {};
+    const repliesPath = getPublicIdeasChatMessageRepliesPath(parentMessageId);
+    const repliesRef = ref(rtdb, repliesPath);
+
+    const { onReplyAdded, onReplyChanged, onReplyRemoved, onError } = callbacks;
+
+    const addedQuery = query(repliesRef, orderByKey(), limitToLast(CHAT_PAGE_SIZE));
+    const unsubAdded = onChildAdded(
+      addedQuery,
+      (snapshot) => {
+        const normalized = normalizeChatReply(snapshot.val(), snapshot.key);
+        if (normalized && typeof onReplyAdded === 'function') onReplyAdded(normalized);
+      },
+      (err) => {
+        if (typeof onError === 'function') onError(err);
+      }
+    );
+
+    const unsubChanged = onChildChanged(
+      repliesRef,
+      (snapshot) => {
+        const normalized = normalizeChatReply(snapshot.val(), snapshot.key);
+        if (normalized && typeof onReplyChanged === 'function') onReplyChanged(normalized);
+      },
+      (err) => {
+        if (typeof onError === 'function') onError(err);
+      }
+    );
+
+    const unsubRemoved = onChildRemoved(
+      repliesRef,
+      (snapshot) => {
+        if (typeof onReplyRemoved === 'function') onReplyRemoved(snapshot.key);
+      },
+      (err) => {
+        if (typeof onError === 'function') onError(err);
+      }
+    );
+
+    return () => {
+      unsubAdded();
+      unsubChanged();
+      unsubRemoved();
+    };
+  },
+
+  /**
+   * Single aggregated channel-level listener for community discussion reply counts.
+   * Eliminates N+1 listeners.
+   */
+  subscribeToPublicIdeasReplyCounts: (callback) => {
+    const repliesRootPath = getPublicIdeasChatRepliesRootPath();
+
+    return rtdbService.subscribeRtdbOnly(repliesRootPath, (rawRepliesRoot) => {
+      if (!rawRepliesRoot || typeof rawRepliesRoot !== 'object') {
+        if (typeof callback === 'function') callback({});
+        return;
+      }
+
+      const replyCountsByMessageId = {};
+      const repliedParentIdsByUid = {};
+
+      Object.entries(rawRepliesRoot).forEach(([parentMessageId, rawReplies]) => {
+        if (!rawReplies || typeof rawReplies !== 'object') {
+          replyCountsByMessageId[parentMessageId] = 0;
+          return;
+        }
+
+        const activeReplies = Object.values(rawReplies).filter(
+          (r) => r && r.replyId && !r.deleted
+        );
+        replyCountsByMessageId[parentMessageId] = activeReplies.length;
+
+        activeReplies.forEach((r) => {
+          if (r.senderId) {
+            if (!repliedParentIdsByUid[r.senderId]) {
+              repliedParentIdsByUid[r.senderId] = [];
+            }
+            if (!repliedParentIdsByUid[r.senderId].includes(parentMessageId)) {
+              repliedParentIdsByUid[r.senderId].push(parentMessageId);
+            }
+          }
+        });
+      });
+
+      if (typeof callback === 'function') {
+        callback(replyCountsByMessageId, repliedParentIdsByUid);
+      }
+    });
+  },
+
+  /**
+   * Toggle a reaction on a community discussion post.
+   */
+  togglePublicIdeaReaction: async (messageId, emoji, user) => {
+    if (!user?.uid) throw new Error('User authentication required to react.');
+    if (!messageId) throw new Error('Message ID is required.');
+    if (!isValidReactionEmoji(emoji)) throw new Error('Unsupported reaction emoji.');
+
+    const cleanEmoji = encodeURIComponent(emoji.trim());
+    const reactionPath = getPublicIdeasChatMessageReactionPath(messageId, cleanEmoji, user.uid);
+    const existing = await rtdbService.getRtdbOnly(reactionPath);
+
+    if (existing === true) {
+      await set(ref(rtdb, reactionPath), null);
+      return { action: 'removed', emoji: cleanEmoji };
+    } else {
+      await set(ref(rtdb, reactionPath), true);
+      return { action: 'added', emoji: cleanEmoji };
+    }
+  },
+
+  /**
+   * Single aggregated channel-level listener for community discussion reactions.
+   * Eliminates N+1 listeners.
+   */
+  subscribeToPublicIdeasReactions: (callback) => {
+    const reactionsRootPath = getPublicIdeasChatReactionsRootPath();
+
+    return rtdbService.subscribeRtdbOnly(reactionsRootPath, (rawReactions) => {
+      if (!rawReactions || typeof rawReactions !== 'object') {
+        if (typeof callback === 'function') callback({});
+        return;
+      }
+
+      const reactionsByMessageId = {};
+      Object.entries(rawReactions).forEach(([messageId, messageReactions]) => {
+        if (!messageReactions || typeof messageReactions !== 'object') return;
+
+        const summary = {};
+        Object.entries(messageReactions).forEach(([rawEmojiKey, uidsMap]) => {
+          let emoji = rawEmojiKey;
+          try {
+            emoji = decodeURIComponent(rawEmojiKey);
+          } catch {
+            // fallback
+          }
+
+          if (uidsMap && typeof uidsMap === 'object') {
+            const userIds = Object.keys(uidsMap).filter((uid) => uidsMap[uid] === true);
+            if (userIds.length > 0) {
+              summary[emoji] = {
+                count: userIds.length,
+                users: userIds,
+              };
+            }
+          }
+        });
+
+        reactionsByMessageId[messageId] = summary;
+      });
+
+      if (typeof callback === 'function') {
+        callback(reactionsByMessageId);
+      }
+    });
+  },
+
+  /**
+   * Save / bookmark a public community discussion.
+   */
+  savePublicIdeaDiscussion: async (uid, messageId) => {
+    if (!uid || typeof uid !== 'string') throw new Error('User ID is required to save discussion.');
+    if (!messageId || typeof messageId !== 'string') throw new Error('Message ID is required to save discussion.');
+
+    const cleanUid = uid.trim();
+    const cleanMsgId = messageId.trim();
+    const savePath = getUserSavedDiscussionPath(cleanUid, cleanMsgId);
+    await set(ref(rtdb, savePath), {
+      savedAt: Date.now(),
+      messageId: cleanMsgId,
+    });
+    return { saved: true, messageId: cleanMsgId };
+  },
+
+  /**
+   * Unsave / remove bookmark for a public community discussion.
+   */
+  unsavePublicIdeaDiscussion: async (uid, messageId) => {
+    if (!uid || typeof uid !== 'string') throw new Error('User ID is required to unsave discussion.');
+    if (!messageId || typeof messageId !== 'string') throw new Error('Message ID is required to unsave discussion.');
+
+    const cleanUid = uid.trim();
+    const cleanMsgId = messageId.trim();
+    const savePath = getUserSavedDiscussionPath(cleanUid, cleanMsgId);
+    await remove(ref(rtdb, savePath));
+
+    // Non-blocking cleanup of legacy path if present
+    const legacyPath = `users/${cleanUid}/saved_discussions/${cleanMsgId}`;
+    remove(ref(rtdb, legacyPath)).catch(() => {});
+
+    return { saved: false, messageId: cleanMsgId };
+  },
+
+  /**
+   * Subscribe to a user's saved public community discussions.
+   */
+  subscribeToUserSavedDiscussions: (uid, callback) => {
+    if (!uid || typeof uid !== 'string') {
+      if (typeof callback === 'function') callback({});
+      return () => {};
+    }
+
+    const savePath = getUserSavedDiscussionsPath(uid);
+    return rtdbService.subscribeRtdbOnly(savePath, (val) => {
+      if (!val || typeof val !== 'object') {
+        if (typeof callback === 'function') callback({});
+        return;
+      }
+      if (typeof callback === 'function') {
+        callback(val);
+      }
+    });
+  },
+
+  /**
+   * Pin or unpin a featured public community discussion (Leader/Admin only).
+   */
+  setPinnedPublicIdeaDiscussion: async (messageId, user, isAdmin = false) => {
+    if (!user?.uid) throw new Error('User authentication required.');
+    if (!isAdmin) throw new Error('Only administrators or workspace leaders can pin featured discussions.');
+
+    const pinnedPath = getPublicIdeasChatPinnedDiscussionPath();
+    const pinnedIdPath = getPublicIdeasChatPinnedPath();
+
+    if (!messageId) {
+      // Unpin
+      await Promise.all([
+        remove(ref(rtdb, pinnedPath)),
+        remove(ref(rtdb, pinnedIdPath)),
+      ]);
+      return { pinned: false };
+    }
+
+    const pinPayload = {
+      messageId: messageId.trim(),
+      pinnedAt: Date.now(),
+      pinnedBy: user.uid,
+    };
+
+    await Promise.all([
+      set(ref(rtdb, pinnedPath), pinPayload),
+      set(ref(rtdb, pinnedIdPath), messageId.trim()),
+    ]);
+
+    return { pinned: true, ...pinPayload };
+  },
+
+  /**
+   * Subscribe to the pinned/featured public community discussion.
+   */
+  subscribeToPinnedPublicIdeaDiscussion: (callback) => {
+    const pinnedPath = getPublicIdeasChatPinnedDiscussionPath();
+    return rtdbService.subscribeRtdbOnly(pinnedPath, (val) => {
+      if (!val || typeof val !== 'object') {
+        if (typeof callback === 'function') callback(null);
+        return;
+      }
+      if (typeof callback === 'function') {
+        callback(val);
+      }
+    });
+  },
 };
+

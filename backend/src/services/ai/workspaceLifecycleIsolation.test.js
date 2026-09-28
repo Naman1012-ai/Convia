@@ -254,8 +254,8 @@ describe('CONVIA — P1-05 WORKSPACE STATE CONSISTENCY & LIFECYCLE ISOLATION', (
       const orgWriteRule = rawRules.rules.organizations['$orgId']['.write'];
       assert.ok(orgWriteRule, 'organizations/$orgId must have explicit .write rule');
       assert.ok(
-        orgWriteRule.includes('organization_members') || orgWriteRule.includes('workspace_members'),
-        'organizations write rule must check membership table'
+        orgWriteRule.includes('organization_members') && !orgWriteRule.includes('workspace_members'),
+        'organizations write rule must check canonical organization_members only'
       );
       assert.ok(
         orgWriteRule.includes('ownerId'),
@@ -267,8 +267,8 @@ describe('CONVIA — P1-05 WORKSPACE STATE CONSISTENCY & LIFECYCLE ISOLATION', (
       const activityReadRule = rawRules.rules.workspace_activity['$workspaceId']['.read'];
       assert.ok(activityReadRule, 'workspace_activity must have explicit .read rule');
       assert.ok(
-        activityReadRule.includes('organization_members') || activityReadRule.includes('workspace_members'),
-        'workspace_activity read rule must verify membership'
+        activityReadRule.includes('organization_members') && !activityReadRule.includes('workspace_members'),
+        'workspace_activity read rule must verify canonical organization_members only'
       );
     });
 
@@ -276,8 +276,8 @@ describe('CONVIA — P1-05 WORKSPACE STATE CONSISTENCY & LIFECYCLE ISOLATION', (
       const ideaReadRule = rawRules.rules.ideas['$orgId']['.read'];
       assert.ok(ideaReadRule, 'ideas/$orgId must have explicit .read rule');
       assert.ok(
-        ideaReadRule.includes('organization_members') || ideaReadRule.includes('workspace_members'),
-        'ideas read rule must verify membership'
+        ideaReadRule.includes('organization_members') && !ideaReadRule.includes('workspace_members'),
+        'ideas read rule must verify canonical organization_members only'
       );
     });
 
@@ -285,8 +285,8 @@ describe('CONVIA — P1-05 WORKSPACE STATE CONSISTENCY & LIFECYCLE ISOLATION', (
       const tasksReadRule = rawRules.rules.tasks['$orgId']['.read'];
       assert.ok(tasksReadRule, 'tasks/$orgId must have explicit .read rule');
       assert.ok(
-        tasksReadRule.includes('organization_members') || tasksReadRule.includes('workspace_members'),
-        'tasks read rule must verify membership'
+        tasksReadRule.includes('organization_members') && !tasksReadRule.includes('workspace_members'),
+        'tasks read rule must verify canonical organization_members only'
       );
     });
 
@@ -294,8 +294,8 @@ describe('CONVIA — P1-05 WORKSPACE STATE CONSISTENCY & LIFECYCLE ISOLATION', (
       const chatReadRule = rawRules.rules.workspaceChats['$orgId']['.read'];
       assert.ok(chatReadRule, 'workspaceChats/$orgId must have explicit .read rule');
       assert.ok(
-        chatReadRule.includes('organization_members') || chatReadRule.includes('workspace_members'),
-        'workspaceChats read rule must verify membership'
+        chatReadRule.includes('organization_members') && !chatReadRule.includes('workspace_members'),
+        'workspaceChats read rule must verify canonical organization_members only'
       );
     });
   });

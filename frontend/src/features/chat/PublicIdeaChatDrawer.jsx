@@ -8,7 +8,9 @@ import {
   Sparkles,
   MessageSquare,
   Users,
+  Maximize2,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
 import { useUserProfiles } from '../../hooks/useUserProfile';
@@ -23,6 +25,7 @@ export function PublicIdeaChatDrawer({
 }) {
   const { user } = useAuth();
   const { userProfile } = useUser();
+  const navigate = useNavigate();
 
   const effectiveUser = React.useMemo(() => {
     if (!user) return null;
@@ -162,13 +165,32 @@ export function PublicIdeaChatDrawer({
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
-              aria-label="Close drawer"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate(
+                    initialIdeaContext?.title
+                      ? `/community?ideaTitle=${encodeURIComponent(initialIdeaContext.title)}&type=idea`
+                      : '/community'
+                  );
+                }}
+                className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
+                title="Open full Community Hub"
+                aria-label="Open full Community Hub"
+              >
+                <Maximize2 className="h-4 w-4" />
+              </button>
+
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg text-emerald-100 hover:text-white hover:bg-white/10 transition-colors"
+                aria-label="Close drawer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Context Banner if opened with specific idea reference */}

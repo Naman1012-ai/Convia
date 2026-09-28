@@ -59,11 +59,9 @@ export function ChatMessageItem({
   const [copied, setCopied] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
   const [reactionPickerAnchor, setReactionPickerAnchor] = useState(null); // 'chips' | null
-  const [localReactions, setLocalReactions] = useState(message.reactions || {});
-  const [localReplyCount, setLocalReplyCount] = useState(message.replyCount || 0);
-  const reactions = reactionsProp !== undefined ? (reactionsProp || {}) : localReactions;
-  const replyCount = replyCountProp !== undefined ? (replyCountProp || 0) : localReplyCount;
   const [inspectReactionEmoji, setInspectReactionEmoji] = useState(null); // null | 'all' | emoji string
+  const reactions = reactionsProp || {};
+  const replyCount = replyCountProp || 0;
 
   const editTextareaRef = useRef(null);
   const menuRef = useRef(null);
@@ -138,43 +136,7 @@ export function ChatMessageItem({
   const senderAvatar = liveAvatar || message.senderAvatar || '';
   const memberProfile = liveProfile || senderMember;
 
-  // Real-time Reactions subscription for this message (ONLY when reactionsProp is not provided by parent)
-  useEffect(() => {
-    if (reactionsProp !== undefined) return;
-    if (!workspaceId || !message?.messageId || message.deleted || message.isSystem) return;
 
-    const unsubscribe = chatService.subscribeToMessageReactions(
-      workspaceId,
-      channelId,
-      message.messageId,
-      (newReactions) => {
-        setLocalReactions(newReactions || {});
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
-  }, [reactionsProp, workspaceId, channelId, message?.messageId, message?.deleted, message?.isSystem]);
-
-  // Real-time Reply Count subscription for this message (ONLY when replyCountProp is not provided by parent)
-  useEffect(() => {
-    if (replyCountProp !== undefined) return;
-    if (!workspaceId || !message?.messageId || message.deleted || message.isSystem) return;
-
-    const unsubscribe = chatService.subscribeToMessageReplyCount(
-      workspaceId,
-      channelId,
-      message.messageId,
-      (count) => {
-        setLocalReplyCount(count);
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
-  }, [replyCountProp, workspaceId, channelId, message?.messageId, message?.deleted, message?.isSystem]);
 
   // Auto-focus and resize textarea when entering edit mode
   useEffect(() => {

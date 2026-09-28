@@ -103,7 +103,7 @@ export const publicIdeaService = {
       // Cascade cleanup associated votes & discussions
       await Promise.all([
         rtdbService.removeData(`votes/${ideaId}`).catch(() => {}),
-        rtdbService.removeData(`discussions/${ideaId}`).catch(() => {}),
+        rtdbService.removeData(`discussions/public/${ideaId}`).catch(() => {}),
         ideaService.transferDeletionAuthorityForImportedIdeas(ideaId).catch(() => {}),
       ]);
     } catch (error) {

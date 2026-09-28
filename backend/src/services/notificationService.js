@@ -121,9 +121,8 @@ export const notificationService = {
 
     try {
       const cleanWorkspaceId = String(workspaceId).trim();
-      const [orgMembers, wsMembers, orgDoc] = await Promise.all([
+      const [orgMembers, orgDoc] = await Promise.all([
         rtdbService.getData(`organization_members/${cleanWorkspaceId}`).catch(() => null),
-        rtdbService.getData(`workspace_members/${cleanWorkspaceId}`).catch(() => null),
         rtdbService.getData(`organizations/${cleanWorkspaceId}`).catch(() => null),
       ]);
 
@@ -131,9 +130,6 @@ export const notificationService = {
 
       if (orgMembers && typeof orgMembers === 'object') {
         Object.keys(orgMembers).forEach((uid) => memberUids.add(uid));
-      }
-      if (wsMembers && typeof wsMembers === 'object') {
-        Object.keys(wsMembers).forEach((uid) => memberUids.add(uid));
       }
       if (orgDoc && typeof orgDoc === 'object') {
         if (orgDoc.ownerId) memberUids.add(orgDoc.ownerId);
@@ -176,13 +172,21 @@ export const notificationService = {
         // 1. BLUEPRINT EVENTS
         // -------------------------------------------------------------
         case NOTIFICATION_TYPES.BLUEPRINT_COMPLETED: {
-          const { workspaceId, version, ideaTitle } = eventData;
-          const recipients = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          const { workspaceId, version, ideaTitle, mvpIdeaId, resourceId, secondaryEntityId, initiatorUid, dedupeKey: customDedupe } = eventData;
+          const targetInitiator = initiatorUid || actorUid;
+          const resolvedResourceId = resourceId || (mvpIdeaId ? `bp_${workspaceId}_${mvpIdeaId}` : `bp_${workspaceId}`);
+          const resolvedSecondaryId = secondaryEntityId || (version ? String(version) : '1.0');
 
-          // If initiator is not in recipients (e.g. was excluded), always notify initiator
-          const allRecipients = Array.from(new Set([...recipients, actorUid].filter(Boolean)));
+          // Convia Phase 7B-2 Step 3: Default to generation initiator unless explicit recipients provided
+          const targetRecipients = Array.isArray(eventData.recipients) && eventData.recipients.length > 0
+            ? eventData.recipients
+            : (targetInitiator && targetInitiator !== 'system' ? [targetInitiator] : []);
 
-          return await notificationService.createNotificationsForRecipients(allRecipients, {
+          if (targetRecipients.length === 0) return [];
+
+          const baseDedupeKey = customDedupe || `bp_comp_${workspaceId}_${mvpIdeaId || 'mvp'}_${version || '1.0'}`;
+
+          return await notificationService.createNotificationsForRecipients(targetRecipients, {
             type: NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
             workspaceId,
             orgId: workspaceId,
@@ -190,38 +194,97 @@ export const notificationService = {
             body: `AI Architecture Blueprint for "${ideaTitle || 'Workspace MVP'}" is ready for review.`,
             actorId: 'system',
             actorName: 'Convia AI Engine',
+            entityType: 'blueprint',
             resourceType: 'blueprint',
-            resourceId: `bp_${workspaceId}`,
+            entityId: resolvedResourceId,
+            resourceId: resolvedResourceId,
+            secondaryEntityId: resolvedSecondaryId,
             actionUrl: `/workspaces/${workspaceId}/blueprint`,
-            metadata: { version, workspaceId },
+            dedupeKey: baseDedupeKey,
+            allowSelfNotification: true,
+            metadata: {
+              workspaceId,
+              ideaId: mvpIdeaId || null,
+              mvpIdeaId: mvpIdeaId || null,
+              version: resolvedSecondaryId,
+              secondaryEntityId: resolvedSecondaryId,
+              generationId: eventData.attemptId || null,
+              initiatorUid: targetInitiator,
+            },
           });
         }
 
         case NOTIFICATION_TYPES.BLUEPRINT_FAILED: {
-          const { workspaceId, ideaTitle, errorReason } = eventData;
-          if (!actorUid || actorUid === 'system') return [];
+          const { workspaceId, ideaTitle, errorReason, mvpIdeaId, resourceId, initiatorUid, attemptId } = eventData;
+          const targetInitiator = initiatorUid || actorUid;
+          if (!targetInitiator || targetInitiator === 'system') return [];
 
-          const notif = await notificationService.createNotification(actorUid, {
+          // Phase 7B-2 Step 5: Sanitize failure reason to eliminate internal errors, tokens, and stack traces
+          let safeReason = 'Blueprint generation failed. Please try again.';
+          if (errorReason && typeof errorReason === 'string') {
+            const lower = errorReason.toLowerCase();
+            const hasSensitiveData = lower.includes('key') ||
+              lower.includes('token') ||
+              lower.includes('secret') ||
+              lower.includes('bearer') ||
+              lower.includes('http://') ||
+              lower.includes('https://') ||
+              lower.includes('at ') ||
+              lower.includes('node:') ||
+              lower.includes('econnrefused') ||
+              lower.includes('stack');
+
+            if (!hasSensitiveData && errorReason.trim().length > 0) {
+              safeReason = errorReason.trim().substring(0, 150);
+            }
+          }
+
+          const resolvedResourceId = resourceId || (mvpIdeaId ? `bp_${workspaceId}_${mvpIdeaId}` : `bp_${workspaceId}`);
+          const dedupeKey = `bp_fail_${workspaceId}_${mvpIdeaId || 'mvp'}_${attemptId || Date.now()}`;
+
+          const notif = await notificationService.createNotification(targetInitiator, {
             type: NOTIFICATION_TYPES.BLUEPRINT_FAILED,
             workspaceId,
             orgId: workspaceId,
             title: 'Blueprint Generation Notice',
-            body: `Generation for "${ideaTitle || 'Workspace MVP'}" could not be completed: ${errorReason || 'Please try again.'}`,
+            body: `Generation for "${ideaTitle || 'Workspace MVP'}" could not be completed: ${safeReason}`,
             actorId: 'system',
             actorName: 'Convia AI Engine',
+            entityType: 'blueprint',
             resourceType: 'blueprint',
-            resourceId: `bp_${workspaceId}`,
+            entityId: resolvedResourceId,
+            resourceId: resolvedResourceId,
             actionUrl: `/workspaces/${workspaceId}/blueprint`,
-            metadata: { workspaceId, errorReason },
+            dedupeKey,
+            allowSelfNotification: true,
+            metadata: {
+              workspaceId,
+              ideaId: mvpIdeaId || null,
+              errorReason: safeReason,
+              attemptId: attemptId || null,
+              initiatorUid: targetInitiator,
+            },
           });
           return notif ? [notif] : [];
         }
 
         case NOTIFICATION_TYPES.BLUEPRINT_VERSION_APPROVED: {
-          const { workspaceId, version, ideaTitle } = eventData;
-          const recipients = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          const { workspaceId, version, ideaTitle, creatorUid, mvpIdeaId, resourceId, secondaryEntityId, dedupeKey: customDedupe } = eventData;
+          const resolvedResourceId = resourceId || (mvpIdeaId ? `bp_${workspaceId}_${mvpIdeaId}` : `bp_${workspaceId}`);
+          const resolvedSecondaryId = secondaryEntityId || (version ? String(version) : '1.0');
 
-          return await notificationService.createNotificationsForRecipients(recipients, {
+          // Convia Phase 7B-2 Step 6: Target blueprint creator + eligible workspace members, excluding the approver (actorUid)
+          const memberRecipients = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          const allEligible = Array.from(new Set([
+            ...(creatorUid ? [creatorUid] : []),
+            ...memberRecipients,
+          ])).filter((id) => id && id !== actorUid); // Strictly exclude approver via self-notification defense
+
+          if (allEligible.length === 0) return [];
+
+          const baseDedupeKey = customDedupe || `bp_appr_${workspaceId}_${mvpIdeaId || 'mvp'}_${version || '1.0'}`;
+
+          return await notificationService.createNotificationsForRecipients(allEligible, {
             type: NOTIFICATION_TYPES.BLUEPRINT_VERSION_APPROVED,
             workspaceId,
             orgId: workspaceId,
@@ -230,10 +293,21 @@ export const notificationService = {
             actorId: actorUid,
             actorName,
             actorAvatar,
+            entityType: 'blueprint',
             resourceType: 'blueprint',
-            resourceId: `bp_${workspaceId}`,
+            entityId: resolvedResourceId,
+            resourceId: resolvedResourceId,
+            secondaryEntityId: resolvedSecondaryId,
             actionUrl: `/workspaces/${workspaceId}/blueprint`,
-            metadata: { version, workspaceId },
+            dedupeKey: baseDedupeKey,
+            metadata: {
+              version: resolvedSecondaryId,
+              secondaryEntityId: resolvedSecondaryId,
+              workspaceId,
+              ideaId: mvpIdeaId || null,
+              approverUid: actorUid,
+              creatorUid: creatorUid || null,
+            },
           });
         }
 

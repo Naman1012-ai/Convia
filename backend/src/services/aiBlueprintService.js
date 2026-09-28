@@ -28,15 +28,14 @@ export const aiBlueprintService = {
     try {
       const targetIdeaId = mvpIdea.ideaId || mvpIdea.id;
       // 1. Parallel fetch of workspace members and discussions (with canonical path hierarchy)
-      const [membersObjRaw, workspaceMembersRaw, discussionsObjRaw] = await Promise.all([
+      const [membersObjRaw, discussionsObjRaw] = await Promise.all([
         rtdbService.getData(`organization_members/${workspaceId}`),
-        rtdbService.getData(`workspace_members/${workspaceId}`),
         rtdbService.getData(`discussions/${workspaceId}/${targetIdeaId}`).catch(() => null)
           .then((d) => d || rtdbService.getData(`discussions/public/${targetIdeaId}`).catch(() => null))
           .then((d) => d || rtdbService.getData(`discussions/${targetIdeaId}`).catch(() => null)),
       ]);
 
-      const membersObj = membersObjRaw || workspaceMembersRaw || {};
+      const membersObj = membersObjRaw || {};
       const memberUids = Object.keys(membersObj);
 
       // 2. Parallel fetch of all team member profiles (Fixes N+1 sequential loop)

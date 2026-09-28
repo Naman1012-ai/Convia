@@ -1,4 +1,4 @@
-import { rtdbService } from './rtdbService';
+import { apiClient } from './apiClient';
 import { ideaService } from './ideaService';
 import { blueprintService } from './blueprintService';
 import { activityService } from './activityService';
@@ -139,117 +139,14 @@ export const workspaceDashboardService = {
     if (!orgId) return null;
 
     try {
-      // Fetch core subsystems in parallel
-      const [org, ideas, bp, rawActivity, membersObj] = await Promise.all([
-        (await rtdbService.getData(`organizations/${orgId}`)) || (await rtdbService.getData(`workspaces/${orgId}`)),
-        ideaService.getIdeas(orgId).catch(() => []),
-        blueprintService.getBlueprint(orgId).catch(() => null),
-        activityService.getWorkspaceActivity(orgId, { limit: 10 }).catch(() => []),
-        (await rtdbService.getData(`organization_members/${orgId}`)) || (await rtdbService.getData(`workspace_members/${orgId}`)) || {},
-      ]);
+      const data = await apiClient.get(`/api/workspace/${encodeURIComponent(orgId)}/dashboard`);
+      if (!data) return null;
 
-      const activeIdeas = (ideas || []).filter((i) => i && !i.isDeleted);
-      const membersList = Object.values(membersObj || {}).filter((m) => m && (m.uid || m.id));
-
-      // Resolve Selected MVP
-      const explicitMvpId = org?.activeProjectId || org?.selectedIdeaId || org?.activeMvpId;
-      const selectedMvp = activeIdeas.find((i) => i.isSelected === true || (explicitMvpId && (i.ideaId === explicitMvpId || i.id === explicitMvpId))) || null;
-
-      // Extract and normalize discussions across workspace ideas using compliant paths discussions/{orgId}/{ideaId}
-      const flattenedDiscussions = [];
-      if (activeIdeas.length > 0) {
-        const ideaDiscussionsResults = await Promise.all(
-          activeIdeas.slice(0, 20).map(async (idea) => {
-            const id = idea.ideaId || idea.id;
-            try {
-              const res = await rtdbService.getData(`discussions/${orgId}/${id}`);
-              return { idea, discussions: res || {} };
-            } catch {
-              return { idea, discussions: {} };
-            }
-          })
-        );
-
-        ideaDiscussionsResults.forEach(({ idea, discussions }) => {
-          if (discussions && typeof discussions === 'object') {
-            const id = idea.ideaId || idea.id;
-            Object.values(discussions).forEach((disc) => {
-              if (disc && typeof disc === 'object' && !disc.isDeleted && !disc.parentId) {
-                flattenedDiscussions.push({
-                  ...disc,
-                  ideaId: id,
-                  ideaTitle: idea.title || 'Project Proposal',
-                });
-              }
-            });
-          }
-        });
-      }
-
-      // Sort discussions newest first
-      flattenedDiscussions.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
-
-      const questionsList = flattenedDiscussions.filter((d) => d.type === 'question');
-      const suggestionsList = flattenedDiscussions.filter((d) => d.type === 'suggestion');
-
-      const totalVotes = activeIdeas.reduce((sum, i) => sum + (Number(i.voteCount) || 0), 0);
-      const openQuestions = questionsList.length;
-      const totalSuggestions = suggestionsList.length;
-      const acceptedSuggestions = suggestionsList.filter((s) => s.isAccepted === true).length;
-
-      // Normalize Blueprint Status
-      let normalizedBlueprint = null;
-      if (bp) {
-        normalizedBlueprint = {
-          blueprintId: bp.blueprintId || `bp_${orgId}`,
-          status: bp.status || 'completed',
-          version: String(bp.version || bp.versionId || '1.0'),
-          schemaVersion: bp.schemaVersion || 2,
-          lifecycleState: bp.lifecycleState || (bp.status === 'completed' ? 'active' : 'draft'),
-          approvalStatus: bp.approvalStatus || (bp.status === 'completed' ? 'approved' : 'pending_approval'),
-          generationStage: bp.generationStage || null,
-          lastError: bp.lastError || null,
-          ideaId: bp.mvpIdeaId || bp.ideaId || selectedMvp?.ideaId || null,
-          ideaTitle: bp.ideaTitle || selectedMvp?.title || 'Winning MVP',
-          taskCount: bp.content?.execution?.tasks?.length || 0,
-          wavesCount: bp.content?.execution?.executionWaves?.length || 0,
-          criticalPathLength: bp.content?.execution?.criticalPathTaskIds?.length || 0,
-          updatedAt: bp.updatedAt || bp.generatedAt || Date.now(),
-        };
-      }
-
-      // Sort ideas: selected MVP first, then by votes descending, then newest
-      const sortedIdeas = [...activeIdeas].sort((a, b) => {
-        if (a.isSelected && !b.isSelected) return -1;
-        if (!a.isSelected && b.isSelected) return 1;
-        const voteDiff = (Number(b.voteCount) || 0) - (Number(a.voteCount) || 0);
-        if (voteDiff !== 0) return voteDiff;
-        return (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0);
-      });
-
-      const isLeader = Boolean(user && org && (org.ownerId === user.uid || org.createdBy === user.uid || org.ownerUid === user.uid));
-
-      const dataPayload = {
-        orgId,
-        org: org || { id: orgId, name: 'Workspace', status: 'ideation' },
-        totalIdeas: activeIdeas.length,
-        selectedMvp,
-        totalVotes,
-        totalMembers: membersList.length || 1,
-        openQuestions,
-        totalSuggestions,
-        acceptedSuggestions,
-        blueprint: normalizedBlueprint,
-        recentIdeas: sortedIdeas.slice(0, 4),
-        recentQuestions: questionsList.slice(0, 4),
-        recentSuggestions: suggestionsList.slice(0, 4),
-        recentActivity: Array.isArray(rawActivity) ? rawActivity.slice(0, 6) : [],
-        timestamp: Date.now(),
+      // Ensure normalized orgId alias for full frontend backward compatibility
+      return {
+        ...data,
+        orgId: data.orgId || data.workspaceId || orgId,
       };
-
-      dataPayload.attentionItems = workspaceDashboardService.deriveAttentionItems(dataPayload, isLeader, orgId);
-
-      return dataPayload;
     } catch (err) {
       console.error(`[workspaceDashboardService] Failed to load dashboard for workspace '${orgId}':`, err);
       throw err;

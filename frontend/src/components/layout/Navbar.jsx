@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Flag,
   ShieldCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { ReportIssueModal } from '../../features/reports/ReportIssueModal';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -157,6 +158,18 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
             >
               <Globe className="h-4 w-4 text-indigo-500" />
               <span>Explore Ideas</span>
+            </Link>
+
+            <Link
+              to="/community"
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                isCurrentPath('/community')
+                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              <MessageSquare className="h-4 w-4 text-emerald-600" />
+              <span>Community</span>
             </Link>
 
             <Link
@@ -343,6 +356,19 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                 >
                   <Globe className="h-5 w-5 text-purple-400" />
                   <span>Explore Ideas</span>
+                </Link>
+
+                <Link
+                  to="/community"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                    isCurrentPath('/community')
+                      ? 'bg-emerald-600 text-white font-extrabold shadow-md'
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <MessageSquare className="h-5 w-5 text-emerald-400" />
+                  <span>Community Hub</span>
                 </Link>
 
                 <Link

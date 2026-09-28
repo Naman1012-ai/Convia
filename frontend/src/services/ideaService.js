@@ -160,7 +160,7 @@ export const ideaService = {
       // 2. Cascade cleanup votes & discussions
       await Promise.all([
         rtdbService.removeData(`votes/${ideaId}`).catch(() => {}),
-        rtdbService.removeData(`discussions/${ideaId}`).catch(() => {}),
+        rtdbService.removeData(`discussions/${orgId}/${ideaId}`).catch(() => {}),
       ]);
 
       // 3. If idea is the selected MVP, clear workspace MVP references, blueprint, and tasks

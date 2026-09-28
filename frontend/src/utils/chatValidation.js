@@ -335,12 +335,31 @@ export function normalizeChatMessage(raw, messageKey = null) {
     }
   }
 
+  // Canonical author UID resolution across all historical and contemporary schemas
+  const resolvedAuthorUid = isSystem
+    ? 'system'
+    : (raw.authorUid || raw.senderId || raw.authorId || raw.userId || raw.uid || raw.createdBy || 'unknown');
+
+  const resolvedContent = isDeleted
+    ? 'This message was deleted'
+    : (raw.content ?? raw.text ?? raw.message ?? raw.body ?? '');
+
+  const resolvedSenderName = isSystem
+    ? 'System'
+    : (raw.senderName || raw.authorName || raw.displayName || raw.name || 'Member');
+
+  const resolvedSenderAvatar = isSystem
+    ? ''
+    : (raw.senderAvatar || raw.authorAvatar || raw.avatar || raw.photoURL || '');
+
   return {
     messageId: resolvedId,
-    senderId: isSystem ? 'system' : (raw.senderId || 'unknown'),
-    senderName: isSystem ? 'System' : (raw.senderName || raw.authorName || 'Member'),
-    senderAvatar: isSystem ? '' : (raw.senderAvatar || raw.avatar || ''),
-    content: isDeleted ? 'This message was deleted' : (raw.content || ''),
+    senderId: resolvedAuthorUid,
+    authorUid: resolvedAuthorUid,
+    authorId: resolvedAuthorUid,
+    senderName: resolvedSenderName,
+    senderAvatar: resolvedSenderAvatar,
+    content: resolvedContent,
     createdAt,
     editedAt: typeof raw.editedAt === 'number' ? raw.editedAt : null,
     editedBy: raw.editedBy || null,
@@ -350,6 +369,7 @@ export function normalizeChatMessage(raw, messageKey = null) {
     isSystem,
     systemType: isSystem ? (raw.systemType || SYSTEM_MESSAGE_TYPES.SYSTEM) : null,
     attachment: isDeleted ? null : normalizedAttachment,
+    postType: raw.postType || raw.type || null,
   };
 }
 

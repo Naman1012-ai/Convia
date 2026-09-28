@@ -17,6 +17,7 @@ export const DB_PATHS = {
   CHAT_MESSAGES: 'chat_messages', // Retained legacy constant for backward compatibility
   WORKSPACE_CHATS: 'workspaceChats', // Canonical root path for workspace chat system
   GLOBAL_STATS: 'globalStats',
+  USER_SAVED_DISCUSSIONS: 'user_saved_discussions',
 };
 
 /**
@@ -312,5 +313,95 @@ export const getPublicIdeasChatTypingPath = (uid) => {
   return `${getPublicIdeasChatTypingRootPath()}/${uid.trim()}`;
 };
 
+/**
+ * Builds the canonical RTDB root path for Public Ideas Community Chat message replies:
+ * publicChats/ideas/messageReplies
+ */
+export const getPublicIdeasChatRepliesRootPath = () => `${getPublicIdeasChatRootPath()}/messageReplies`;
 
+/**
+ * Builds the canonical RTDB path for a public parent message's replies:
+ * publicChats/ideas/messageReplies/{messageId}
+ */
+export const getPublicIdeasChatMessageRepliesPath = (messageId) => {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[databasePaths] messageId is required for public ideas chat message replies path.');
+  }
+  return `${getPublicIdeasChatRepliesRootPath()}/${messageId.trim()}`;
+};
 
+/**
+ * Builds the canonical RTDB path for a specific reply to a public message:
+ * publicChats/ideas/messageReplies/{messageId}/{replyId}
+ */
+export const getPublicIdeasChatMessageReplyPath = (messageId, replyId) => {
+  if (!replyId || typeof replyId !== 'string' || !replyId.trim()) {
+    throw new Error('[databasePaths] replyId is required for public ideas chat message reply path.');
+  }
+  return `${getPublicIdeasChatMessageRepliesPath(messageId)}/${replyId.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB root path for Public Ideas Community Chat message reactions:
+ * publicChats/ideas/messageReactions
+ */
+export const getPublicIdeasChatReactionsRootPath = () => `${getPublicIdeasChatRootPath()}/messageReactions`;
+
+/**
+ * Builds the canonical RTDB path for a public message's reactions:
+ * publicChats/ideas/messageReactions/{messageId}
+ */
+export const getPublicIdeasChatMessageReactionsPath = (messageId) => {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[databasePaths] messageId is required for public ideas chat message reactions path.');
+  }
+  return `${getPublicIdeasChatReactionsRootPath()}/${messageId.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB path for a specific user's reaction to a public message:
+ * publicChats/ideas/messageReactions/{messageId}/{emoji}/{uid}
+ */
+export const getPublicIdeasChatMessageReactionPath = (messageId, emoji, uid) => {
+  if (!emoji || typeof emoji !== 'string' || !emoji.trim()) {
+    throw new Error('[databasePaths] emoji is required for public ideas chat reaction path.');
+  }
+  if (!uid || typeof uid !== 'string' || !uid.trim()) {
+    throw new Error('[databasePaths] uid is required for public ideas chat reaction path.');
+  }
+  return `${getPublicIdeasChatMessageReactionsPath(messageId)}/${emoji.trim()}/${uid.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB root path for a user's saved discussions:
+ * user_saved_discussions/{uid}
+ */
+export const getUserSavedDiscussionsPath = (uid) => {
+  if (!uid || typeof uid !== 'string' || !uid.trim()) {
+    throw new Error('[databasePaths] uid is required for saved discussions path.');
+  }
+  return `user_saved_discussions/${uid.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB path for a specific saved discussion entry:
+ * user_saved_discussions/{uid}/{messageId}
+ */
+export const getUserSavedDiscussionPath = (uid, messageId) => {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[databasePaths] messageId is required for saved discussion item path.');
+  }
+  return `${getUserSavedDiscussionsPath(uid)}/${messageId.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB path for the pinned community discussion ID:
+ * publicChats/ideas/pinnedMessageId
+ */
+export const getPublicIdeasChatPinnedPath = () => `${getPublicIdeasChatRootPath()}/pinnedMessageId`;
+
+/**
+ * Builds the canonical RTDB path for the pinned community discussion object:
+ * publicChats/ideas/pinned
+ */
+export const getPublicIdeasChatPinnedDiscussionPath = () => `${getPublicIdeasChatRootPath()}/pinned`;

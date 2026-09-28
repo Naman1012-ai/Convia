@@ -271,19 +271,56 @@ describe('🔒 CONVIA P1-03 — SEARCH CORRECTNESS & ARCHITECTURE HARDENING (28 
       assert.strictEqual(res.results.length, 0);
     });
 
-    it('TEST 6: Gracefully falls back to legacy workspace_chats path if workspaceChats is absent', async () => {
-      // Move chat data to legacy path
-      mockDb.workspace_chats = mockDb.workspaceChats;
-      delete mockDb.workspaceChats;
+    it('TEST 6: Returns empty chat results when canonical workspaceChats contains no matching messages and never queries deprecated workspace_chats', async () => {
+      // Spy on paths requested through rtdbService.getData
+      const requestedPaths = [];
+      const originalGetData = rtdbService.getData;
+      rtdbService.getData = async (path) => {
+        requestedPaths.push(path);
+        return originalGetData(path);
+      };
 
-      const res = await searchController.searchWorkspaceHandler('org_alpha', 'user_alice', {
-        query: 'Python parsing pipeline',
-        filter: SEARCH_RESOURCE_TYPES.CHAT,
-      });
+      try {
+        // Remove canonical chat data
+        delete mockDb.workspaceChats;
+        // Even if legacy data existed in mockDb, it must never be read
+        mockDb.workspace_chats = {
+          org_alpha: {
+            channels: {
+              engineering: {
+                messages: {
+                  msg_legacy: {
+                    messageId: 'msg_legacy',
+                    content: 'Legacy message that must never be returned',
+                    senderName: 'Legacy User',
+                    deleted: false,
+                    isSystem: false,
+                  },
+                },
+              },
+            },
+          },
+        };
 
-      assert.strictEqual(res.success, true);
-      assert.strictEqual(res.results.length, 1);
-      assert.strictEqual(res.results[0].resourceId, 'msg_eng_1');
+        const res = await searchController.searchWorkspaceHandler('org_alpha', 'user_alice', {
+          query: 'Legacy message',
+          filter: SEARCH_RESOURCE_TYPES.CHAT,
+        });
+
+        assert.strictEqual(res.success, true);
+        assert.strictEqual(Array.isArray(res.results), true);
+        assert.strictEqual(res.results.length, 0);
+
+        // Explicitly assert that workspace_chats was NEVER requested
+        const queriedLegacy = requestedPaths.some((p) => p.includes('workspace_chats'));
+        assert.strictEqual(
+          queriedLegacy,
+          false,
+          'searchController must NEVER query deprecated workspace_chats path'
+        );
+      } finally {
+        rtdbService.getData = originalGetData;
+      }
     });
   });
 

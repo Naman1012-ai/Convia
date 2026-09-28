@@ -80,8 +80,8 @@ describe('CONVIA — P2-01 AUDIT / ACTIVITY INTEGRITY & SERVER AUTHORITY HARDENI
       assert.ok(readRule, 'workspace_activity must have explicit .read rule');
       assert.ok(readRule.includes('auth != null'), 'Must require authenticated user');
       assert.ok(
-        readRule.includes('organization_members') || readRule.includes('workspace_members'),
-        'Must check membership table'
+        readRule.includes('organization_members') && !readRule.includes('workspace_members'),
+        'Must check canonical organization_members table and not legacy workspace_members'
       );
       assert.ok(readRule.includes('ownerId'), 'Must check ownerId');
     });

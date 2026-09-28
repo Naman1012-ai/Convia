@@ -1,4 +1,4 @@
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert';
 import fs from 'fs';
 import path from 'path';
@@ -27,7 +27,7 @@ function evaluateMembershipRule({
   const segments = targetPath.split('/').filter(Boolean);
   const [collection, orgId, uid] = segments;
 
-  if (collection !== 'organization_members' && collection !== 'workspace_members') {
+  if (collection !== 'organization_members') {
     return { allowed: false, reason: 'UNSUPPORTED_PATH' };
   }
 
@@ -112,12 +112,6 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
       },
       org_beta: {
         user_bob: { uid: 'user_bob', role: 'owner', joinedAt: 1000 },
-      },
-    },
-    workspace_members: {
-      org_alpha: {
-        user_alice: { uid: 'user_alice', role: 'owner' },
-        user_charlie: { uid: 'user_charlie', role: 'member' },
       },
     },
     invite_codes: {
@@ -354,9 +348,9 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
   });
 
   // =========================================================================
-  // 13. SIBLING PATH (workspace_members) DIRECT SELF-JOIN IS DENIED
+  // 13. RETIRED PATH (workspace_members) WRITES AND EVALUATION ARE DENIED
   // =========================================================================
-  it('TEST 13: Sibling path (workspace_members) direct self-join is blocked', () => {
+  it('TEST 13: Retired path (workspace_members) is completely unsupported and denied', () => {
     const res = evaluateMembershipRule({
       path: 'workspace_members/org_alpha/user_eve',
       auth: userEve,
@@ -364,8 +358,8 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
       newData: { uid: 'user_eve', role: 'member' },
       rootData: mockRootData,
     });
-    assert.strictEqual(res.allowed, false, 'Direct self-join into workspace_members sibling path must be blocked');
-    assert.strictEqual(res.reason, 'UNAUTHORIZED_SELF_JOIN_DENIED');
+    assert.strictEqual(res.allowed, false, 'Writes into retired workspace_members path must be blocked');
+    assert.strictEqual(res.reason, 'UNSUPPORTED_PATH');
   });
 
   // =========================================================================
@@ -470,15 +464,17 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
       );
     });
 
-    it('verifies sibling path workspace_members has matching strict rules', () => {
-      const wsMembersRule = rawRules.rules.workspace_members;
-      assert.ok(wsMembersRule, 'workspace_members node must exist in database.rules.json');
-      const uidRule = wsMembersRule.$workspaceId.$uid;
-      const writeStr = uidRule['.write'];
-
-      assert.ok(
-        writeStr.includes("root.child('organizations').child($workspaceId).child('ownerId').val() === auth.uid"),
-        'Owner check must be required for workspace_members creation'
+    it('verifies legacy workspace_members root is completely retired from database.rules.json', () => {
+      assert.strictEqual(
+        rawRules.rules.workspace_members,
+        undefined,
+        'workspace_members root must NOT exist in database.rules.json'
+      );
+      const rawRulesText = JSON.stringify(rawRules);
+      assert.strictEqual(
+        rawRulesText.includes('workspace_members'),
+        false,
+        'database.rules.json must contain zero references to workspace_members'
       );
     });
   });
@@ -563,5 +559,9 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
         rtdbService.updateData = originalUpdateData;
       }
     });
+  });
+
+  after(() => {
+    setTimeout(() => process.exit(0), 100);
   });
 });

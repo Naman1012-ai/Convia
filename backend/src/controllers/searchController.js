@@ -245,11 +245,8 @@ export const searchController = {
     // --- D. CHAT MESSAGES ---
     if (filter === SEARCH_RESOURCE_TYPES.ALL || filter === SEARCH_RESOURCE_TYPES.CHAT) {
       try {
-        // Query canonical workspaceChats channels first, then fallback to legacy workspace_chats
-        let rawChannels = await rtdbService.getData(`workspaceChats/${workspaceId}/channels`);
-        if (!rawChannels || typeof rawChannels !== 'object') {
-          rawChannels = await rtdbService.getData(`workspace_chats/${workspaceId}/channels`);
-        }
+        // Query canonical workspaceChats channels
+        const rawChannels = await rtdbService.getData(`workspaceChats/${workspaceId}/channels`);
 
         if (rawChannels && typeof rawChannels === 'object') {
           // Traverse all channels in workspace

@@ -136,7 +136,6 @@ function evaluateRtdbRule({ path: rPath, operation, auth, rootDb, data, newData 
     auth.uid &&
     (
       (rootDb.organization_members?.[orgId]?.[auth.uid]) ||
-      (rootDb.workspace_members?.[orgId]?.[auth.uid]) ||
       (rootDb.organizations?.[orgId]?.ownerId === auth.uid) ||
       (rootDb.workspaces?.[orgId]?.ownerId === auth.uid)
     )

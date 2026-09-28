@@ -151,9 +151,7 @@ export const workspaceDashboardController = {
     const [rawIdeas, rawBlueprint, rawMembers, rawActivity] = await Promise.all([
       rtdbService.getData(`ideas/${workspaceId}`).catch(() => ({})),
       rtdbService.getData(`blueprints/${workspaceId}`).catch(() => null),
-      rtdbService.getData(`organization_members/${workspaceId}`)
-        .then((res) => res || rtdbService.getData(`workspace_members/${workspaceId}`))
-        .catch(() => ({})),
+      rtdbService.getData(`organization_members/${workspaceId}`).catch(() => ({})),
       rtdbService.getData(`workspace_activity/${workspaceId}`).catch(() => ({})),
     ]);
 

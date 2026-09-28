@@ -58,3 +58,53 @@ export function resolveMemberDisplayName(member) {
   // 5. Final fallback
   return 'Unknown member';
 }
+
+/**
+ * Extracts the canonical author UID from any message or discussion record across all schemas.
+ * Priority order:
+ * 1. authorUid (Canonical discussion author field)
+ * 2. senderId (Canonical chat sender field)
+ * 3. authorId (Canonical idea author field)
+ * 4. userId (Common user reference)
+ * 5. uid (Direct UID property)
+ * 6. createdBy (Creation actor reference)
+ *
+ * @param {Object|null|undefined} message - Message, discussion, or reply object
+ * @returns {string|null} The canonical author UID or null
+ */
+export function getMessageAuthorUid(message) {
+  if (!message || typeof message !== 'object') return null;
+
+  const rawUid =
+    message.authorUid ||
+    message.senderId ||
+    message.authorId ||
+    message.userId ||
+    message.uid ||
+    message.createdBy ||
+    null;
+
+  if (rawUid && typeof rawUid === 'string' && rawUid.trim()) {
+    const trimmed = rawUid.trim();
+    if (trimmed !== 'system' && trimmed !== 'unknown') {
+      return trimmed;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Authoritative ownership comparison between a message/discussion and an authenticated user UID.
+ * Replaces all brittle display-name, email, or single-property checks.
+ *
+ * @param {Object|null|undefined} message - Message or discussion record
+ * @param {string|null|undefined} currentUserId - Authenticated user UID
+ * @returns {boolean} True if the message was authored by the user
+ */
+export function isMessageAuthoredByUser(message, currentUserId) {
+  if (!message || !currentUserId) return false;
+  const authorUid = getMessageAuthorUid(message);
+  if (!authorUid) return false;
+  return String(authorUid).trim() === String(currentUserId).trim();
+}

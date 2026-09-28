@@ -498,11 +498,11 @@ export const orgService = {
     updates[`blueprints/${orgId}`] = null;
     updates[`tasks/${orgId}`] = null;
     updates[`ideas/${orgId}`] = null;
+    updates[`discussions/${orgId}`] = null;
     updates[getWorkspaceChatRootPath(orgId)] = null;
 
-    // Delete comments, discussions, and user votes for each idea
+    // Delete user votes for each idea
     for (const ideaId of ideaIds) {
-      updates[`discussions/${ideaId}`] = null;
       for (const uid of memberUids) {
         updates[`votes/${ideaId}_${uid}`] = null;
       }

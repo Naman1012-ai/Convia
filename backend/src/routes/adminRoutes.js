@@ -306,20 +306,6 @@ adminRouter.post('/announcements/broadcast', async (req, res) => {
       createdAt: timestamp,
     });
 
-    // Backward-compatibility write for legacy notification consumers
-    const legacyPromises = userList.map((u) => {
-      return rtdbService.setData(`notifications/${u.uid}/${notifId}`, {
-        id: notifId,
-        title: String(title).trim(),
-        message: String(message).trim(),
-        type: 'broadcast',
-        isRead: false,
-        createdAt: timestamp,
-        sender: req.user.name || req.user.email || 'Admin',
-      }).catch((err) => console.warn(`[adminRoutes] Legacy broadcast error for ${u.uid}:`, err.message));
-    });
-
-    await Promise.all(legacyPromises);
     await logAdminAudit(req.user, 'BROADCAST_NOTIFICATION', notifId, `Broadcasted notification "${title}" to ${userList.length} users.`);
 
     return res.json({
@@ -507,15 +493,6 @@ adminRouter.post('/users/:userId/warning', async (req, res) => {
       actionUrl: '/dashboard',
       createdAt: timestamp,
     });
-
-    await rtdbService.setData(`notifications/${userId}/${notifId}`, {
-      id: notifId,
-      title: `Official Warning (${severity} Severity)`,
-      message: `Administrator notice: ${String(reason).trim()}`,
-      type: 'warning',
-      isRead: false,
-      createdAt: timestamp,
-    }).catch((e) => console.warn(`[adminRoutes] Legacy warning notification warning for ${userId}:`, e.message));
 
     await logAdminAudit(req.user, 'ISSUE_WARNING', userId, `Issued ${severity} warning: ${reason}`);
 
@@ -847,15 +824,6 @@ adminRouter.patch('/reports/:reportId/status', async (req, res) => {
         actionUrl: '/dashboard',
         createdAt: timestamp,
       });
-
-      await rtdbService.setData(`notifications/${targetUid}/${notifId}`, {
-        id: notifId,
-        title: 'Report Status Updated',
-        message: `Your issue report (${reportId}) status has been updated to "${newStatus}".`,
-        type: 'info',
-        isRead: false,
-        createdAt: timestamp,
-      }).catch((e) => console.warn(`[adminRoutes] Legacy report status notification warning for ${targetUid}:`, e.message));
     }
 
     await logAdminAudit(req.user, 'UPDATE_REPORT_STATUS', reportId, `Updated status to "${newStatus}"`);

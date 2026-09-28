@@ -38,6 +38,7 @@ const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const ExploreIdeasPage = lazy(() => import('./pages/explore/ExploreIdeasPage'));
+const CommunityPage = lazy(() => import('./pages/community/CommunityPage'));
 const WorkspacesPage = lazy(() => import('./pages/organization/WorkspacesPage'));
 const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'));
 const OrgDashboardPage = lazy(() => import('./pages/organization/OrgDashboardPage'));
@@ -111,26 +112,16 @@ export function App() {
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/explore" element={<ExploreIdeasPage />} />
+                  <Route path="/community" element={<CommunityPage />} />
                   <Route path="/workspaces" element={<WorkspacesPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                 </Route>
 
-                {/* Organization/Workspace-Scoped Routes */}
-                <Route path="/org/:orgId" element={<ErrorBoundary><OrgLayout /></ErrorBoundary>}>
-                  <Route index element={<OrgDashboardPage />} />
-                  <Route path="ideas" element={<IdeaBoardPage />} />
-                  <Route path="ideas/:ideaId">
-                    <Route index element={<IdeaDetailPage />} />
-                    <Route path="blueprint" element={<BlueprintPage />} />
-                    <Route path="tasks" element={<TaskBoardPage />} />
-                    <Route path="dashboard" element={<ProgressDashboardPage />} />
-                  </Route>
-                  <Route path="tasks" element={<TaskBoardPage />} />
-                  <Route path="members" element={<MembersPage />} />
-                  <Route path="chat" element={<WorkspaceChatPage />} />
-                  <Route path="activity" element={<WorkspaceActivityPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                </Route>
+                {/* Legacy Organization/Workspace Route Redirect */}
+                <Route
+                  path="/org/:orgId"
+                  element={<Navigate to="/workspaces/:orgId" replace />}
+                />
 
                 <Route path="/workspaces/:orgId" element={<ErrorBoundary><OrgLayout /></ErrorBoundary>}>
                   <Route index element={<OrgDashboardPage />} />

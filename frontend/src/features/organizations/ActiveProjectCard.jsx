@@ -27,7 +27,7 @@ export function ActiveProjectCard({ blueprint }) {
           </p>
         </div>
 
-        <Link to={`/org/${blueprint.orgId}/blueprint`}>
+        <Link to={`/workspaces/${blueprint.orgId}/blueprint`}>
           <Button variant="primary" size="sm" icon={<ArrowRight className="h-4 w-4" />}>
             Open Blueprint
           </Button>

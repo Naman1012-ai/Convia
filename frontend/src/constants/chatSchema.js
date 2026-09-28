@@ -126,9 +126,14 @@ export function createCanonicalMessage({
 }
 
 /**
- * Permitted / Supported reaction emojis for workspace chat.
+ * Permitted / Supported reaction emojis for workspace chat (canonical set of 8).
  */
 export const SUPPORTED_REACTIONS = ['👍', '❤️', '🔥', '🎉', '💡', '🚀', '👀', '🙌'];
+
+/**
+ * Permitted / Supported reaction emojis for community discussions.
+ */
+export const COMMUNITY_SUPPORTED_REACTIONS = ['👍', '💡', '❤️', '🔥', '🎯'];
 
 /**
  * Checks whether an emoji is in the supported reaction set.
@@ -136,8 +141,79 @@ export const SUPPORTED_REACTIONS = ['👍', '❤️', '🔥', '🎉', '💡', '�
  * @returns {boolean}
  */
 export function isValidReactionEmoji(emoji) {
-  return typeof emoji === 'string' && SUPPORTED_REACTIONS.includes(emoji);
+  return (
+    typeof emoji === 'string' &&
+    (SUPPORTED_REACTIONS.includes(emoji) || COMMUNITY_SUPPORTED_REACTIONS.includes(emoji))
+  );
 }
+
+/**
+ * Community Discussion Post Types.
+ * Allows categorizing public community posts into lightweight types:
+ * Discussion, Idea, Question, Collaboration.
+ */
+export const COMMUNITY_POST_TYPES = Object.freeze({
+  DISCUSSION: 'discussion',
+  IDEA: 'idea',
+  QUESTION: 'question',
+  COLLABORATION: 'collaboration',
+});
+
+export const COMMUNITY_POST_TYPE_CONFIG = Object.freeze({
+  [COMMUNITY_POST_TYPES.DISCUSSION]: {
+    id: 'discussion',
+    label: 'Discussion',
+    icon: '💬',
+    badgeVariant: 'neutral',
+    color: 'text-slate-700 bg-slate-100 border-slate-200',
+    description: 'Open conversation, thoughts, and architectural musings',
+  },
+  [COMMUNITY_POST_TYPES.IDEA]: {
+    id: 'idea',
+    label: 'Idea',
+    icon: '💡',
+    badgeVariant: 'warning',
+    color: 'text-amber-800 bg-amber-50 border-amber-200',
+    description: 'Propose a concept or new product direction',
+  },
+  [COMMUNITY_POST_TYPES.QUESTION]: {
+    id: 'question',
+    label: 'Question',
+    icon: '❓',
+    badgeVariant: 'info',
+    color: 'text-sky-800 bg-sky-50 border-sky-200',
+    description: 'Ask for technical guidance or community feedback',
+  },
+  [COMMUNITY_POST_TYPES.COLLABORATION]: {
+    id: 'collaboration',
+    label: 'Collaboration',
+    icon: '🤝',
+    badgeVariant: 'success',
+    color: 'text-emerald-800 bg-emerald-50 border-emerald-200',
+    description: 'Seek co-creators, engineers, or design partners',
+  },
+});
+
+/**
+ * Dynamic placeholder copy adapting cleanly to the active post type.
+ */
+export const COMPOSER_PLACEHOLDERS = Object.freeze({
+  [COMMUNITY_POST_TYPES.DISCUSSION]: 'Share thoughts, discuss ideas, or spark collaboration...',
+  [COMMUNITY_POST_TYPES.IDEA]: "What's an idea you'd like the community to explore?",
+  [COMMUNITY_POST_TYPES.QUESTION]: "What would you like the community's help with?",
+  [COMMUNITY_POST_TYPES.COLLABORATION]: 'What are you looking to build together?',
+});
+
+/**
+ * Dynamic post button labels adapting to the active post type.
+ */
+export const COMPOSER_BUTTON_LABELS = Object.freeze({
+  [COMMUNITY_POST_TYPES.DISCUSSION]: 'Post Discussion',
+  [COMMUNITY_POST_TYPES.IDEA]: 'Post Idea',
+  [COMMUNITY_POST_TYPES.QUESTION]: 'Post Question',
+  [COMMUNITY_POST_TYPES.COLLABORATION]: 'Post Collaboration',
+});
+
 
 /**
  * @typedef {Object} CanonicalChatReply

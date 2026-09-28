@@ -2,7 +2,11 @@
  * Pure Feed Enhancement & Grouping Helpers for Convia Chat System.
  * Handles chronological date dividers, message grouping, and accessible formatting.
  */
-import { resolveMemberDisplayName } from './memberIdentity.js';
+import {
+  resolveMemberDisplayName,
+  isMessageAuthoredByUser,
+  getMessageAuthorUid,
+} from './memberIdentity.js';
 
 /**
  * Formats a message timestamp into a clean, localized time string (e.g., "9:42 PM").
@@ -171,7 +175,7 @@ export function processMessageFeed(messages = [], currentUserId = null, referenc
       isGrouped,
       isFirstInGroup: !isGrouped,
       isLastInGroup,
-      isOwn: Boolean(currentUserId && msg.senderId === currentUserId),
+      isOwn: Boolean(currentUserId && isMessageAuthoredByUser(msg, currentUserId)),
       timeLabel: formatMessageTime(msg.createdAt),
       fullDateLabel: formatFullDateTime(msg.createdAt),
     });
@@ -196,7 +200,7 @@ export function formatReplyCountLabel(count) {
   return `${numericCount} Replies`;
 }
 
-export { resolveMemberDisplayName };
+export { resolveMemberDisplayName, isMessageAuthoredByUser, getMessageAuthorUid };
 
 /**
  * Resolves a reaction participant UID to rich member profile metadata.

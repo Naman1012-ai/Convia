@@ -68,9 +68,7 @@ function asyncAuthenticatedRoute(fn) {
   };
 }
 
-blueprintRouter.get('/active', asyncAuthenticatedRoute((workspaceId, userUid, payload) => blueprintController.getActiveBlueprintHandler(workspaceId, userUid, payload)));
 blueprintRouter.post('/active', asyncAuthenticatedRoute((workspaceId, userUid, payload) => blueprintController.getActiveBlueprintHandler(workspaceId, userUid, payload)));
-blueprintRouter.get('/versions', asyncAuthenticatedRoute((workspaceId, userUid) => blueprintController.getBlueprintVersionsHandler(workspaceId, userUid)));
 blueprintRouter.post('/versions', asyncAuthenticatedRoute((workspaceId, userUid) => blueprintController.getBlueprintVersionsHandler(workspaceId, userUid)));
 blueprintRouter.post('/generate', aiRateLimiter, asyncAuthenticatedRoute((workspaceId, userUid) => blueprintController.generateBlueprintHandler(workspaceId, userUid)));
 blueprintRouter.post('/recover', highCostRateLimiter, asyncAuthenticatedRoute((workspaceId, userUid) => blueprintController.recoverStaleGenerationHandler(workspaceId, userUid)));

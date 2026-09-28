@@ -118,7 +118,7 @@ describe('🧪 CONVIA PHASE 9 — UNIFIED WORKSPACE SEARCH, DISCOVERY & RESOURCE
           },
         },
       },
-      workspace_chats: {
+      workspaceChats: {
         org_alpha: {
           channels: {
             general: {

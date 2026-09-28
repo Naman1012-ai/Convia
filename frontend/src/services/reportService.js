@@ -118,16 +118,6 @@ export const reportService = {
         actionUrl: '/dashboard',
       }).catch((e) => console.warn('[reportService] Notification delivery warning:', e.message));
 
-      // Maintain legacy path for backward compatibility
-      await rtdbService.setData(`notifications/${user.uid}/${notifId}`, {
-        id: notifId,
-        title: 'Issue Report Submitted',
-        message: `Your issue report (${reportId}) has been received and queued for review.`,
-        type: 'info',
-        isRead: false,
-        createdAt: timestamp,
-      }).catch((e) => console.warn('[reportService] Legacy notification delivery warning:', e.message));
-
       return reportData;
     } catch (error) {
       console.error('[reportService] createReport error:', error);
