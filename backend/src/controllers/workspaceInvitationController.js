@@ -14,6 +14,43 @@ import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants.js';
 import { notificationService } from '../services/notificationService.js';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants.js';
 
+/**
+ * In-flight workspace mutex to serialize concurrent operations per workspace.
+ * Defends against race conditions during simultaneous invitation acceptances and creations (Section 11).
+ */
+class KeyedMutex {
+  constructor() {
+    this.queues = new Map();
+  }
+
+  async acquire(key) {
+    let release;
+    const ticket = new Promise((resolve) => {
+      release = resolve;
+    });
+    const prev = this.queues.get(key) || Promise.resolve();
+    this.queues.set(key, ticket);
+    await prev.catch(() => {});
+    return () => {
+      release();
+      if (this.queues.get(key) === ticket) {
+        this.queues.delete(key);
+      }
+    };
+  }
+
+  async run(key, fn) {
+    const release = await this.acquire(key);
+    try {
+      return await fn();
+    } finally {
+      release();
+    }
+  }
+}
+
+const workspaceMutex = new KeyedMutex();
+
 export const workspaceInvitationController = {
   /**
    * Generates a new email-bound invitation code for a workspace teammate.
@@ -26,6 +63,8 @@ export const workspaceInvitationController = {
       err.code = 'INVALID_PARAMETERS';
       throw err;
     }
+
+    return await workspaceMutex.run(workspaceId, async () => {
 
     // 1. Authorize: Only Owner and Admin
     const { org } = await requireWorkspaceRole(
@@ -56,9 +95,11 @@ export const workspaceInvitationController = {
     const maxMembersLimit = Number(org.maxMembers) || Number(org.teamSizeLimit) || 5;
 
     if (activeMemberCount >= maxMembersLimit) {
-      const err = new Error('This workspace has reached its member limit.');
-      err.statusCode = 400;
-      err.code = 'WORKSPACE_FULL';
+      const err = new Error('Workspace member limit reached.');
+      err.statusCode = 409;
+      err.code = 'WORKSPACE_MEMBER_LIMIT_REACHED';
+      err.currentCount = activeMemberCount;
+      err.memberLimit = maxMembersLimit;
       throw err;
     }
 
@@ -219,6 +260,7 @@ export const workspaceInvitationController = {
       invitation: invitationRecord,
       message: 'Invitation code generated successfully.',
     };
+    });
   },
 
   /**
@@ -561,8 +603,9 @@ export const workspaceInvitationController = {
     const workspaceId = codeRecord.workspaceId;
     const invitationId = codeRecord.invitationId;
 
-    // 2. Fetch Invitation
-    const invitation = await rtdbService.getData(`workspace_invitations/${workspaceId}/${invitationId}`);
+    return await workspaceMutex.run(workspaceId, async () => {
+      // 2. Fetch Invitation
+      const invitation = await rtdbService.getData(`workspace_invitations/${workspaceId}/${invitationId}`);
     if (!invitation) {
       const err = new Error('Invitation code not found.');
       err.statusCode = 404;
@@ -653,21 +696,35 @@ export const workspaceInvitationController = {
       };
     }
 
-    // 7. Authoritative Member Limit Enforcement (Section 12, 13 & 24)
+    // 7. Authoritative Member Limit Enforcement (Section 9, 10 & 11)
     const membersObj = (await rtdbService.getData(`organization_members/${workspaceId}`)) || {};
     const activeMemberCount = countUniqueActiveMembers(membersObj);
     const maxMembersLimit = Number(org.maxMembers) || Number(org.teamSizeLimit) || 5;
 
     if (activeMemberCount >= maxMembersLimit) {
-      const err = new Error('This workspace has reached its member limit.');
-      err.statusCode = 400;
-      err.code = 'WORKSPACE_FULL';
+      const err = new Error('This workspace has reached its member limit. Ask the workspace owner to increase the member limit before accepting this invitation.');
+      err.statusCode = 409;
+      err.code = 'WORKSPACE_MEMBER_LIMIT_REACHED';
+      err.currentCount = activeMemberCount;
+      err.memberLimit = maxMembersLimit;
       throw err;
     }
 
     // 8. Atomic Acceptance via Firebase Admin SDK
+    // Concurrency / Race Condition Defense (Section 11): re-verify canonical active members
+    const freshMembersObj = (await rtdbService.getData(`organization_members/${workspaceId}`)) || {};
+    const freshActiveCount = countUniqueActiveMembers(freshMembersObj);
+    if (freshActiveCount >= maxMembersLimit) {
+      const err = new Error('This workspace has reached its member limit. Ask the workspace owner to increase the member limit before accepting this invitation.');
+      err.statusCode = 409;
+      err.code = 'WORKSPACE_MEMBER_LIMIT_REACHED';
+      err.currentCount = freshActiveCount;
+      err.memberLimit = maxMembersLimit;
+      throw err;
+    }
+
     const timestamp = Date.now();
-    const newMemberCount = activeMemberCount + 1;
+    const newMemberCount = freshActiveCount + 1;
     // Default or invited role (Role escalation defense: cannot be owner)
     const assignedRole = invitation.role === 'admin' ? 'admin' : 'member';
 
@@ -727,6 +784,7 @@ export const workspaceInvitationController = {
       memberCount: newMemberCount,
       message: 'Joined workspace successfully.',
     };
+    });
   },
 
   /**

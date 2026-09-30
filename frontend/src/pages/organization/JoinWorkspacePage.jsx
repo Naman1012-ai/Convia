@@ -121,8 +121,10 @@ export default function JoinWorkspacePage() {
         setErrorMessage(
           'This invitation is assigned to a different Convia account. Please sign in with the invited Convia account.'
         );
-      } else if (err.code === 'WORKSPACE_FULL') {
-        setErrorMessage('This workspace has reached its member limit.');
+      } else if (err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' || err.code === 'WORKSPACE_FULL') {
+        setErrorMessage(
+          'This workspace has reached its member limit. Ask the workspace owner to increase the member limit before accepting this invitation.'
+        );
       } else if (err.code === 'ENDPOINT_NOT_FOUND' || err.code === 'BACKEND_UNAVAILABLE') {
         setErrorMessage('Unable to connect to the server. Please try again in a moment.');
       } else {

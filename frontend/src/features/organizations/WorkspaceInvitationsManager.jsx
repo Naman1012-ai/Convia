@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
+import { useNavigate } from 'react-router-dom';
+import { useOrg } from '../../hooks/useOrg';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,6 +10,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { invitationService } from '../../services/invitationService';
+import { cn } from '../../utils/cn';
 import { formatTimestamp } from '../../utils/formatting';
 import {
   formatInvitationExpiry,
@@ -25,6 +28,9 @@ import {
   UserPlus,
   Clock,
   AlertCircle,
+  AlertTriangle,
+  Lock,
+  Settings,
   Sparkles,
 } from 'lucide-react';
 
@@ -45,12 +51,13 @@ function formatUserFriendlyError(err, fallback = "We couldn't generate the invit
     return 'This user is already a member of this workspace.';
   }
   if (
+    code === 'WORKSPACE_MEMBER_LIMIT_REACHED' ||
     code === 'WORKSPACE_FULL' ||
     code === 'CAPACITY_REACHED' ||
     lowerMsg.includes('member limit') ||
     lowerMsg.includes('capacity')
   ) {
-    return 'This workspace has reached its member limit.';
+    return 'Member limit reached. Increase the workspace member limit to invite more members.';
   }
   if (
     code === 'EXISTING_INVITATION' ||
@@ -104,8 +111,36 @@ export function WorkspaceInvitationsManager({
   isOwner = false,
   isAdmin = false,
   onToast = () => {},
+  onOpenSettings,
+  currentMemberCount: propMemberCount,
+  memberLimit: propMemberLimit,
 }) {
   const canManage = isOwner || isAdmin;
+  const navigate = useNavigate();
+  const { org, members } = useOrg();
+
+  // Authoritative live membership count and configured limit (Section 2, 5 & 19)
+  const currentAcceptedMemberCount = typeof propMemberCount === 'number'
+    ? propMemberCount
+    : (members && members.length > 0)
+    ? members.length
+    : (org?.memberCount ?? 1);
+
+  const memberLimit = typeof propMemberLimit === 'number'
+    ? propMemberLimit
+    : Number(org?.maxMembers || org?.teamSizeLimit || 5);
+
+  const [backendLimitReached, setBackendLimitReached] = useState(false);
+
+  // When live members count drops below limit, or memberLimit is increased, clear backendLimitReached (Section 12 & 13)
+  useEffect(() => {
+    if (currentAcceptedMemberCount < memberLimit) {
+      setBackendLimitReached(false);
+    }
+  }, [currentAcceptedMemberCount, memberLimit]);
+
+  const isFull = Boolean(backendLimitReached || currentAcceptedMemberCount >= memberLimit);
+  const isOverLimit = currentAcceptedMemberCount > memberLimit;
 
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -126,6 +161,14 @@ export function WorkspaceInvitationsManager({
   // Revoke Dialog
   const [invitationToRevoke, setInvitationToRevoke] = useState(null);
   const [isRevoking, setIsRevoking] = useState(false);
+
+  const handleOpenSettings = () => {
+    if (typeof onOpenSettings === 'function') {
+      onOpenSettings();
+    } else if (workspaceId) {
+      navigate(`/workspaces/${workspaceId}/settings`);
+    }
+  };
 
   // Load Invitations
   const loadInvitations = useCallback(async () => {
@@ -173,6 +216,12 @@ export function WorkspaceInvitationsManager({
     e.preventDefault();
     setValidationError('');
 
+    // Pre-flight client-side capacity check (Section 6 & 21)
+    if (isFull) {
+      setValidationError('Member limit reached. Increase the workspace member limit to invite more members.');
+      return;
+    }
+
     const cleanEmail = emailInput.trim().toLowerCase();
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setValidationError('Please enter a valid email address.');
@@ -187,7 +236,7 @@ export function WorkspaceInvitationsManager({
         // Section 14: Existing invitation found
         setExistingInvite(res.invitation);
         setShowExistingModal(true);
-        onToast('Existing pending invitation found for this email.');
+        onToast(res.message || 'An active invitation already exists for this email.');
       } else {
         setCreatedInvite(res.invitation);
         setShowCreatedModal(true);
@@ -196,7 +245,10 @@ export function WorkspaceInvitationsManager({
         loadInvitations();
       }
     } catch (err) {
-      const friendlyMsg = formatUserFriendlyError(err, 'Failed to generate invitation code.');
+      if (err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' || err.code === 'WORKSPACE_FULL') {
+        setBackendLimitReached(true);
+      }
+      const friendlyMsg = formatUserFriendlyError(err, "We couldn't generate the invitation right now. Please try again.");
       setValidationError(friendlyMsg);
       onToast(friendlyMsg);
     } finally {
@@ -254,15 +306,73 @@ export function WorkspaceInvitationsManager({
     <div className="space-y-6">
       {/* 1. Generate Invitation Code Card */}
       <Card>
-        <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-          <UserPlus className="h-5 w-5 text-indigo-600" />
+        <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600 shadow-xs shrink-0">
+            <UserPlus className="h-5 w-5" />
+          </div>
           <div>
-            <h2 className="text-base font-bold text-slate-900">Invite a Teammate</h2>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">Invite a Teammate</h2>
             <p className="text-xs text-slate-500">
               Generate a unique, email-bound invitation code for a specific teammate.
             </p>
           </div>
         </div>
+
+        {/* Full Workspace Capacity Banner (Section 4, 18 & 24) */}
+        {isFull && (
+          <div
+            role="alert"
+            className={cn(
+              'relative overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-xs mb-5 transition-all',
+              isOverLimit
+                ? 'border-rose-200/90 bg-gradient-to-br from-rose-50/90 via-rose-50/40 to-white text-rose-900'
+                : 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 via-amber-50/40 to-white text-amber-900'
+            )}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div
+                  className={cn(
+                    'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs border mt-0.5',
+                    isOverLimit
+                      ? 'bg-rose-100/90 border-rose-200 text-rose-700'
+                      : 'bg-amber-100/90 border-amber-200 text-amber-700'
+                  )}
+                >
+                  <AlertTriangle className="h-4.5 w-4.5" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-bold tracking-tight text-slate-900">
+                    {isOverLimit ? 'Member limit exceeded' : 'Member limit reached'}
+                  </h3>
+                  <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    {isOverLimit
+                      ? 'This workspace exceeds its configured member limit. Existing members remain unchanged, but no new invitations can be generated.'
+                      : "You can't generate another invitation because the workspace has reached its member limit."}
+                  </p>
+                </div>
+              </div>
+
+              {(isOwner || isAdmin) && (
+                <div className="shrink-0 self-start sm:self-center pl-12 sm:pl-0">
+                  <button
+                    type="button"
+                    onClick={handleOpenSettings}
+                    className={cn(
+                      'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold shadow-xs transition-all duration-150 border focus:outline-none focus:ring-2 focus:ring-offset-1 active:scale-[0.98]',
+                      isOverLimit
+                        ? 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-200 focus:ring-rose-500'
+                        : 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white border-amber-600 shadow-amber-200 focus:ring-amber-500'
+                    )}
+                  >
+                    <Settings className="h-3.5 w-3.5" />
+                    <span>Increase Member Limit</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleGenerateCode} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -281,8 +391,12 @@ export function WorkspaceInvitationsManager({
                     if (validationError) setValidationError('');
                   }}
                   placeholder="teammate@example.com"
-                  className="pl-9 text-sm"
-                  disabled={isSubmitting}
+                  className={cn(
+                    'pl-9 text-sm',
+                    isFull && 'bg-slate-50 border-slate-200 text-slate-400 placeholder:text-slate-400'
+                  )}
+                  disabled={isFull || isSubmitting}
+                  aria-disabled={isFull || isSubmitting}
                 />
               </div>
               {validationError && (
@@ -302,7 +416,8 @@ export function WorkspaceInvitationsManager({
                   { value: 'member', label: 'Member' },
                   { value: 'admin', label: 'Admin' },
                 ]}
-                disabled={isSubmitting}
+                disabled={isFull || isSubmitting}
+                aria-disabled={isFull || isSubmitting}
                 className="text-sm"
               />
             </div>
@@ -310,12 +425,37 @@ export function WorkspaceInvitationsManager({
             <div className="sm:col-span-2 flex items-end">
               <Button
                 type="submit"
-                variant="primary"
-                className="w-full h-10 text-xs font-medium flex items-center justify-center gap-1.5"
-                disabled={isSubmitting}
+                variant={isFull ? 'secondary' : 'primary'}
+                className={cn(
+                  'w-full h-10 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all',
+                  isFull && 'bg-slate-100 hover:bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none active:scale-100'
+                )}
+                disabled={isFull || isSubmitting}
+                aria-disabled={isFull || isSubmitting}
+                title={
+                  isOverLimit
+                    ? 'Workspace member limit exceeded'
+                    : isFull
+                    ? 'Workspace member limit reached'
+                    : 'Generate invitation code'
+                }
               >
-                <Sparkles className="h-3.5 w-3.5" />
-                {isSubmitting ? 'Generating...' : 'Generate'}
+                {isSubmitting ? (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5 animate-spin" />
+                    Generating...
+                  </>
+                ) : isFull ? (
+                  <>
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    <span>{isOverLimit ? 'Limit Exceeded' : 'Limit Reached'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>Generate</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -477,12 +617,17 @@ export function WorkspaceInvitationsManager({
 
       {/* 5. Team Invitations List (Desktop Table + Mobile Cards per Section 50) */}
       <Card>
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Workspace Invitations</h3>
-            <p className="text-xs text-slate-500">
-              Track pending, accepted, expired, and revoked invitation codes.
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-600 shadow-xs shrink-0">
+              <Mail className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 tracking-tight">Workspace Invitations</h3>
+              <p className="text-xs text-slate-500">
+                Track pending, accepted, expired, and revoked invitation codes.
+              </p>
+            </div>
           </div>
           <Button
             type="button"
@@ -490,9 +635,9 @@ export function WorkspaceInvitationsManager({
             size="sm"
             onClick={loadInvitations}
             disabled={loading}
-            className="text-xs"
+            className="text-xs text-slate-600 hover:text-slate-900 self-start sm:self-center"
           >
-            <RotateCcw className={`h-3.5 w-3.5 mr-1 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            <RotateCcw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
         </div>
 
@@ -756,4 +901,7 @@ WorkspaceInvitationsManager.propTypes = {
   isOwner: PropTypes.bool,
   isAdmin: PropTypes.bool,
   onToast: PropTypes.func,
+  onOpenSettings: PropTypes.func,
+  currentMemberCount: PropTypes.number,
+  memberLimit: PropTypes.number,
 };

@@ -36,6 +36,7 @@ export default function MembersPage() {
           isOwner={isLeader}
           isAdmin={isOrgAdmin}
           onToast={(msg) => NotificationService.info(msg)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
         />
       )}
 

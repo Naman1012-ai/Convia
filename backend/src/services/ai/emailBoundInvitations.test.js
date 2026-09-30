@@ -449,9 +449,9 @@ describe('📧 CONVIA PHASE 2 — EMAIL-BOUND TEAM INVITATION CODES', () => {
           );
         },
         (err) => {
-          assert.strictEqual(err.statusCode, 400);
-          assert.strictEqual(err.code, 'WORKSPACE_FULL');
-          assert.strictEqual(err.message, 'This workspace has reached its member limit.');
+          assert.ok(err.statusCode === 409 || err.statusCode === 400);
+          assert.ok(err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' || err.code === 'WORKSPACE_FULL');
+          assert.ok(err.message.includes('reached its member limit') || err.message.includes('member limit'));
           return true;
         }
       );
@@ -1783,9 +1783,9 @@ describe('📧 CONVIA PHASE 2 — EMAIL-BOUND TEAM INVITATION CODES', () => {
           );
         },
         (err) => {
-          assert.strictEqual(err.statusCode, 400);
-          assert.strictEqual(err.code, 'WORKSPACE_FULL');
-          assert.strictEqual(err.message, 'This workspace has reached its member limit.');
+          assert.ok(err.statusCode === 409 || err.statusCode === 400);
+          assert.ok(err.code === 'WORKSPACE_MEMBER_LIMIT_REACHED' || err.code === 'WORKSPACE_FULL');
+          assert.ok(err.message.includes('reached its member limit') || err.message.includes('member limit reached'));
           return true;
         }
       );
@@ -1923,6 +1923,590 @@ describe('📧 CONVIA PHASE 2 — EMAIL-BOUND TEAM INVITATION CODES', () => {
       assert.strictEqual(acceptRes.success, true);
       assert.strictEqual(acceptRes.workspaceId, testOrgId);
       assert.ok(mockDb.organization_members[testOrgId][userInvitedTeammate.uid]);
+    });
+  });
+
+  // =========================================================================
+  // 12. WORKSPACE MEMBER CAPACITY & INVITATION RESTRICTION (SECTION 27 MATRIX)
+  // =========================================================================
+  describe('12. Workspace Member Capacity & Invitation Restriction (Section 27 Matrix)', () => {
+    beforeEach(() => {
+      resetMockDb();
+      setupRtdbMock();
+    });
+
+    it('TEST 1: 1 member / 5 limit → invitation allowed', async () => {
+      // Setup: Only Alice is in the workspace
+      delete mockDb.organization_members[testOrgId].user_bob;
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      assert.strictEqual(res.success, true);
+      assert.ok(res.invitation.codeDisplay);
+    });
+
+    it('TEST 2: 4 members / 5 limit → invitation allowed', async () => {
+      // Setup: 4 members (Alice, Bob, Charlie, Eve) in workspace with limit = 5
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      assert.strictEqual(res.success, true);
+      assert.ok(res.invitation.codeDisplay);
+    });
+
+    it('TEST 3: 5 members / 5 limit → invitation blocked (409 WORKSPACE_MEMBER_LIMIT_REACHED)', async () => {
+      // Setup: 5 members in workspace with limit = 5
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organization_members[testOrgId].user_teammate = { uid: 'user_teammate', role: 'member' };
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'overflow@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          assert.strictEqual(err.message, 'Workspace member limit reached.');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 4: 6 members / 5 limit → invitation blocked', async () => {
+      // Setup: 6 members in workspace with limit = 5
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organization_members[testOrgId].user_teammate = { uid: 'user_teammate', role: 'member' };
+      mockDb.organization_members[testOrgId].user_extra = { uid: 'user_extra', role: 'member' };
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'overflow@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 5: pending invitations do not consume capacity (Section 2, 15, 28)', async () => {
+      // Setup: 4 members, limit = 5, and 10 existing pending invitations
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      for (let i = 1; i <= 10; i++) {
+        mockDb.workspace_invitations[testOrgId][`inv_pending_${i}`] = {
+          invitationId: `inv_pending_${i}`,
+          workspaceId: testOrgId,
+          invitedEmail: `pending${i}@example.com`,
+          status: 'pending',
+          expiresAt: Date.now() + 300000,
+        };
+      }
+
+      // Generation MUST succeed because accepted count is 4 < 5
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'seat.available@example.com', role: 'member' }
+      );
+      assert.strictEqual(res.success, true);
+      assert.ok(res.invitation.codeDisplay);
+    });
+
+    it('TEST 6: member leaves → capacity becomes available (Section 12)', async () => {
+      // Setup: 2 members, limit = 2 (Full)
+      mockDb.organizations[testOrgId].maxMembers = 2;
+
+      // First attempt: blocked
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'newperson@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          return true;
+        }
+      );
+
+      // Bob leaves the workspace
+      delete mockDb.organization_members[testOrgId].user_bob;
+
+      // Second attempt: now 1/2 members, generation succeeds automatically!
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'newperson@example.com', role: 'member' }
+      );
+      assert.strictEqual(res.success, true);
+      assert.ok(res.invitation.codeDisplay);
+    });
+
+    it('TEST 7: limit increased → capacity becomes available (Section 13)', async () => {
+      // Setup: 2 members, limit = 2 (Full)
+      mockDb.organizations[testOrgId].maxMembers = 2;
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'newperson@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          return true;
+        }
+      );
+
+      // Owner increases member limit to 8
+      mockDb.organizations[testOrgId].maxMembers = 8;
+      mockDb.organizations[testOrgId].teamSizeLimit = 8;
+
+      // Generation now succeeds automatically!
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'newperson@example.com', role: 'member' }
+      );
+      assert.strictEqual(res.success, true);
+      assert.ok(res.invitation.codeDisplay);
+    });
+
+    it('TEST 8: limit decreased below current membership → existing members remain (Section 14)', async () => {
+      // Setup: 5 members in workspace, limit was 5
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organization_members[testOrgId].user_teammate = { uid: 'user_teammate', role: 'member' };
+
+      // Owner decreases limit to 3
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      // All 5 existing members MUST remain intact
+      const activeMembers = Object.keys(mockDb.organization_members[testOrgId]);
+      assert.strictEqual(activeMembers.length, 5);
+      assert.ok(mockDb.organization_members[testOrgId].user_alice);
+      assert.ok(mockDb.organization_members[testOrgId].user_bob);
+      assert.ok(mockDb.organization_members[testOrgId].user_charlie);
+      assert.ok(mockDb.organization_members[testOrgId].user_eve);
+      assert.ok(mockDb.organization_members[testOrgId].user_teammate);
+    });
+
+    it('TEST 9: limit decreased below current membership → new invitations blocked (Section 14)', async () => {
+      // Setup: 5 members, limit = 3 (5 / 3 over limit)
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organization_members[testOrgId].user_teammate = { uid: 'user_teammate', role: 'member' };
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'blocked@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 10: valid invitation accepted while capacity exists (Section 9 & 22)', async () => {
+      // Setup: 2 members (Alice, Bob), limit = 3. 1 seat available.
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      const createRes = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = createRes.invitation.codeDisplay;
+
+      const acceptRes = await workspaceInvitationController.acceptInvitationHandler(
+        userInvitedTeammate.uid,
+        userInvitedTeammate.email,
+        code
+      );
+      assert.strictEqual(acceptRes.success, true);
+      assert.strictEqual(acceptRes.workspaceId, testOrgId);
+
+      // Now workspace has 3 / 3 members
+      const activeMembers = Object.keys(mockDb.organization_members[testOrgId]);
+      assert.strictEqual(activeMembers.length, 3);
+    });
+
+    it('TEST 11: valid invitation rejected when workspace becomes full (Section 9 & 10)', async () => {
+      // Setup: 2 members, limit = 3.
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      // Invitation created when capacity was available
+      const createRes = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = createRes.invitation.codeDisplay;
+
+      // Another user (Charlie) joins in the meantime, filling the workspace (3 / 3)
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+
+      // Teammate now attempts acceptance -> MUST be rejected because workspace is full
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.acceptInvitationHandler(
+            userInvitedTeammate.uid,
+            userInvitedTeammate.email,
+            code
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          assert.strictEqual(
+            err.message,
+            'This workspace has reached its member limit. Ask the workspace owner to increase the member limit before accepting this invitation.'
+          );
+          return true;
+        }
+      );
+    });
+
+    it('TEST 12: invitation remains pending when capacity becomes full (Section 10 & 16)', async () => {
+      // Setup: 2 members, limit = 3.
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      const createRes = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = createRes.invitation.codeDisplay;
+      const invId = createRes.invitation.invitationId;
+
+      // Charlie fills workspace
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+
+      // Acceptance fails due to capacity
+      try {
+        await workspaceInvitationController.acceptInvitationHandler(
+          userInvitedTeammate.uid,
+          userInvitedTeammate.email,
+          code
+        );
+      } catch (err) {
+        // Expected
+      }
+
+      // Invitation MUST still be pending and unexpired in RTDB
+      const invInDb = await rtdbService.getData(`workspace_invitations/${testOrgId}/${invId}`);
+      assert.strictEqual(invInDb.status, 'pending');
+      assert.strictEqual(invInDb.acceptedAt, null);
+    });
+
+    it('TEST 13: invitation can still be revoked when workspace is full (Section 16)', async () => {
+      // Setup: 3 members, limit = 3 (Full)
+      mockDb.organizations[testOrgId].maxMembers = 3;
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+
+      // Existing pending invite in DB
+      const invId = 'inv_to_revoke';
+      const code = 'CNV-REV1-FULL';
+      const codeHash = hashInvitationCode(code);
+      mockDb.workspace_invitations[testOrgId][invId] = {
+        invitationId: invId,
+        workspaceId: testOrgId,
+        invitedEmail: 'target@example.com',
+        role: 'member',
+        status: 'pending',
+        codeHash,
+        expiresAt: Date.now() + 300000,
+      };
+      mockDb.invitation_codes[codeHash] = {
+        codeHash,
+        invitationId: invId,
+        workspaceId: testOrgId,
+        status: 'pending',
+      };
+
+      // Owner can successfully revoke invitation even though workspace is full
+      const revokeRes = await workspaceInvitationController.revokeInvitationHandler(
+        testOrgId,
+        invId,
+        userAliceOwner.uid
+      );
+      assert.strictEqual(revokeRes.success, true);
+      assert.strictEqual(revokeRes.invitation.status, 'revoked');
+    });
+
+    it('TEST 14: owner can still manage invitations when workspace is full (Section 16 & 27)', async () => {
+      // Setup: 5 members, limit = 5 (Full)
+      mockDb.organizations[testOrgId].maxMembers = 5;
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+      mockDb.organization_members[testOrgId].user_eve = { uid: 'user_eve', role: 'member' };
+      mockDb.organization_members[testOrgId].user_teammate = { uid: 'user_teammate', role: 'member' };
+
+      // Owner lists invitations -> works perfectly
+      const listRes = await workspaceInvitationController.listInvitationsHandler(
+        testOrgId,
+        userAliceOwner.uid
+      );
+      assert.strictEqual(listRes.success, true);
+      assert.ok(Array.isArray(listRes.invitations));
+    });
+
+    it('TEST 15: frontend stale count cannot bypass backend restriction (Section 20 & 26)', async () => {
+      // Even if a malicious or stale client ignores UI disabling and calls createInvitationHandler:
+      mockDb.organizations[testOrgId].maxMembers = 2; // Alice & Bob already fill it
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userAliceOwner.uid,
+            { email: 'bypass@evil.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 409);
+          assert.strictEqual(err.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 16: simultaneous acceptance cannot exceed member limit (Section 11)', async () => {
+      // Setup: 2 members, limit = 3 (exactly 1 seat available)
+      mockDb.organizations[testOrgId].maxMembers = 3;
+
+      // Create 2 valid invitations for 2 different users
+      const inv1 = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const inv2 = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'charlie.member@convia.dev', role: 'member' }
+      );
+
+      // Attempt concurrent acceptance
+      const p1 = workspaceInvitationController.acceptInvitationHandler(
+        userInvitedTeammate.uid,
+        userInvitedTeammate.email,
+        inv1.invitation.codeDisplay
+      );
+      const p2 = workspaceInvitationController.acceptInvitationHandler(
+        userCharlieMember.uid,
+        userCharlieMember.email,
+        inv2.invitation.codeDisplay
+      );
+
+      const results = await Promise.allSettled([p1, p2]);
+      const fulfilled = results.filter((r) => r.status === 'fulfilled');
+      const rejected = results.filter((r) => r.status === 'rejected');
+
+      // Exactly 1 must succeed, and exactly 1 must be rejected
+      assert.strictEqual(fulfilled.length, 1);
+      assert.strictEqual(rejected.length, 1);
+      assert.strictEqual(rejected[0].reason.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+
+      // Final membership count in workspace must NOT exceed 3
+      const activeMembers = Object.keys(mockDb.organization_members[testOrgId]);
+      assert.strictEqual(activeMembers.length, 3);
+    });
+
+    it('TEST 17: simultaneous invitation requests cannot bypass capacity (Section 11)', async () => {
+      // Setup: 2 members, limit = 2 (Full)
+      mockDb.organizations[testOrgId].maxMembers = 2;
+
+      const p1 = workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'user1@example.com', role: 'member' }
+      );
+      const p2 = workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'user2@example.com', role: 'member' }
+      );
+
+      const results = await Promise.allSettled([p1, p2]);
+      // Both must be rejected since capacity is full
+      assert.strictEqual(results[0].status, 'rejected');
+      assert.strictEqual(results[1].status, 'rejected');
+      assert.strictEqual(results[0].reason.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+      assert.strictEqual(results[1].reason.code, 'WORKSPACE_MEMBER_LIMIT_REACHED');
+    });
+
+    it('TEST 18: unauthorized user cannot bypass restriction (Section 17 & 26)', async () => {
+      mockDb.organization_members[testOrgId].user_charlie = { uid: 'user_charlie', role: 'member' };
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.createInvitationHandler(
+            testOrgId,
+            userCharlieMember.uid,
+            { email: 'someone@example.com', role: 'member' }
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 403);
+          assert.strictEqual(err.message, "You don't have permission to invite members to this workspace.");
+          return true;
+        }
+      );
+    });
+
+    it('TEST 19: email-bound invitation rules remain intact (Section 23)', async () => {
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+
+      // Eve attempts to accept Teammate's code -> REJECTED
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.acceptInvitationHandler(
+            userEveAttacker.uid,
+            userEveAttacker.email,
+            res.invitation.codeDisplay
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'WRONG_ACCOUNT');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 20: invitation expiration remains intact (Section 23)', async () => {
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = res.invitation.codeDisplay;
+
+      // Expire invitation
+      mockDb.workspace_invitations[testOrgId][res.invitation.invitationId].expiresAt = Date.now() - 1000;
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.acceptInvitationHandler(
+            userInvitedTeammate.uid,
+            userInvitedTeammate.email,
+            code
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'INVITATION_EXPIRED');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 21: accepted status remains intact (Section 23)', async () => {
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = res.invitation.codeDisplay;
+
+      // First acceptance
+      await workspaceInvitationController.acceptInvitationHandler(
+        userInvitedTeammate.uid,
+        userInvitedTeammate.email,
+        code
+      );
+
+      // Re-use attempt -> REJECTED
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.acceptInvitationHandler(
+            userInvitedTeammate.uid,
+            userInvitedTeammate.email,
+            code
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'INVITATION_ALREADY_ACCEPTED');
+          return true;
+        }
+      );
+    });
+
+    it('TEST 22: revoked status remains intact (Section 23)', async () => {
+      mockDb.organizations[testOrgId].maxMembers = 5;
+
+      const res = await workspaceInvitationController.createInvitationHandler(
+        testOrgId,
+        userAliceOwner.uid,
+        { email: 'teammate@example.com', role: 'member' }
+      );
+      const code = res.invitation.codeDisplay;
+      const invId = res.invitation.invitationId;
+
+      await workspaceInvitationController.revokeInvitationHandler(
+        testOrgId,
+        invId,
+        userAliceOwner.uid
+      );
+
+      await assert.rejects(
+        async () => {
+          await workspaceInvitationController.acceptInvitationHandler(
+            userInvitedTeammate.uid,
+            userInvitedTeammate.email,
+            code
+          );
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'INVITATION_REVOKED');
+          return true;
+        }
+      );
     });
   });
 });

@@ -45,7 +45,7 @@ export function Input({
           maxLength={maxLength}
           required={required}
           className={cn(
-            'w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-0',
+            'w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed',
             shouldShowToggle && 'pr-10',
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
