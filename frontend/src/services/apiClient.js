@@ -42,7 +42,7 @@ async function request(endpoint, options = {}) {
     response = await fetch(url, config);
   } catch (networkErr) {
     console.error(`🚨 [apiClient Network Error] Failed to connect to '${url}':`, networkErr.message);
-    const error = new Error(`Backend server is currently unavailable. Please ensure the backend server is running.`);
+    const error = new Error(`Unable to connect to the server. Please check your connection and try again.`);
     error.code = 'BACKEND_UNAVAILABLE';
     error.status = 0;
     error.originalError = networkErr;
@@ -55,14 +55,16 @@ async function request(endpoint, options = {}) {
   if (contentType.includes('text/html')) {
     console.error(`🚨 [apiClient Error] Endpoint: ${endpoint} returned HTML (Status ${response.status}). Unmapped route or SPA fallback.`);
     if (response.status === 404) {
-      const error = new Error(`API endpoint '${endpoint}' was not found on the backend.`);
+      const error = new Error(`The requested service endpoint could not be found. Please check your network and try again.`);
       error.status = 404;
       error.code = 'ENDPOINT_NOT_FOUND';
+      error.technicalMessage = `API endpoint '${endpoint}' was not found on the backend.`;
       throw error;
     }
-    const error = new Error(`API endpoint '${endpoint}' returned unexpected HTML response (Status ${response.status}).`);
+    const error = new Error(`An unexpected server error occurred. Please try again in a moment.`);
     error.status = response.status;
     error.code = 'HTML_RESPONSE_ERROR';
+    error.technicalMessage = `API endpoint '${endpoint}' returned unexpected HTML response (Status ${response.status}).`;
     throw error;
   }
 
@@ -70,16 +72,44 @@ async function request(endpoint, options = {}) {
   try {
     result = await response.json();
   } catch (parseErr) {
-    const error = new Error(`Failed to parse JSON response from endpoint '${endpoint}' (Status ${response.status}).`);
+    console.error(`🚨 [apiClient JSON Parse Error] Endpoint: ${endpoint}:`, parseErr);
+    const error = new Error(`Received an unexpected response from the server. Please try again.`);
     error.status = response.status;
     error.code = 'JSON_PARSE_ERROR';
+    error.technicalMessage = `Failed to parse JSON response from endpoint '${endpoint}' (Status ${response.status}).`;
     throw error;
   }
 
   if (!response.ok || result.success === false) {
     const errorObj = result.error || {};
-    const message = errorObj.message || `Request failed with status ${response.status}`;
-    const error = new Error(message);
+    let rawMessage = typeof errorObj === 'string' ? errorObj : errorObj.message;
+    
+    // Sanitize technical error strings if returned by Express or proxy
+    let friendlyMessage = rawMessage;
+    if (!friendlyMessage || friendlyMessage.startsWith('Cannot ') || friendlyMessage.includes('<!DOCTYPE') || friendlyMessage.includes('SyntaxError')) {
+      if (response.status === 401) {
+        friendlyMessage = 'Your session has expired. Please sign in again to continue.';
+      } else if (response.status === 403) {
+        friendlyMessage = 'You do not have permission to perform this action.';
+      } else if (response.status === 404) {
+        friendlyMessage = 'The requested item or workspace could not be found.';
+      } else if (response.status === 409) {
+        friendlyMessage = 'An existing record conflicts with this request.';
+      } else if (response.status === 429) {
+        friendlyMessage = 'Too many requests. Please wait a moment before trying again.';
+      } else if (response.status >= 500) {
+        friendlyMessage = 'A temporary server error occurred. Please try again shortly.';
+      } else {
+        friendlyMessage = 'An error occurred while processing your request. Please try again.';
+      }
+    }
+
+    // Privacy defense: enforce generic privacy-safe messaging for WRONG_ACCOUNT
+    if (errorObj.code === 'WRONG_ACCOUNT') {
+      friendlyMessage = 'This invitation is assigned to a different Convia account. Please sign in with the invited Convia account.';
+    }
+
+    const error = new Error(friendlyMessage);
     error.code = errorObj.code || (response.status === 401 || response.status === 403 ? 'UNAUTHORIZED' : 'API_ERROR');
     error.status = response.status;
     throw error;

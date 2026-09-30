@@ -54,6 +54,13 @@ export function useNotifications() {
         setNotifications(list || []);
         setUnreadCount(count || 0);
         setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        if (!isMountedRef.current) return;
+        console.warn('[useNotifications] Subscription error:', err);
+        setError(err);
+        setLoading(false);
       }
     );
 

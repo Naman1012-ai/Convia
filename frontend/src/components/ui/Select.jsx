@@ -11,6 +11,7 @@ export function Select({
   value,
   onChange,
   className = '',
+  children,
   ...props
 }) {
   const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
@@ -36,11 +37,12 @@ export function Select({
         )}
         {...props}
       >
-        {options.map((opt) => (
+        {options?.map((opt) => (
           <option key={opt.value} value={opt.value}>
             {opt.label}
           </option>
         ))}
+        {children}
       </select>
       {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
     </div>
@@ -55,7 +57,8 @@ Select.propTypes = {
       value: PropTypes.string.isRequired,
       label: PropTypes.string.isRequired,
     })
-  ).isRequired,
+  ),
+  children: PropTypes.node,
   error: PropTypes.string,
   required: PropTypes.bool,
   value: PropTypes.string,

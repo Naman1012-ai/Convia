@@ -18,6 +18,9 @@ import {
   SlidersHorizontal,
   Bookmark,
   Pin,
+  Plus,
+  Activity,
+  PanelRight,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
@@ -73,7 +76,7 @@ export default function CommunityPage() {
   const [error, setError] = useState(null);
   const [typingUsers, setTypingUsers] = useState([]);
 
-  // Aggregated Channel-level Reactions & Reply Counts (Prevents N+1 listeners)
+  // Aggregated Channel-level Reactions & Reply Counts
   const [channelReactions, setChannelReactions] = useState({});
   const [channelReplyCounts, setChannelReplyCounts] = useState({});
   const [userRepliedDiscussions, setUserRepliedDiscussions] = useState({});
@@ -110,6 +113,10 @@ export default function CommunityPage() {
   // Deletion Modal State
   const [messageToDelete, setMessageToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Layout & Collapsible Panel States
+  const [isLeftNavCollapsed, setIsLeftNavCollapsed] = useState(false);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
   // Mobile / Responsive Sheets
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -222,187 +229,194 @@ export default function CommunityPage() {
 
   // 8. Deep-Linking: Locate discussion by messageId or open thread by threadId
   useEffect(() => {
-    if (loading) return; // Wait until community feed messages load
+    if (loading) return;
 
     const targetThreadId = searchParams.get('threadId');
     const targetMsgId = searchParams.get('messageId');
 
     if (targetThreadId && messages.length > 0) {
-      const found = messages.find((m) => m.messageId === targetThreadId);
-      if (found && !found.deleted) {
-        setActiveThreadMessage(found);
-      } else {
-        toast.info('This discussion is no longer available.');
-      }
-    } else if (targetMsgId && messages.length > 0) {
-      const found = messages.find((m) => m.messageId === targetMsgId);
-      if (found && !found.deleted) {
-        // Switch to 'all' if active filter would otherwise hide the targeted discussion
-        if (activeFilter !== 'all' && activeFilter !== (found.postType || 'discussion')) {
-          setActiveFilter('all');
-        }
-        setHighlightedMessageId(targetMsgId);
-        setTimeout(() => {
-          const el = document.getElementById(`msg_${targetMsgId}`);
-          if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 250);
-        const timer = setTimeout(() => setHighlightedMessageId(null), 4000);
-        return () => clearTimeout(timer);
-      } else {
-        toast.info('This discussion is no longer available.');
+      const parent = messages.find((m) => m.messageId === targetThreadId);
+      if (parent) {
+        setActiveThreadMessage(parent);
       }
     }
-  }, [searchParams, messages, loading]);
 
-  // Sync activeFilter with URL parameter
+    if (targetMsgId && messages.length > 0) {
+      setHighlightedMessageId(targetMsgId);
+      setTimeout(() => {
+        const el = document.getElementById(`msg_${targetMsgId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.focus?.();
+        }
+      }, 300);
+    }
+  }, [loading, searchParams, messages]);
+
+  // Filter change handler
   const handleSelectFilter = (filterId) => {
     setActiveFilter(filterId);
     handleCloseMenu();
-    setIsMobileNavOpen(false);
-    const newParams = new URLSearchParams(searchParams);
-    if (filterId === 'all') {
-      newParams.delete('type');
-    } else {
-      newParams.set('type', filterId);
-    }
-    setSearchParams(newParams, { replace: true });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (filterId === 'all') next.delete('type');
+      else next.set('type', filterId);
+      return next;
+    });
   };
 
-  // Sync sortBy with URL parameter
-  const handleSortChange = (newSort) => {
-    setSortBy(newSort);
+  // Sort change handler
+  const handleSortChange = (sortOption) => {
+    setSortBy(sortOption);
     handleCloseMenu();
-    const newParams = new URLSearchParams(searchParams);
-    if (newSort === 'recent') {
-      newParams.delete('sort');
-    } else {
-      newParams.set('sort', newSort);
-    }
-    setSearchParams(newParams, { replace: true });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (sortOption === 'recent') next.delete('sort');
+      else next.set('sort', sortOption);
+      return next;
+    });
   };
 
-  // Sync searchQuery with URL parameter
-  const handleSearchChange = (query) => {
-    setSearchQuery(query);
+  // Search input change handler
+  const handleSearchChange = (val) => {
+    setSearchQuery(val);
     handleCloseMenu();
-    const newParams = new URLSearchParams(searchParams);
-    if (query.trim()) {
-      newParams.set('q', query.trim());
-    } else {
-      newParams.delete('q');
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!val) next.delete('q');
+      else next.set('q', val);
+      return next;
+    });
+  };
+
+  // Focus and scroll to composer
+  const handleFocusComposer = () => {
+    if (composerRef.current) {
+      composerRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      const textarea = composerRef.current.querySelector('textarea');
+      if (textarea) textarea.focus();
     }
-    setSearchParams(newParams, { replace: true });
   };
 
-  // Open thread drawer
-  const handleOpenThread = (msg) => {
-    setActiveThreadMessage(msg);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('threadId', msg.messageId);
-    setSearchParams(newParams, { replace: true });
-  };
-
-  // Close thread drawer
-  const handleCloseThread = () => {
-    setActiveThreadMessage(null);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.delete('threadId');
-    newParams.delete('replyId');
-    setSearchParams(newParams, { replace: true });
-  };
-
-  // Typing publisher
+  // Typing debounce emitter
   const handleUserTyping = () => {
-    if (!effectiveUser) return;
+    if (!effectiveUser?.uid) return;
     chatService.setPublicIdeaChatTypingState(effectiveUser, true).catch(() => {});
+
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       chatService.setPublicIdeaChatTypingState(effectiveUser, false).catch(() => {});
     }, 2500);
   };
 
-  // Send message
+  // Send new community message
   const handleSendMessage = async (content, postType) => {
-    if (!effectiveUser) return;
+    if (!effectiveUser?.uid) {
+      toast.info('Please sign in to post a discussion.');
+      return;
+    }
+
     try {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      await chatService.setPublicIdeaChatTypingState(effectiveUser, false);
-
-      const messageId = await chatService.sendPublicIdeaChatMessage(
+      await chatService.sendPublicIdeaChatMessage({
+        user: effectiveUser,
         content,
-        effectiveUser,
-        null,
-        postType
-      );
+        postType,
+      });
 
-      toast.success('Discussion posted to community!');
-      setHighlightedMessageId(messageId);
-      setTimeout(() => setHighlightedMessageId(null), 3000);
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      chatService.setPublicIdeaChatTypingState(effectiveUser, false).catch(() => {});
+
+      toast.success(
+        postType === COMMUNITY_POST_TYPES.IDEA
+          ? 'Idea posted to community!'
+          : postType === COMMUNITY_POST_TYPES.QUESTION
+          ? 'Question asked!'
+          : 'Discussion posted!'
+      );
     } catch (err) {
-      toast.error(err?.message || 'Failed to post message.');
+      console.error('[CommunityPage] Send error:', err);
+      toast.error('Unable to send your message. Please try again.');
       throw err;
     }
   };
 
-  // Edit message
+  // Open thread drawer
+  const handleOpenThread = (msg) => {
+    setActiveThreadMessage(msg);
+    handleCloseMenu();
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('threadId', msg.messageId);
+      return next;
+    });
+  };
+
+  // Close thread drawer
+  const handleCloseThread = () => {
+    setActiveThreadMessage(null);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('threadId');
+      return next;
+    });
+  };
+
+  // Toggle reaction on discussion
+  const handleToggleReaction = async (messageId, emoji) => {
+    if (!effectiveUser?.uid) {
+      toast.info('Please sign in to react to discussions.');
+      return;
+    }
+
+    try {
+      await chatService.togglePublicIdeaMessageReaction(messageId, emoji, effectiveUser.uid);
+    } catch (err) {
+      console.error('[CommunityPage] Reaction error:', err);
+      toast.error('Unable to update reaction.');
+    }
+  };
+
+  // Edit discussion message
   const handleEditMessage = async (messageId, newContent) => {
-    if (!effectiveUser) return;
+    if (!effectiveUser?.uid) return;
     try {
       await chatService.editPublicIdeaChatMessage(messageId, newContent, effectiveUser.uid);
       toast.success('Discussion updated.');
     } catch (err) {
-      toast.error(err?.message || 'Failed to edit message.');
+      console.error('[CommunityPage] Edit error:', err);
+      toast.error(err.message || 'Failed to update discussion.');
       throw err;
     }
   };
 
-  // Delete message confirmation
+  // Delete discussion message
   const handleConfirmDelete = async () => {
-    if (!messageToDelete || !effectiveUser) return;
-    setIsDeleting(true);
+    if (!messageToDelete?.messageId || !effectiveUser?.uid) return;
     try {
+      setIsDeleting(true);
       await chatService.deletePublicIdeaChatMessage(
         messageToDelete.messageId,
         effectiveUser.uid,
-        userProfile?.isAdmin || userProfile?.role === 'admin'
+        Boolean(userProfile?.isAdmin || userProfile?.role === 'admin' || userProfile?.role === 'superadmin')
       );
       toast.success('Discussion deleted.');
       setMessageToDelete(null);
-      if (activeThreadMessage?.messageId === messageToDelete.messageId) {
-        handleCloseThread();
-      }
     } catch (err) {
-      toast.error(err?.message || 'Failed to delete discussion.');
+      console.error('[CommunityPage] Delete error:', err);
+      toast.error('Failed to delete discussion.');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Toggle reaction
-  const handleToggleReaction = async (messageId, emoji) => {
-    if (!effectiveUser) {
-      toast.info('Please sign in to react to discussions.');
-      return;
-    }
-    try {
-      await chatService.togglePublicIdeaReaction(messageId, emoji, effectiveUser);
-    } catch (err) {
-      toast.error('Unable to update reaction.');
-    }
-  };
-
-  // Turn into Idea action
+  // Turn Discussion into Proposal Modal
   const handleTurnIntoIdea = (msg) => {
-    const rawContent = msg.content || '';
-    const firstSentence = rawContent.split(/[.\n]/)[0].substring(0, 80);
-
     setTurnIntoIdeaInitialValues({
-      title: firstSentence.trim() || 'New Proposal Concept',
-      problemStatement: rawContent.trim(),
-      proposedSolution: '',
-      category: msg.postType === COMMUNITY_POST_TYPES.IDEA ? 'Technical' : 'General',
+      title: (msg.content || '').split('\n')[0].substring(0, 80) || 'Community Idea',
+      description: msg.content || '',
+      category: 'Discussion Proposal',
+      authorName: resolveMemberDisplayName(msg.senderName || 'Community Member'),
+      sourceMessageId: msg.messageId,
     });
     setIsCreateIdeaModalOpen(true);
   };
@@ -581,52 +595,46 @@ export default function CommunityPage() {
     pinnedDiscussion?.messageId,
   ]);
 
-  // Process message feed to compute chronological grouping and date dividers
-  const currentAuthUid = user?.uid || effectiveUser?.uid;
+  // Compute feed with chronological date dividers and consecutive message grouping
   const decoratedFeed = useMemo(() => {
-    if (sortBy !== 'recent') {
-      return filteredMessages.map((msg, index) => ({
-        type: 'message',
-        id: msg.messageId || `msg_${index}`,
-        message: msg,
-        isGrouped: false,
-        isFirstInGroup: true,
-        isLastInGroup: true,
-        isOwn: Boolean(currentAuthUid && isMessageAuthoredByUser(msg, currentAuthUid)),
-        timeLabel: formatMessageTime(msg.createdAt),
-        fullDateLabel: formatFullDateTime(msg.createdAt),
-      }));
-    }
-    return processMessageFeed(filteredMessages, currentAuthUid);
-  }, [filteredMessages, sortBy, currentAuthUid]);
+    return processMessageFeed(filteredMessages);
+  }, [filteredMessages]);
 
-  // Discussion counts per type
+  // Channel discussion counts
   const discussionCounts = useMemo(() => {
     const counts = { all: 0 };
-    messages.forEach((m) => {
-      if (m && !m.deleted) {
-        counts.all = (counts.all || 0) + 1;
-        const type = m.postType || 'discussion';
-        counts[type] = (counts[type] || 0) + 1;
+    Object.values(COMMUNITY_POST_TYPES).forEach((type) => {
+      counts[type] = 0;
+    });
+
+    messages.forEach((msg) => {
+      if (!msg || msg.deleted) return;
+      counts.all += 1;
+      const type = msg.postType || COMMUNITY_POST_TYPES.DISCUSSION;
+      if (counts[type] !== undefined) {
+        counts[type] += 1;
       }
     });
+
     return counts;
   }, [messages]);
 
-  // Activity counts for current user strictly using canonical author UID
+  // Activity counts
   const activityCounts = useMemo(() => {
+    const currentAuthUid = user?.uid || effectiveUser?.uid;
     const myDiscussions = currentAuthUid
       ? messages.filter((m) => m && !m.deleted && isMessageAuthoredByUser(m, currentAuthUid)).length
       : 0;
-
-    const myReplies = currentAuthUid
-      ? (userRepliedDiscussions[currentAuthUid] || []).length
-      : 0;
-
+    const myRepliedIds = (currentAuthUid && userRepliedDiscussions[currentAuthUid]) || [];
+    const myReplies = myRepliedIds.length;
     const saved = Object.keys(savedDiscussionsMap).length;
 
-    return { myDiscussions, myReplies, saved };
-  }, [messages, currentAuthUid, userRepliedDiscussions, savedDiscussionsMap]);
+    return {
+      myDiscussions,
+      myReplies,
+      saved,
+    };
+  }, [messages, user?.uid, effectiveUser?.uid, userRepliedDiscussions, savedDiscussionsMap]);
 
   // Active filter label
   const activeFilterLabel = useMemo(() => {
@@ -637,7 +645,7 @@ export default function CommunityPage() {
     return COMMUNITY_POST_TYPE_CONFIG[activeFilter]?.label || activeFilter;
   }, [activeFilter]);
 
-  // Real unique contributors count
+  // Unique creators count
   const uniqueCreatorsCount = useMemo(() => {
     const uids = new Set(messages.map((m) => m.senderId).filter(Boolean));
     return uids.size;
@@ -651,47 +659,42 @@ export default function CommunityPage() {
     return `${names[0]} and ${names.length - 1} others are typing...`;
   }, [typingUsers]);
 
+  const topicTabs = [
+    { id: 'all', label: 'All', icon: Globe },
+    { id: COMMUNITY_POST_TYPES.IDEA, label: 'Ideas', icon: Sparkles },
+    { id: COMMUNITY_POST_TYPES.QUESTION, label: 'Questions', icon: MessageCircle },
+    { id: COMMUNITY_POST_TYPES.DISCUSSION, label: 'Discussions', icon: MessageCircle },
+    { id: COMMUNITY_POST_TYPES.COLLABORATION, label: 'Collaboration', icon: Users },
+  ];
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 py-6 sm:py-8">
-      {/* Community Hub Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-700 text-white shadow-xs">
-              <Globe className="h-5 w-5" />
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 space-y-4">
+      {/* ============================================================ */}
+      {/* TOP HEADER — Clean, focused, non-congested                    */}
+      {/* ============================================================ */}
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-2xs">
+            <Globe className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                Convia Community
+              </h1>
+              <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider border border-emerald-200/60">
+                Open Discussions
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                  Convia Community Hub
-                </h1>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
-                  Open Discussions
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                Share ideas, ask questions, discover what peers are building, and collaborate.
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 font-medium hidden sm:block">
+              Share ideas, ask questions, and collaborate with creators.
+            </p>
           </div>
         </div>
 
-        {/* Real Live Metadata & Global Actions */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Members / Creators Modal Trigger */}
-          <button
-            type="button"
-            onClick={() => setIsMembersModalOpen(true)}
-            className="flex items-center gap-2 bg-white hover:bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs text-xs font-semibold text-slate-700 transition-colors cursor-pointer group"
-            title="View community members roster"
-          >
-            <Users className="h-3.5 w-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
-            <span>{uniqueCreatorsCount} {uniqueCreatorsCount === 1 ? 'creator' : 'creators'}</span>
-            <span className="text-slate-300">•</span>
-            <span>{discussionCounts.all || 0} discussions</span>
-          </button>
-
-          {/* Search Toggle Button */}
+        {/* Global Quick Actions */}
+        <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+          {/* Search Toggle */}
           <button
             type="button"
             onClick={() => setIsSearchVisible((prev) => !prev)}
@@ -700,123 +703,168 @@ export default function CommunityPage() {
                 ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
-            aria-label="Toggle search filter"
             title="Search discussions"
+            aria-label="Toggle search"
           >
             <Search className="h-4 w-4" />
           </button>
 
-          {/* Mobile Navigation Toggle */}
+          {/* Toggle Community Pulse (Activity Panel) on Desktop */}
+          <button
+            type="button"
+            onClick={() => setIsRightPanelOpen((prev) => !prev)}
+            className={`hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+              isRightPanelOpen
+                ? 'bg-slate-100 border-slate-300 text-slate-800'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+            }`}
+            title={isRightPanelOpen ? 'Hide community pulse' : 'Show community pulse'}
+          >
+            <Activity className="h-3.5 w-3.5 text-emerald-600" />
+            <span>Pulse</span>
+          </button>
+
+          {/* Mobile Channels Drawer Toggle */}
           <button
             type="button"
             onClick={() => setIsMobileNavOpen(true)}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            className="lg:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
           >
             <Filter className="h-3.5 w-3.5 text-slate-500" />
             <span>Channels</span>
           </button>
 
-          {/* Mobile Discovery Toggle */}
+          {/* Mobile Trending Drawer Toggle */}
           <button
             type="button"
             onClick={() => setIsMobileDiscoveryOpen(true)}
-            className="xl:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+            className="xl:hidden flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
           >
             <Flame className="h-3.5 w-3.5 text-amber-500" />
             <span>Trending</span>
           </button>
+
+          {/* Members Modal Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsMembersModalOpen(true)}
+            className="hidden sm:flex items-center gap-1.5 bg-white hover:bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
+            title="View community creators"
+          >
+            <Users className="h-3.5 w-3.5 text-emerald-600" />
+            <span>{uniqueCreatorsCount}</span>
+          </button>
+
+          {/* Primary CTA: Start a Discussion */}
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Plus className="h-4 w-4" />}
+            onClick={handleFocusComposer}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3.5 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
+          >
+            Start a Discussion
+          </Button>
         </div>
-      </div>
+      </header>
 
       {/* Expandable Scoped Search Bar */}
       {isSearchVisible && (
-        <div className="relative animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
           <Input
-            placeholder="Search discussions by topic, question, or creator name..."
+            placeholder="Search discussions by keyword, idea, or author name..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9 pr-9 bg-white shadow-2xs"
+            className="pl-9 pr-9 bg-white shadow-2xs h-9 text-xs sm:text-sm"
             autoFocus
           />
-          <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           {searchQuery && (
             <button
               type="button"
               onClick={() => handleSearchChange('')}
-              className="absolute right-3 top-2.5 p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              className="absolute right-3 top-2 p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
       )}
 
-      {/* Three-Zone Layout Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* ============================================================ */}
+      {/* THREE-ZONE RESPONSIVE LAYOUT (Dominant Center Feed)           */}
+      {/* ============================================================ */}
+      <div className="flex items-start gap-4 lg:gap-6 min-h-[600px]">
         {/* ======================================================== */}
-        {/* ZONE 1 (LEFT): Community Navigation (Desktop: 3 cols)     */}
+        {/* ZONE 1 (LEFT): Community Navigation                      */}
         {/* ======================================================== */}
-        <aside className="hidden lg:block lg:col-span-3 sticky top-24">
+        <aside
+          className={`hidden lg:block shrink-0 sticky top-20 transition-all duration-200 ${
+            isLeftNavCollapsed ? 'w-14' : 'w-56'
+          }`}
+        >
           <CommunityNav
             activeFilter={activeFilter}
             onSelectFilter={handleSelectFilter}
-            onOpenCreate={() => {
-              if (composerRef.current) {
-                composerRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                const textarea = composerRef.current.querySelector('textarea');
-                if (textarea) textarea.focus();
-              }
-            }}
             discussionCounts={discussionCounts}
             activityCounts={activityCounts}
             isAuthenticated={Boolean(effectiveUser)}
+            isCollapsed={isLeftNavCollapsed}
+            onToggleCollapse={() => setIsLeftNavCollapsed((prev) => !prev)}
           />
         </aside>
 
         {/* ======================================================== */}
-        {/* ZONE 2 (CENTER): Main Discussion Stream (Desktop: 6/9 cols) */}
+        {/* ZONE 2 (CENTER): Main Discussion Stream (DOMINANT)       */}
         {/* ======================================================== */}
-        <main className="lg:col-span-9 xl:col-span-6 space-y-5">
-          {/* Welcome / Zero State */}
+        <main className="flex-1 min-w-0 max-w-4xl space-y-3 mx-auto">
+          {/* Welcome / Intro Card */}
           <CommunityWelcomeCard
-            onStartDiscussion={() => {
-              if (composerRef.current) {
-                composerRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                const textarea = composerRef.current.querySelector('textarea');
-                if (textarea) textarea.focus();
-              }
-            }}
+            onStartDiscussion={handleFocusComposer}
             isDismissed={isWelcomeDismissed}
             onDismiss={() => setIsWelcomeDismissed(true)}
             hasExistingMessages={messages.length > 0}
             totalDiscussions={discussionCounts.all || 0}
           />
 
-          {/* Active Filter Pill & Sorting Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Viewing:
-              </span>
-              <span className="text-xs font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
-                {activeFilterLabel}
-              </span>
-              {searchQuery && (
-                <span className="text-xs text-slate-500">
-                  matching &quot;<strong>{searchQuery}</strong>&quot;
-                </span>
-              )}
+          {/* Sticky Toolbar: Topic Segmented Control + Sort */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 pb-1">
+            {/* Quick Topic Chips */}
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+              {topicTabs.map((tab) => {
+                const isActive = activeFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => handleSelectFilter(tab.id)}
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-2xs font-bold'
+                        : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200/80'
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    {tab.id !== 'all' && discussionCounts[tab.id] > 0 && (
+                      <span className={`text-[10px] font-mono px-1 rounded-full ${
+                        isActive ? 'bg-slate-800 text-slate-200' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {discussionCounts[tab.id]}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Sort Selector */}
-              <div className="flex items-center gap-1.5 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs text-xs font-semibold text-slate-700">
-                <SlidersHorizontal className="h-3.5 w-3.5 text-slate-400" />
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Sort:</span>
+            {/* Sorter & Item Count */}
+            <div className="flex items-center justify-end gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-slate-200/80 shadow-2xs text-xs font-semibold text-slate-700">
+                <SlidersHorizontal className="h-3 w-3 text-slate-400" />
                 <select
                   value={sortBy}
                   onChange={(e) => handleSortChange(e.target.value)}
-                  className="bg-transparent font-bold text-slate-800 text-xs focus:outline-none cursor-pointer"
+                  className="bg-transparent font-semibold text-slate-700 text-xs focus:outline-none cursor-pointer"
                   aria-label="Sort discussions"
                 >
                   <option value="recent">Recent</option>
@@ -825,7 +873,7 @@ export default function CommunityPage() {
                 </select>
               </div>
 
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-[11px] font-mono text-slate-400">
                 {filteredMessages.length} {filteredMessages.length === 1 ? 'post' : 'posts'}
               </span>
             </div>
@@ -833,7 +881,7 @@ export default function CommunityPage() {
 
           {/* Discussion Feed */}
           {loading || (activeFilter === 'saved' && savedLoading) || (activeFilter === 'my_replies' && repliesLoading) ? (
-            <div className="space-y-4">
+            <div className="space-y-3 py-2">
               <LoadingSkeleton variant="card" count={3} />
             </div>
           ) : error ? (
@@ -847,7 +895,7 @@ export default function CommunityPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => window.location.reload()}
-                className="border-rose-300 text-rose-800 hover:bg-rose-100"
+                className="border-rose-300 text-rose-800 hover:bg-rose-100 cursor-pointer"
               >
                 Retry
               </Button>
@@ -859,25 +907,27 @@ export default function CommunityPage() {
                 searchQuery
                   ? 'No matching discussions found'
                   : activeFilter === 'saved'
-                  ? 'No saved discussions yet'
+                  ? "You haven't saved any discussions yet"
                   : activeFilter === 'my_discussions'
-                  ? "You haven't started any discussions yet"
+                  ? "You haven't started a discussion yet"
                   : activeFilter === 'my_replies'
                   ? "You haven't replied to any discussions yet"
-                  : activeFilter !== 'all'
-                  ? `No ${COMMUNITY_POST_TYPE_CONFIG[activeFilter]?.label || activeFilter} discussions yet`
-                  : 'No community discussions yet'
+                  : activeFilter === 'idea'
+                  ? 'No ideas shared yet'
+                  : activeFilter === 'question'
+                  ? 'No questions yet'
+                  : 'No discussions yet'
               }
               description={
                 searchQuery
-                  ? 'Try refining your search keyword or clearing the search query.'
+                  ? 'Try searching with different keywords or clearing your search filter.'
                   : activeFilter === 'saved'
-                  ? 'Bookmark interesting discussions using the three-dot menu on any post.'
+                  ? 'Bookmark interesting community posts using the three-dot menu to access them quickly here.'
                   : activeFilter === 'my_discussions'
-                  ? 'Use the composer below to share your first idea, question, or discussion!'
+                  ? 'Share your first idea, question, or thought with the community below.'
                   : activeFilter === 'my_replies'
-                  ? 'Join an ongoing discussion from the community feed to see your threads here.'
-                  : 'Be the first innovator to start a discussion in this channel!'
+                  ? 'Join ongoing conversations from the community feed to see your threads here.'
+                  : 'Be the first creator to start the conversation in this channel.'
               }
               action={
                 searchQuery ? (
@@ -894,19 +944,13 @@ export default function CommunityPage() {
                     size="sm"
                     onClick={() => handleSelectFilter('all')}
                   >
-                    Explore Community
+                    Explore All Discussions
                   </Button>
                 ) : (
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => {
-                      if (composerRef.current) {
-                        composerRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                        const textarea = composerRef.current.querySelector('textarea');
-                        if (textarea) textarea.focus();
-                      }
-                    }}
+                    onClick={handleFocusComposer}
                   >
                     Start a Discussion
                   </Button>
@@ -968,7 +1012,7 @@ export default function CommunityPage() {
             ref={composerRef}
             className="sticky bottom-0 z-20 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-slate-50 via-slate-50/95 to-slate-50/0 backdrop-blur-xs"
           >
-            {/* Typing Indicator right above input */}
+            {/* Real-time typing indicators */}
             {activeTypersText && (
               <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-50/90 border border-emerald-100 text-xs text-emerald-800 flex items-center gap-2 animate-in fade-in shadow-2xs">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -984,16 +1028,19 @@ export default function CommunityPage() {
         </main>
 
         {/* ======================================================== */}
-        {/* ZONE 3 (RIGHT): Community Discovery Panel (Desktop: 3 cols) */}
+        {/* ZONE 3 (RIGHT): Community Discovery Panel (Collapsible)   */}
         {/* ======================================================== */}
-        <aside className="hidden xl:block xl:col-span-3 sticky top-24 space-y-6">
-          <CommunityDiscoveryPanel
-            messages={messages}
-            replyCounts={channelReplyCounts}
-            reactionsMap={channelReactions}
-            onSelectDiscussion={(msg) => handleOpenThread(msg)}
-          />
-        </aside>
+        {isRightPanelOpen && (
+          <aside className="hidden xl:block shrink-0 w-72 sticky top-20 space-y-4">
+            <CommunityDiscoveryPanel
+              messages={messages}
+              replyCounts={channelReplyCounts}
+              reactionsMap={channelReactions}
+              onSelectDiscussion={(msg) => handleOpenThread(msg)}
+              onClose={() => setIsRightPanelOpen(false)}
+            />
+          </aside>
+        )}
       </div>
 
       {/* ======================================================== */}
@@ -1065,12 +1112,9 @@ export default function CommunityPage() {
             <div className="pt-4 flex-1 overflow-y-auto">
               <CommunityNav
                 activeFilter={activeFilter}
-                onSelectFilter={handleSelectFilter}
-                onOpenCreate={() => {
+                onSelectFilter={(f) => {
+                  handleSelectFilter(f);
                   setIsMobileNavOpen(false);
-                  if (composerRef.current) {
-                    composerRef.current.scrollIntoView({ behavior: 'smooth' });
-                  }
                 }}
                 discussionCounts={discussionCounts}
                 activityCounts={activityCounts}
@@ -1110,6 +1154,7 @@ export default function CommunityPage() {
                   setIsMobileDiscoveryOpen(false);
                   handleOpenThread(msg);
                 }}
+                onClose={() => setIsMobileDiscoveryOpen(false)}
               />
             </div>
           </div>
@@ -1127,4 +1172,3 @@ export default function CommunityPage() {
     </div>
   );
 }
-

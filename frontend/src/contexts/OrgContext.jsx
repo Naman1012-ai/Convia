@@ -98,11 +98,22 @@ export function OrgProvider({ orgId, children }) {
     });
   }, [rawMembers, profiles]);
 
-  const isLeader = Boolean(user && org && org.ownerId === user.uid);
+  const currentMember = members.find((m) => m.uid === user?.uid);
+  const isLeader = Boolean(user && org && (org.ownerId === user.uid || org.createdBy === user.uid));
+  const isOrgAdmin = Boolean(isLeader || currentMember?.role === 'admin');
   const isFrozen = Boolean(org && org.status === 'project');
 
+  // Authoritatively derive org.memberCount from live canonical members roster
+  const resolvedOrg = useMemo(() => {
+    if (!org) return null;
+    return {
+      ...org,
+      memberCount: members.length,
+    };
+  }, [org, members.length]);
+
   return (
-    <OrgContext.Provider value={{ org, members, isLeader, isFrozen, loading, error }}>
+    <OrgContext.Provider value={{ org: resolvedOrg, members, isLeader, isOrgAdmin, isFrozen, loading, error }}>
       {children}
     </OrgContext.Provider>
   );

@@ -1,7 +1,6 @@
 import { rtdbService } from './rtdbService';
 import { apiClient } from './apiClient';
 import { chatService } from './chatService';
-import { generateInviteCode } from '../utils/inviteCode';
 import { getErrorMessage } from '../utils/errorMessages';
 import { getWorkspaceChatRootPath } from '../constants/databasePaths';
 import { resolveMemberDisplayName } from '../utils/memberIdentity';
@@ -39,25 +38,45 @@ export const orgService = {
     }
 
     const orgId = `org_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const inviteCode = generateInviteCode();
     const timestamp = Date.now();
+
+    const maxMembers = Math.max(
+      1,
+      Math.min(50, Number(orgData.maxMembers ?? orgData.teamSizeLimit) || 5)
+    );
+    const projectType = orgData.projectType || 'other';
+    const description = (orgData.description ?? orgData.hackathonDescription ?? '').trim();
+    const projectGoal = (orgData.projectGoal || '').trim();
+    const visibility = orgData.visibility || 'private';
+    const repositoryUrl = (orgData.repositoryUrl || '').trim();
+    const projectUrl = (orgData.projectUrl || '').trim();
+    const documentationUrl = (orgData.documentationUrl || '').trim();
 
     const newOrg = {
       orgId,
+      id: orgId,
       name: orgData.name.trim(),
-      hackathonName: (orgData.hackathonName || 'Hackathon').trim(),
-      hackathonDescription: (orgData.hackathonDescription || '').trim(),
-      teamSizeLimit: Number(orgData.teamSizeLimit) || 5,
-      hackathonDate: orgData.hackathonDate || '',
-      hackathonLocation: (orgData.hackathonLocation || '').trim(),
+      projectType,
+      description,
+      projectGoal,
+      visibility,
+      maxMembers,
+      teamSizeLimit: maxMembers,
+      repositoryUrl,
+      projectUrl,
+      documentationUrl,
       logoURL: null,
       ownerId: ownerUid,
-      inviteCode,
+      createdBy: ownerUid,
       status: 'ideation', // 'ideation' | 'project'
       createdAt: timestamp,
       updatedAt: timestamp,
       memberCount: 1,
       activeProjectId: null,
+      ...(orgData.hackathonName ? { hackathonName: orgData.hackathonName.trim() } : {}),
+      ...(orgData.hackathonDescription ? { hackathonDescription: orgData.hackathonDescription.trim() } : {}),
+      ...(orgData.hackathonDate ? { hackathonDate: orgData.hackathonDate } : {}),
+      ...(orgData.hackathonLocation ? { hackathonLocation: orgData.hackathonLocation.trim() } : {}),
     };
 
     try {
@@ -66,10 +85,6 @@ export const orgService = {
         uid: ownerUid,
         role: 'owner',
         joinedAt: timestamp,
-      });
-      await rtdbService.setData(`invite_codes/${inviteCode}`, {
-        orgId,
-        createdAt: timestamp,
       });
       await rtdbService.updateData(`users/${ownerUid}`, {
         organizationId: orgId,
@@ -83,132 +98,27 @@ export const orgService = {
   },
 
   /**
-   * Join an organization using an 8-character invite code via server-authorized backend.
+   * Retired: Legacy 8-character invite code join flow.
+   * Convia now exclusively uses email-bound invitation codes (format: CNV-XXXX-XXXX).
    */
-  joinOrganization: async (uid, inviteCode) => {
-    if (!uid || !inviteCode) throw new Error('User ID and Invite Code are required.');
-    const cleanCode = inviteCode.trim().toUpperCase();
-
-    try {
-      const response = await apiClient.post('/api/workspace/join', {
-        inviteCode: cleanCode,
-      });
-
-      const orgId = response.orgId || response.data?.orgId || (typeof response === 'string' ? response : null);
-      if (!orgId) {
-        throw new Error('Failed to resolve workspace from server join response.');
-      }
-
-      // Send System Chat Event
-      chatService.sendSystemEvent(orgId, 'general', 'A new member joined the workspace team.', 'member_joined').catch(() => {});
-
-      // Phase 7: Notify existing workspace members
-      inAppNotificationService.dispatchNotificationEvent(
-        NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED,
-        {
-          workspaceId: orgId,
-          orgName: 'Workspace',
-        },
-        { uid, displayName: 'A new member' }
-      ).catch(() => {});
-
-      return orgId;
-    } catch (error) {
-      console.error('[orgService] joinOrganization error:', error);
-      throw error;
-    }
+  joinOrganization: async () => {
+    throw new Error(
+      'Legacy 8-character workspace invite codes have been retired. Please use an email-bound invitation code (format: CNV-XXXX-XXXX).'
+    );
   },
 
   /**
-   * Member leave flow.
+   * Member leave flow (delegates to canonical leaveWorkspace).
    */
   leaveOrganization: async (uid, orgId) => {
-    if (!uid || !orgId) return;
-
-    try {
-      const org = await rtdbService.getData(`organizations/${orgId}`);
-      if (!org) return;
-
-      const membersObj = (await rtdbService.getData(`organization_members/${orgId}`)) || {};
-      const memberUids = Object.keys(membersObj);
-      const isOwner = org.ownerId === uid;
-
-      if (isOwner && memberUids.length > 1) {
-        throw new Error('As the Owner, please remove members or transfer ownership before leaving.');
-      }
-
-      const timestamp = Date.now();
-      const newMemberCount = Math.max(0, (org.memberCount || 1) - 1);
-
-      // Phase 8: Record workspace.member_removed activity event BEFORE removing membership
-      // This guarantees the user is still verified as an active member in RTDB security rules
-      await activityService.recordWorkspaceActivity(orgId, {
-        eventType: ACTIVITY_EVENT_TYPES.WORKSPACE_MEMBER_REMOVED,
-        actorId: uid,
-        actorType: 'user',
-        actorName: org.members?.[uid]?.name || 'Team Member',
-        resourceType: 'workspace',
-        resourceId: orgId,
-        resourceTitle: org.name || 'Workspace',
-        summary: `A member left the workspace`,
-        createdAt: timestamp,
-      }).catch((actErr) => console.warn('⚠️ [Member Left Activity Warning]', actErr));
-
-      // Remove member from organization_members and update count
-      await rtdbService.setData(`organization_members/${orgId}/${uid}`, null);
-      await rtdbService.updateData(`organizations/${orgId}`, {
-        memberCount: newMemberCount,
-        updatedAt: timestamp,
-      });
-
-      await rtdbService.updateData(`users/${uid}`, { organizationId: null });
-    } catch (error) {
-      console.error('[orgService] leaveOrganization error:', error);
-      throw error;
-    }
+    return await orgService.leaveWorkspace(orgId, uid);
   },
 
   /**
-   * Remove a member from an organization (Owner only action).
+   * Remove a member from an organization (delegates to canonical removeMemberFromWorkspace).
    */
   removeMember: async (ownerUid, orgId, memberUid) => {
-    if (!ownerUid || !orgId || !memberUid) return;
-
-    try {
-      const org = await rtdbService.getData(`organizations/${orgId}`);
-      if (!org || org.ownerId !== ownerUid) {
-        throw new Error('Only the Organization Owner can remove members.');
-      }
-
-      if (memberUid === ownerUid) {
-        throw new Error('Owner cannot remove themselves.');
-      }
-
-      const timestamp = Date.now();
-      const newMemberCount = Math.max(1, (org.memberCount || 1) - 1);
-
-      await rtdbService.setData(`organization_members/${orgId}/${memberUid}`, null);
-      await rtdbService.updateData(`users/${memberUid}`, { organizationId: null });
-      await rtdbService.updateData(`organizations/${orgId}`, {
-        memberCount: newMemberCount,
-        updatedAt: timestamp,
-      });
-
-      // Phase 8: Record workspace.member_removed activity event
-      activityService.recordWorkspaceActivity(orgId, {
-        eventType: ACTIVITY_EVENT_TYPES.WORKSPACE_MEMBER_REMOVED,
-        actorId: ownerUid,
-        actorType: 'user',
-        actorName: 'Workspace Owner',
-        resourceType: 'workspace',
-        resourceId: orgId,
-        resourceTitle: org.name || 'Workspace',
-        summary: `A member was removed from the workspace`,
-      }).catch((actErr) => console.warn('⚠️ [Member Removed Activity Warning]', actErr));
-    } catch (error) {
-      console.error('[orgService] removeMember error:', error);
-      throw error;
-    }
+    return await orgService.removeMemberFromWorkspace(orgId, memberUid);
   },
 
   /**
@@ -299,8 +209,35 @@ export const orgService = {
   },
 
   /**
-   * Get all organizations where the user is a member or owner.
-   * Guarantees 100% data retrieval with zero missing workspaces.
+   * Counts unique active member UIDs from an organization_members object.
+   * Excludes inactive or removed records and guarantees UID uniqueness (Set).
+   */
+  countUniqueActiveMembers: (membersObj) => {
+    if (!membersObj || typeof membersObj !== 'object') return 0;
+    const activeUids = new Set();
+    for (const [key, val] of Object.entries(membersObj)) {
+      if (!val || typeof val !== 'object') continue;
+      if (val.status === 'inactive' || val.status === 'removed' || val.isDeleted) continue;
+      const uid = val.uid || key;
+      if (uid && typeof uid === 'string' && uid.trim()) {
+        activeUids.add(uid.trim());
+      }
+    }
+    return activeUids.size;
+  },
+
+  /**
+   * Retrieves canonical active member count from RTDB organization_members node.
+   */
+  getActiveWorkspaceMemberCount: async (orgId) => {
+    if (!orgId) return 0;
+    const membersObj = await rtdbService.getData(`organization_members/${orgId}`);
+    return orgService.countUniqueActiveMembers(membersObj);
+  },
+
+  /**
+   * Get all organizations where the user is an active member or owner.
+   * Guarantees 100% data retrieval and derives member count canonically from active membership data.
    */
   getUserOrganizations: async (uid) => {
     if (!uid) return [];
@@ -333,24 +270,33 @@ export const orgService = {
           const orgMembers = membersMap[orgId] || {};
           const memberRecord = orgMembers[uid];
           const isOwner = orgData.ownerId === uid;
-          const isMember = Boolean(memberRecord);
+          const isMember = Boolean(
+            isOwner || (memberRecord && memberRecord.status !== 'inactive' && memberRecord.status !== 'removed')
+          );
 
-          // Append member role metadata to orgData
-          const role = isOwner ? 'owner' : (memberRecord?.role || null);
+          // Section 10: Workspace should appear in user's active list only if user has active membership
+          if (!isOwner && !isMember) {
+            continue;
+          }
+
+          // Canonical member count derived authoritatively from active membership records
+          const canonicalCount = orgService.countUniqueActiveMembers(orgMembers);
+          const role = isOwner ? 'owner' : (memberRecord?.role || 'member');
 
           userOrgs.push({
             ...orgData,
-            isMember: isOwner || isMember,
+            memberCount: canonicalCount,
+            isMember: true,
             userRole: role,
           });
         }
       }
 
-      // Sort organizations: owned/joined ones first, then others; secondary sort by name
+      // Sort organizations: owned first, then alphabetically
       userOrgs.sort((a, b) => {
-        if (a.isMember && !b.isMember) return -1;
-        if (!a.isMember && b.isMember) return 1;
-        return a.name.localeCompare(b.name);
+        if (a.ownerId === uid && b.ownerId !== uid) return -1;
+        if (a.ownerId !== uid && b.ownerId === uid) return 1;
+        return (a.name || '').localeCompare(b.name || '');
       });
 
       return userOrgs;
@@ -358,6 +304,75 @@ export const orgService = {
       console.error('[orgService] getUserOrganizations error:', error);
       return [];
     }
+  },
+
+  /**
+   * Subscribes to real-time updates of the user's active workspaces.
+   * Listens to both organizations and organization_members for live count and roster changes.
+   */
+  subscribeToUserOrganizations: (uid, callback) => {
+    if (!uid) {
+      callback([]);
+      return () => {};
+    }
+
+    let isSubscribed = true;
+    let latestOrgs = null;
+    let latestMembers = null;
+
+    const emitUserOrgs = () => {
+      if (!isSubscribed || !latestOrgs) return;
+      const membersMap = latestMembers || {};
+      const userOrgs = [];
+
+      for (const [orgId, orgData] of Object.entries(latestOrgs)) {
+        if (!orgData || !orgId) continue;
+        if (orgData.isDeleted && orgData.ownerId !== uid) continue;
+
+        const orgMembers = membersMap[orgId] || {};
+        const isOwner = orgData.ownerId === uid;
+        const memberRecord = orgMembers[uid];
+        const isMember = Boolean(
+          isOwner || (memberRecord && memberRecord.status !== 'inactive' && memberRecord.status !== 'removed')
+        );
+
+        if (!isOwner && !isMember) continue;
+
+        const canonicalCount = orgService.countUniqueActiveMembers(orgMembers);
+        const role = isOwner ? 'owner' : (memberRecord?.role || 'member');
+
+        userOrgs.push({
+          ...orgData,
+          memberCount: canonicalCount,
+          isMember: true,
+          userRole: role,
+        });
+      }
+
+      userOrgs.sort((a, b) => {
+        if (a.ownerId === uid && b.ownerId !== uid) return -1;
+        if (a.ownerId !== uid && b.ownerId === uid) return 1;
+        return (a.name || '').localeCompare(b.name || '');
+      });
+
+      callback(userOrgs);
+    };
+
+    const unsubOrgs = rtdbService.subscribe('organizations', (orgsData) => {
+      latestOrgs = orgsData || {};
+      emitUserOrgs();
+    });
+
+    const unsubMembers = rtdbService.subscribe('organization_members', (membersData) => {
+      latestMembers = membersData || {};
+      emitUserOrgs();
+    });
+
+    return () => {
+      isSubscribed = false;
+      unsubOrgs();
+      unsubMembers();
+    };
   },
 
   /**
@@ -395,15 +410,35 @@ export const orgService = {
   },
 
   /**
-   * Update general organization settings (Workspace Name, Description, Hackathon Details, max size).
+   * Update general organization settings (Workspace Name, Description, Project Details, max members).
    */
   updateOrganizationGeneralSettings: async (orgId, updates) => {
     if (!orgId) throw new Error('Org ID is required.');
     const timestamp = Date.now();
-    return await rtdbService.updateData(`organizations/${orgId}`, {
-      ...updates,
-      updatedAt: timestamp,
-    });
+    const normalizedUpdates = { ...updates };
+
+    if (normalizedUpdates.maxMembers !== undefined) {
+      normalizedUpdates.teamSizeLimit = Number(normalizedUpdates.maxMembers);
+    } else if (normalizedUpdates.teamSizeLimit !== undefined) {
+      normalizedUpdates.maxMembers = Number(normalizedUpdates.teamSizeLimit);
+    }
+
+    try {
+      return await rtdbService.updateData(`organizations/${orgId}`, {
+        ...normalizedUpdates,
+        updatedAt: timestamp,
+      });
+    } catch (error) {
+      if (
+        error.code === 'PERMISSION_DENIED' ||
+        error.message?.includes('PERMISSION_DENIED') ||
+        error.message?.includes('permission') ||
+        error.message?.includes('Permission denied')
+      ) {
+        throw new Error("You don't have permission to modify this workspace.");
+      }
+      throw error;
+    }
   },
 
   /**
@@ -411,7 +446,19 @@ export const orgService = {
    */
   updateWorkspacePreferences: async (orgId, preferences) => {
     if (!orgId) throw new Error('Org ID is required.');
-    return await rtdbService.setData(`organizations/${orgId}/settings/preferences`, preferences);
+    try {
+      return await rtdbService.setData(`organizations/${orgId}/settings/preferences`, preferences);
+    } catch (error) {
+      if (
+        error.code === 'PERMISSION_DENIED' ||
+        error.message?.includes('PERMISSION_DENIED') ||
+        error.message?.includes('permission') ||
+        error.message?.includes('Permission denied')
+      ) {
+        throw new Error("You don't have permission to modify this workspace.");
+      }
+      throw error;
+    }
   },
 
   /**
@@ -434,26 +481,55 @@ export const orgService = {
   },
 
   /**
-   * Remove member from organization and decrement member count.
+   * Remove member from organization authoritatively.
    */
   removeMemberFromWorkspace: async (orgId, targetUid) => {
     if (!orgId || !targetUid) throw new Error('Org ID and target UID are required.');
-    
-    // 1. Remove member node
-    await rtdbService.setData(`organization_members/${orgId}/${targetUid}`, null);
-    
-    // 2. Decrement count
-    const org = await rtdbService.getData(`organizations/${orgId}`);
-    if (org) {
-      const newCount = Math.max(1, (org.memberCount || 1) - 1);
-      await rtdbService.updateData(`organizations/${orgId}`, { memberCount: newCount });
+
+    // 1. Authoritative Backend Flow via Admin SDK
+    try {
+      const response = await apiClient.delete(`/api/workspace/${orgId}/members/${targetUid}`);
+      if (response && response.success) {
+        return response.data;
+      }
+    } catch (apiErr) {
+      if (
+        apiErr.code === 'CANNOT_REMOVE_OWNER' ||
+        apiErr.code === 'CANNOT_REMOVE_ADMIN' ||
+        apiErr.code === 'INSUFFICIENT_ROLE'
+      ) {
+        throw apiErr;
+      }
+      console.warn('⚠️ [orgService] Backend remove member endpoint unavailable, falling back to direct RTDB write:', apiErr.message);
     }
-    
-    // 3. Clear active profile association
+
+    // 2. Direct RTDB Fallback
+    const org = await rtdbService.getData(`organizations/${orgId}`);
+    if (org && (org.ownerId === targetUid || org.createdBy === targetUid)) {
+      throw new Error('The workspace owner cannot be removed.');
+    }
+
+    await rtdbService.setData(`organization_members/${orgId}/${targetUid}`, null);
+
+    const membersObj = (await rtdbService.getData(`organization_members/${orgId}`)) || {};
+    delete membersObj[targetUid];
+    const canonicalCount = orgService.countUniqueActiveMembers(membersObj);
+
+    try {
+      await rtdbService.updateData(`organizations/${orgId}`, {
+        memberCount: canonicalCount,
+        updatedAt: Date.now(),
+      });
+    } catch (countErr) {
+      console.warn('⚠️ [orgService] Could not update memberCount on organization directly:', countErr.message);
+    }
+
     const profile = await rtdbService.getData(`users/${targetUid}`);
     if (profile && profile.organizationId === orgId) {
       await rtdbService.updateData(`users/${targetUid}`, { organizationId: null });
     }
+
+    return { success: true, memberCount: canonicalCount };
   },
 
   /**
@@ -471,10 +547,71 @@ export const orgService = {
   },
 
   /**
-   * Leave workspace.
+   * Authoritative leave workspace flow.
+   * Enforces owner leave restrictions and decreases canonical member count.
    */
   leaveWorkspace: async (orgId, uid) => {
-    return await orgService.removeMemberFromWorkspace(orgId, uid);
+    if (!orgId || !uid) throw new Error('Org ID and User UID are required.');
+
+    // 1. Authoritative Backend Flow via Admin SDK
+    try {
+      const response = await apiClient.post(`/api/workspace/${orgId}/leave`);
+      if (response && response.success) {
+        return response.data;
+      }
+    } catch (apiErr) {
+      if (
+        apiErr.code === 'OWNER_CANNOT_LEAVE' ||
+        apiErr.code === 'OWNER_CANNOT_LEAVE_WITH_MEMBERS' ||
+        apiErr.code === 'NOT_A_MEMBER'
+      ) {
+        throw apiErr;
+      }
+      console.warn('⚠️ [orgService] Backend leave endpoint unavailable, falling back to direct RTDB write:', apiErr.message);
+    }
+
+    // 2. Direct RTDB Fallback
+    const org = await rtdbService.getData(`organizations/${orgId}`);
+    if (!org) return;
+
+    const membersObj = (await rtdbService.getData(`organization_members/${orgId}`)) || {};
+    const memberUids = Object.keys(membersObj);
+    const isOwner = org.ownerId === uid || org.createdBy === uid;
+
+    if (isOwner && memberUids.length > 1) {
+      throw new Error('As the Owner, please remove members or transfer ownership before leaving.');
+    } else if (isOwner) {
+      throw new Error('Workspace owners cannot leave their workspace. You can transfer ownership or delete the workspace.');
+    }
+
+    const timestamp = Date.now();
+    await activityService.recordWorkspaceActivity(orgId, {
+      eventType: ACTIVITY_EVENT_TYPES.WORKSPACE_MEMBER_REMOVED,
+      actorId: uid,
+      actorType: 'user',
+      actorName: org.members?.[uid]?.name || 'Team Member',
+      resourceType: 'workspace',
+      resourceId: orgId,
+      resourceTitle: org.name || 'Workspace',
+      summary: `A member left the workspace`,
+      createdAt: timestamp,
+    }).catch(() => {});
+
+    await rtdbService.setData(`organization_members/${orgId}/${uid}`, null);
+
+    delete membersObj[uid];
+    const canonicalCount = orgService.countUniqueActiveMembers(membersObj);
+    try {
+      await rtdbService.updateData(`organizations/${orgId}`, {
+        memberCount: canonicalCount,
+        updatedAt: timestamp,
+      });
+    } catch (countErr) {
+      // Direct write denied for non-admins by RTDB rules; UI derives from organization_members
+    }
+
+    await rtdbService.updateData(`users/${uid}`, { organizationId: null });
+    return { success: true, memberCount: canonicalCount };
   },
 
   /**

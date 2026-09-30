@@ -183,3 +183,101 @@ export async function requireWorkspaceRole(
 
   return membership;
 }
+
+/**
+ * Counts unique active member UIDs from an authoritative membership records object.
+ * Strictly guarantees unique user counting (Set of UIDs) and excludes inactive/removed members.
+ *
+ * @param {Object|null} membersObj - Dictionary of member records keyed by UID
+ * @returns {number} Count of unique active members
+ */
+export function countUniqueActiveMembers(membersObj) {
+  if (!membersObj || typeof membersObj !== 'object') {
+    return 0;
+  }
+
+  const activeUids = new Set();
+  for (const [key, val] of Object.entries(membersObj)) {
+    if (!val || typeof val !== 'object') continue;
+    // Exclude explicitly soft-deleted, removed, or inactive member records
+    if (val.status === 'inactive' || val.status === 'removed' || val.isDeleted) {
+      continue;
+    }
+    const uid = val.uid || key;
+    if (uid && typeof uid === 'string' && uid.trim()) {
+      activeUids.add(uid.trim());
+    }
+  }
+
+  return activeUids.size;
+}
+
+/**
+ * Authoritatively retrieves the active workspace member count from canonical RTDB data.
+ * Reads directly from organization_members/{workspaceId}.
+ *
+ * @param {string} rawWorkspaceId - Target workspace/org ID
+ * @returns {Promise<number>} Canonical active member count
+ */
+export async function getActiveWorkspaceMemberCount(rawWorkspaceId) {
+  if (!rawWorkspaceId || typeof rawWorkspaceId !== 'string' || !rawWorkspaceId.trim()) {
+    return 0;
+  }
+
+  const workspaceId = validatePathSegment(rawWorkspaceId.trim(), 'workspaceId');
+  const membersObj = await rtdbService.getData(`organization_members/${workspaceId}`);
+  return countUniqueActiveMembers(membersObj);
+}
+
+/**
+ * Reconciles the denormalized memberCount on organizations/{workspaceId}
+ * with the authoritative active records in organization_members/{workspaceId}.
+ *
+ * @param {string} rawWorkspaceId - Target workspace/org ID
+ * @returns {Promise<{ workspaceId: string, previousCount: number, canonicalCount: number, updated: boolean }>}
+ */
+export async function reconcileWorkspaceMemberCount(rawWorkspaceId) {
+  if (!rawWorkspaceId || typeof rawWorkspaceId !== 'string' || !rawWorkspaceId.trim()) {
+    const err = new Error('Workspace ID is required.');
+    err.statusCode = 400;
+    err.code = 'INVALID_WORKSPACE_ID';
+    throw err;
+  }
+
+  const workspaceId = validatePathSegment(rawWorkspaceId.trim(), 'workspaceId');
+  const [org, membersObj] = await Promise.all([
+    rtdbService.getData(`organizations/${workspaceId}`),
+    rtdbService.getData(`organization_members/${workspaceId}`),
+  ]);
+
+  if (!org) {
+    const err = new Error('Workspace not found.');
+    err.statusCode = 404;
+    err.code = 'WORKSPACE_NOT_FOUND';
+    throw err;
+  }
+
+  const canonicalCount = countUniqueActiveMembers(membersObj);
+  const previousCount = typeof org.memberCount === 'number' ? org.memberCount : null;
+  const timestamp = Date.now();
+
+  const updates = {
+    [`organizations/${workspaceId}/memberCount`]: canonicalCount,
+    [`organizations/${workspaceId}/updatedAt`]: timestamp,
+  };
+
+  const wsAlias = await rtdbService.getData(`workspaces/${workspaceId}`);
+  if (wsAlias) {
+    updates[`workspaces/${workspaceId}/memberCount`] = canonicalCount;
+    updates[`workspaces/${workspaceId}/updatedAt`] = timestamp;
+  }
+
+  await rtdbService.updateData('', updates);
+
+  return {
+    workspaceId,
+    previousCount,
+    canonicalCount,
+    updated: previousCount !== canonicalCount,
+  };
+}

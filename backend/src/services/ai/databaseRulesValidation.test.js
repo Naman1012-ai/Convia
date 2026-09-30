@@ -178,10 +178,12 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
           // Creating org
           return { allowed: newData?.ownerId === auth.uid };
         }
-        // Updating org: owner or member
+        // Updating org: owner or admin
         const isOwner = isOwnerOfOrg(orgId, auth.uid);
-        const isMember = isMemberOfOrg(orgId, auth.uid);
-        if (!isOwner && !isMember) return { allowed: false, reason: 'NOT_ORG_MEMBER' };
+        const memberRole = rootData['organization_members']?.[orgId]?.[auth.uid]?.role ||
+                           rootData['workspaces']?.[orgId]?.[auth.uid]?.role;
+        const isAdmin = memberRole === 'admin';
+        if (!isOwner && !isAdmin) return { allowed: false, reason: 'NOT_OWNER_OR_ADMIN' };
         if (!isOwner && newData && newData.ownerId !== data.ownerId) {
           return { allowed: false, reason: 'UNAUTHORIZED_OWNERSHIP_TRANSFER' };
         }

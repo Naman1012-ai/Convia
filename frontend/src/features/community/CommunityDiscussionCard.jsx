@@ -1,52 +1,51 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   MessageCircle,
   MoreVertical,
   Pencil,
   Trash2,
-  Copy,
-  Check,
-  Sparkles,
-  SmilePlus,
-  Loader2,
-  X,
-  Lightbulb,
   Bookmark,
   BookmarkCheck,
+  Copy,
+  Check,
+  SmilePlus,
+  Sparkles,
+  Lightbulb,
   Pin,
+  Loader2,
 } from 'lucide-react';
-import { ChatReactionPicker } from '../chat/ChatReactionPicker';
-import { ChatReactionParticipantsModal } from '../chat/ChatReactionParticipantsModal';
 import {
-  COMMUNITY_POST_TYPES,
   COMMUNITY_POST_TYPE_CONFIG,
+  COMMUNITY_SUPPORTED_REACTIONS,
 } from '../../constants/chatSchema';
 import {
   formatMessageTime,
   formatFullDateTime,
   formatReplyCountLabel,
 } from '../../utils/chatFeedHelpers';
-import { useToast } from '../../hooks/useToast';
-import { useUserProfile } from '../../hooks/useUserProfile';
-import { ContextMenuPortal } from '../../components/ui/ContextMenuPortal';
 import {
   resolveMemberDisplayName,
   isMessageAuthoredByUser,
   getMessageAuthorUid,
 } from '../../utils/memberIdentity';
+import { useUserProfile } from '../../hooks/useUserProfile';
+import { useToast } from '../../hooks/useToast';
+import { ChatReactionPicker } from '../chat/ChatReactionPicker';
+import { ChatReactionParticipantsModal } from '../chat/ChatReactionParticipantsModal';
+import { ContextMenuPortal } from '../../components/ui/ContextMenuPortal';
 
 export function CommunityDiscussionCard({
   message,
-  currentUserId = null,
+  currentUserId,
   isAdmin = false,
   reactions = {},
   replyCount = 0,
   isGrouped = false,
   isFirstInGroup = true,
   isLastInGroup = true,
-  timeLabel = '',
-  fullDateLabel = '',
+  timeLabel = null,
+  fullDateLabel = null,
   onOpenThread = () => {},
   onToggleReaction = () => {},
   onEditMessage = async () => {},
@@ -58,68 +57,43 @@ export function CommunityDiscussionCard({
   isPinned = false,
   onTogglePin = () => {},
   activeMenuMessageId = null,
+  onSetActiveMenuMessageId = null,
   menuAnchorRect = null,
   onOpenMenu = null,
   onCloseMenu = null,
-  onSetActiveMenuMessageId = null,
 }) {
   const { toast } = useToast();
+  const [localMenuOpen, setLocalMenuOpen] = useState(false);
+  const [localAnchorRect, setLocalAnchorRect] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [copiedText, setCopiedText] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
   const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
   const [inspectReactionEmoji, setInspectReactionEmoji] = useState(null);
 
-  // Single-active-menu coordination with parent or fallback to local state
-  const [localMenuOpen, setLocalMenuOpen] = useState(false);
-  const [localAnchorRect, setLocalAnchorRect] = useState(null);
-
   const isMenuOpen = onOpenMenu
-    ? activeMenuMessageId === message.messageId
-    : onSetActiveMenuMessageId
     ? activeMenuMessageId === message.messageId
     : localMenuOpen;
 
-  const currentAnchorRect = onOpenMenu
-    ? (activeMenuMessageId === message.messageId ? menuAnchorRect : null)
-    : localAnchorRect;
+  const currentAnchorRect = onOpenMenu ? menuAnchorRect : localAnchorRect;
 
   const handleCloseThisMenu = () => {
     if (onCloseMenu) onCloseMenu();
-    else if (onSetActiveMenuMessageId) onSetActiveMenuMessageId(null);
-    else setLocalMenuOpen(false);
+    else {
+      setLocalMenuOpen(false);
+      setLocalAnchorRect(null);
+      if (onSetActiveMenuMessageId) onSetActiveMenuMessageId(null);
+    }
   };
 
   const handleToggleMenu = (e) => {
     e.stopPropagation();
-    if (isMenuOpen) {
-      handleCloseThisMenu();
-    } else {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const buttonRect = {
-        top: rect.top,
-        bottom: rect.bottom,
-        left: rect.left,
-        right: rect.right,
-        width: rect.width,
-        height: rect.height,
-      };
-      if (onOpenMenu) {
-        onOpenMenu(message.messageId, buttonRect);
-      } else {
-        if (onSetActiveMenuMessageId) onSetActiveMenuMessageId(message.messageId);
-        setLocalAnchorRect(buttonRect);
-        setLocalMenuOpen(true);
-      }
-    }
-  };
-
-  const setIsMenuOpen = (open) => {
-    if (open) {
-      if (menuButtonRef.current) {
-        const rect = menuButtonRef.current.getBoundingClientRect();
+    if (!isMenuOpen) {
+      const buttonEl = e.currentTarget;
+      if (buttonEl) {
+        const rect = buttonEl.getBoundingClientRect();
         const buttonRect = {
           top: rect.top,
           bottom: rect.bottom,
@@ -143,7 +117,7 @@ export function CommunityDiscussionCard({
   const menuButtonRef = useRef(null);
   const editTextareaRef = useRef(null);
 
-  // Real-time user profile resolution using canonical author UID
+  // Author resolution
   const messageAuthorUid = getMessageAuthorUid(message) || message.senderId;
   const { displayName: resolvedName, avatar: resolvedAvatar } = useUserProfile(
     messageAuthorUid,
@@ -154,7 +128,7 @@ export function CommunityDiscussionCard({
     }
   );
 
-  // Message ownership strictly verified by authenticated canonical UID
+  // Canonical ownership comparison
   const isOwnMessage = Boolean(
     currentUserId && isMessageAuthoredByUser(message, currentUserId)
   );
@@ -178,7 +152,7 @@ export function CommunityDiscussionCard({
       setCopiedText(true);
       toast.success('Text copied to clipboard.');
       setTimeout(() => setCopiedText(false), 2000);
-      setIsMenuOpen(false);
+      handleCloseThisMenu();
     } catch {
       toast.error('Failed to copy text.');
     }
@@ -186,13 +160,13 @@ export function CommunityDiscussionCard({
 
   const handleCopyLink = async () => {
     try {
-      const targetId = message.messageId;
+      const targetId = message.messageId || message.id;
       const url = `${window.location.origin}/community?messageId=${encodeURIComponent(targetId)}`;
       await navigator.clipboard.writeText(url);
       setCopiedLink(true);
       toast.success('Link copied to clipboard.');
       setTimeout(() => setCopiedLink(false), 2000);
-      setIsMenuOpen(false);
+      handleCloseThisMenu();
     } catch {
       toast.error('Failed to copy link.');
     }
@@ -247,7 +221,7 @@ export function CommunityDiscussionCard({
             className={`${
               isOwn
                 ? 'text-indigo-200 underline font-semibold hover:text-white'
-                : 'text-indigo-600 underline font-semibold hover:text-indigo-800'
+                : 'text-emerald-700 underline font-semibold hover:text-emerald-900'
             } break-all`}
           >
             {part}
@@ -263,12 +237,12 @@ export function CommunityDiscussionCard({
     return (
       <div
         id={`msg_${message.messageId}`}
-        className={`flex w-full px-2 sm:px-4 ${isGrouped ? 'my-0.5' : 'my-1.5'} ${
+        className={`flex w-full px-2 sm:px-3 ${isGrouped ? 'my-0.5' : 'my-1'} ${
           isOwnMessage ? 'justify-end' : 'justify-start'
         }`}
       >
         <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-2xl text-xs italic ${
+          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs italic ${
             isOwnMessage
               ? 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tr-xs'
               : 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tl-xs'
@@ -307,8 +281,8 @@ export function CommunityDiscussionCard({
           ref={menuButtonRef}
           type="button"
           onClick={handleToggleMenu}
-          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-            isMenuOpen ? 'ring-2 ring-indigo-500 text-indigo-600 bg-white shadow-sm' : ''
+          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer ${
+            isMenuOpen ? 'ring-2 ring-emerald-500 text-emerald-600 bg-white shadow-sm' : ''
           }`}
           title="More actions"
           aria-label="More actions"
@@ -331,7 +305,7 @@ export function CommunityDiscussionCard({
           <button
             type="button"
             onClick={handleCopyLink}
-            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
             role="menuitem"
           >
             {copiedLink ? (
@@ -352,7 +326,7 @@ export function CommunityDiscussionCard({
             <button
               type="button"
               onClick={handleCopyText}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
               role="menuitem"
             >
               {copiedText ? (
@@ -373,10 +347,10 @@ export function CommunityDiscussionCard({
           <button
             type="button"
             onClick={() => {
-              setIsMenuOpen(false);
+              handleCloseThisMenu();
               onTurnIntoIdea(message);
             }}
-            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
             role="menuitem"
           >
             <Sparkles className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
@@ -388,10 +362,10 @@ export function CommunityDiscussionCard({
             <button
               type="button"
               onClick={() => {
-                setIsMenuOpen(false);
+                handleCloseThisMenu();
                 onToggleSave(message);
               }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
               role="menuitem"
             >
               {isSaved ? (
@@ -413,10 +387,10 @@ export function CommunityDiscussionCard({
             <button
               type="button"
               onClick={() => {
-                setIsMenuOpen(false);
+                handleCloseThisMenu();
                 onTogglePin(message);
               }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
+              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
               role="menuitem"
             >
               <Pin className={`h-3.5 w-3.5 text-amber-600 shrink-0 ${isPinned ? 'rotate-0' : 'rotate-45'}`} />
@@ -429,10 +403,10 @@ export function CommunityDiscussionCard({
             <button
               type="button"
               onClick={() => {
-                setIsMenuOpen(false);
+                handleCloseThisMenu();
                 setIsEditing(true);
               }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors cursor-pointer"
+              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-emerald-700 transition-colors cursor-pointer"
               role="menuitem"
             >
               <Pencil className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -447,10 +421,10 @@ export function CommunityDiscussionCard({
               <button
                 type="button"
                 onClick={() => {
-                  setIsMenuOpen(false);
+                  handleCloseThisMenu();
                   onDeleteMessage(message);
                 }}
-                className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2.5 sm:py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                 role="menuitem"
               >
                 <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
@@ -463,7 +437,7 @@ export function CommunityDiscussionCard({
     );
   };
 
-  // Helper: Reaction Chips, Reply Button & Contextual Actions
+  // Helper: Reaction Chips & Reply Action
   const renderReactionsAndReplies = (isOwn) => {
     const hasReactions = Object.keys(reactions).some(
       (k) => reactions[k]?.count > 0
@@ -477,7 +451,7 @@ export function CommunityDiscussionCard({
           isOwn ? 'justify-end' : 'justify-start'
         }`}
       >
-        {/* Reaction Chips */}
+        {/* Existing Reaction Chips */}
         {Object.entries(reactions).map(([emoji, data]) => {
           if (!data || !data.count || data.count <= 0) return null;
           const hasUserReacted =
@@ -492,14 +466,14 @@ export function CommunityDiscussionCard({
               onClick={() => onToggleReaction(message.messageId, emoji)}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
                 hasUserReacted
-                  ? 'bg-indigo-100 border border-indigo-300 text-indigo-800 font-bold shadow-2xs hover:bg-indigo-200/70'
+                  ? 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold shadow-2xs hover:bg-emerald-200/70'
                   : 'bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 text-slate-700 font-medium'
               }`}
               title={`React with ${emoji} (${data.count})`}
               aria-label={`${emoji} reaction, ${data.count} count`}
             >
               <span>{emoji}</span>
-              <span className="text-[11px] font-mono">{data.count}</span>
+              <span className="text-[10px] font-mono">{data.count}</span>
             </button>
           );
         })}
@@ -510,9 +484,9 @@ export function CommunityDiscussionCard({
             <button
               type="button"
               onClick={() => setIsReactionPickerOpen((prev) => !prev)}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer"
               title="Add reaction"
-              aria-label="Add emoji reaction"
+              aria-label="Add reaction"
             >
               <SmilePlus className="h-3.5 w-3.5" />
             </button>
@@ -536,10 +510,10 @@ export function CommunityDiscussionCard({
           <button
             type="button"
             onClick={() => onOpenThread(message)}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
+            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
               replyCount > 0
-                ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-200/80 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800'
-                : 'bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200/60 text-slate-600'
+                ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 shadow-2xs hover:bg-emerald-100'
+                : 'bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 text-slate-600'
             }`}
             title={
               replyCount > 0
@@ -553,12 +527,12 @@ export function CommunityDiscussionCard({
           </button>
         )}
 
-        {/* Contextual Idea indicator/action for idea post types */}
+        {/* Contextual Proposal action for Idea post type */}
         {postType === 'idea' && (
           <button
             type="button"
             onClick={() => onTurnIntoIdea(message)}
-            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 transition-colors"
+            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 transition-colors cursor-pointer"
             title="Create an official proposal from this idea"
           >
             <Lightbulb className="h-2.5 w-2.5 text-amber-600" />
@@ -569,16 +543,15 @@ export function CommunityDiscussionCard({
     );
   };
 
-  // Main Render: Own Message (Right) vs Other User Message (Left)
   return (
     <div
       id={`msg_${message.messageId}`}
       tabIndex={0}
-      className={`group relative flex w-full px-2 sm:px-4 transition-all duration-200 ${
-        isGrouped ? 'my-0.5' : 'mt-3 mb-1'
+      className={`group relative flex w-full px-2 sm:px-3 transition-all duration-150 ${
+        isGrouped ? 'my-0.5' : 'mt-2.5 mb-0.5'
       } ${isOwnMessage ? 'justify-end' : 'justify-start'} ${
         isHighlighted
-          ? 'bg-indigo-50/70 ring-2 ring-indigo-500 rounded-2xl py-1.5'
+          ? 'bg-emerald-50/70 ring-2 ring-emerald-500 rounded-2xl py-1'
           : isPinned
           ? 'bg-amber-50/40 rounded-2xl py-1 border border-amber-200/50'
           : ''
@@ -588,12 +561,11 @@ export function CommunityDiscussionCard({
         /* ======================================================== */
         /* CURRENT USER (OWN MESSAGE) — RIGHT-ALIGNED              */
         /* ======================================================== */
-        <div className="relative flex flex-col items-end max-w-[88%] sm:max-w-[78%] lg:max-w-[70%]">
-          {/* Header above bubble (only shown on first message of a group) */}
+        <div className="relative flex flex-col items-end max-w-[90%] sm:max-w-[80%] lg:max-w-[72%]">
           {!isGrouped && (
             <div className="flex items-center justify-end gap-1.5 mb-1 px-1 flex-wrap">
               {isPinned && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
                   <Pin className="h-2.5 w-2.5 text-amber-700 rotate-45" />
                   Featured
                 </span>
@@ -618,13 +590,12 @@ export function CommunityDiscussionCard({
             </div>
           )}
 
-          {/* Main Bubble Wrapper with relative anchor */}
           <div className="relative group/bubble flex flex-col items-end">
             {renderActionToolbar(true)}
 
-            {/* Bubble */}
+            {/* Bubble Surface */}
             <div
-              className={`relative rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs px-3.5 py-2.5 space-y-1 ${
+              className={`relative rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
                 isHighlighted ? 'ring-2 ring-indigo-300' : ''
               }`}
             >
@@ -657,7 +628,7 @@ export function CommunityDiscussionCard({
                     <button
                       type="submit"
                       disabled={isSavingEdit || !editContent.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 disabled:bg-indigo-300 font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 disabled:bg-indigo-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
                     >
                       {isSavingEdit ? (
                         <>
@@ -676,7 +647,7 @@ export function CommunityDiscussionCard({
                         setEditContent(message.content || '');
                       }}
                       disabled={isSavingEdit}
-                      className="px-2.5 py-1.5 rounded-lg bg-indigo-700/60 hover:bg-indigo-700 text-indigo-100 font-medium text-xs transition-colors"
+                      className="px-2.5 py-1.5 rounded-lg bg-indigo-700/60 hover:bg-indigo-700 text-indigo-100 font-medium text-xs transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -714,40 +685,36 @@ export function CommunityDiscussionCard({
             </div>
           </div>
 
-          {/* Reactions & Thread Replies */}
           {renderReactionsAndReplies(true)}
         </div>
       ) : (
         /* ======================================================== */
         /* OTHER COMMUNITY MEMBER — LEFT-ALIGNED                   */
         /* ======================================================== */
-        <div className="relative flex flex-row items-start gap-2 max-w-[88%] sm:max-w-[78%] lg:max-w-[70%]">
-          {/* Avatar on Left (or Spacer when grouped) */}
+        <div className="relative flex flex-row items-start gap-2 max-w-[90%] sm:max-w-[80%] lg:max-w-[72%]">
           {!isGrouped ? (
             <div className="relative shrink-0 pt-0.5">
               {resolvedAvatar ? (
                 <img
                   src={resolvedAvatar}
                   alt={resolvedName}
-                  className="h-8 w-8 rounded-full object-cover border border-slate-200 shadow-2xs"
+                  className="h-7 w-7 rounded-full object-cover border border-slate-200 shadow-2xs"
                 />
               ) : (
-                <div className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-700 text-white shadow-2xs">
+                <div className="h-7 w-7 rounded-full flex items-center justify-center font-bold text-xs bg-slate-700 text-white shadow-2xs">
                   {(resolvedName || 'M').charAt(0).toUpperCase()}
                 </div>
               )}
             </div>
           ) : (
-            <div className="w-8 shrink-0" />
+            <div className="w-7 shrink-0" />
           )}
 
-          {/* Bubble Column */}
           <div className="flex flex-col items-start min-w-0">
-            {/* Header above bubble (only shown on first message of a group) */}
             {!isGrouped && (
               <div className="flex items-center gap-1.5 mb-1 px-1 flex-wrap">
                 {isPinned && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
                     <Pin className="h-2.5 w-2.5 text-amber-700 rotate-45" />
                     Featured
                   </span>
@@ -774,14 +741,13 @@ export function CommunityDiscussionCard({
               </div>
             )}
 
-            {/* Main Bubble Wrapper with relative anchor */}
             <div className="relative group/bubble flex flex-col items-start">
               {renderActionToolbar(false)}
 
-              {/* Bubble */}
+              {/* Bubble Surface */}
               <div
-                className={`relative rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-900 shadow-2xs px-3.5 py-2.5 space-y-1 ${
-                  isHighlighted ? 'ring-2 ring-indigo-500 border-indigo-400' : ''
+                className={`relative rounded-2xl rounded-tl-xs bg-white border border-slate-200/90 text-slate-900 shadow-2xs px-3.5 py-2 space-y-1 hover:border-slate-300 transition-colors ${
+                  isHighlighted ? 'ring-2 ring-emerald-500 border-emerald-400' : ''
                 }`}
               >
                 {message.content && (
@@ -809,7 +775,6 @@ export function CommunityDiscussionCard({
               </div>
             </div>
 
-            {/* Reactions & Thread Replies */}
             {renderReactionsAndReplies(false)}
           </div>
         </div>
@@ -864,9 +829,8 @@ CommunityDiscussionCard.propTypes = {
   isPinned: PropTypes.bool,
   onTogglePin: PropTypes.func,
   activeMenuMessageId: PropTypes.string,
+  onSetActiveMenuMessageId: PropTypes.func,
   menuAnchorRect: PropTypes.object,
   onOpenMenu: PropTypes.func,
   onCloseMenu: PropTypes.func,
-  onSetActiveMenuMessageId: PropTypes.func,
 };
-

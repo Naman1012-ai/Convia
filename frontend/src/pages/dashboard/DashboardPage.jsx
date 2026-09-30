@@ -369,7 +369,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6">
                   <p className="text-sm text-slate-600 font-medium mb-4">
-                    Create or join a hackathon workspace to start brainstorming and tracking consensus!
+                    Create or join a workspace to start brainstorming and tracking consensus!
                   </p>
                   <div className="inline-flex gap-3">
                     <Button variant="primary" size="sm" onClick={() => setIsCreateOrgOpen(true)}>
@@ -479,16 +479,19 @@ export default function DashboardPage() {
       <Modal
         isOpen={isCreateOrgOpen}
         onClose={() => setIsCreateOrgOpen(false)}
-        title="Create Hackathon Workspace"
+        title="Create a Workspace"
         size="lg"
       >
-        <CreateOrgForm onSuccess={handleWorkspaceCreated} />
+        <CreateOrgForm
+          onSuccess={handleWorkspaceCreated}
+          onCancel={() => setIsCreateOrgOpen(false)}
+        />
       </Modal>
 
       <Modal
         isOpen={isJoinOrgOpen}
         onClose={() => setIsJoinOrgOpen(false)}
-        title="Join Hackathon Workspace"
+        title="Join Workspace"
         size="md"
       >
         <JoinOrgForm onSuccess={handleWorkspaceJoined} />

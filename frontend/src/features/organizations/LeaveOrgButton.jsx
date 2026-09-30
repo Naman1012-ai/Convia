@@ -21,10 +21,15 @@ export function LeaveOrgButton({ onToast = () => {} }) {
 
     setIsLeaving(true);
     try {
-      await orgService.leaveOrganization(user.uid, org.orgId);
-      onToast('You left the organization.');
+      if (isSoleOwner) {
+        await orgService.deleteWorkspace(org.orgId);
+        onToast('Workspace deleted permanently.');
+      } else {
+        await orgService.leaveOrganization(user.uid, org.orgId);
+        onToast('You left the workspace.');
+      }
       setIsOpen(false);
-      navigate('/dashboard');
+      navigate('/workspaces');
     } catch (err) {
       onToast(err.message || 'Failed to leave organization.');
     } finally {

@@ -6,23 +6,22 @@ import {
   HelpCircle,
   MessageCircle,
   Users2,
-  Sparkles,
-  ArrowRight,
-  Plus,
   Bookmark,
   User,
   CornerDownRight,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { COMMUNITY_POST_TYPES } from '../../constants/chatSchema';
-import { Button } from '../../components/ui/Button';
 
 export function CommunityNav({
   activeFilter = 'all',
   onSelectFilter = () => {},
-  onOpenCreate = () => {},
   discussionCounts = {},
   activityCounts = {},
   isAuthenticated = true,
+  isCollapsed = false,
+  onToggleCollapse = null,
   className = '',
 }) {
   const channels = [
@@ -92,30 +91,46 @@ export function CommunityNav({
   ];
 
   return (
-    <div className={`flex flex-col h-full space-y-6 ${className}`}>
-      {/* Primary Action Button */}
-      <div>
-        <Button
-          variant="primary"
-          size="md"
-          icon={<Plus className="h-4 w-4" />}
-          onClick={onOpenCreate}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm font-semibold justify-center py-2.5 rounded-xl transition-all hover:shadow"
-        >
-          Start a Discussion
-        </Button>
+    <div
+      className={`flex flex-col h-full select-none transition-all duration-200 ${
+        isCollapsed ? 'items-center px-1' : 'px-2'
+      } ${className}`}
+    >
+      {/* Sidebar Header & Collapse Toggle */}
+      <div className={`flex items-center pb-3 mb-2 border-b border-slate-100 ${
+        isCollapsed ? 'justify-center w-full' : 'justify-between px-2'
+      }`}>
+        {!isCollapsed && (
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Community
+          </span>
+        )}
+        {typeof onToggleCollapse === 'function' && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
 
-      {/* Functional Community Channels Navigation */}
-      <div className="space-y-1">
-        <div className="px-3 pb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          <span>Channels</span>
-          <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-            Live
-          </span>
-        </div>
+      {/* Section 1: Community Channels */}
+      <div className="w-full space-y-0.5">
+        {!isCollapsed && (
+          <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            Channels
+          </div>
+        )}
 
-        <nav className="space-y-1" aria-label="Community Channels">
+        <nav className="space-y-0.5" aria-label="Community Channels">
           {channels.map((chan) => {
             const Icon = chan.icon;
             const isActive = activeFilter === chan.id;
@@ -125,35 +140,42 @@ export function CommunityNav({
                 key={chan.id}
                 type="button"
                 onClick={() => onSelectFilter(chan.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group text-left ${
+                title={isCollapsed ? `${chan.label} (${chan.count})` : chan.description}
+                className={`w-full flex items-center transition-all group cursor-pointer text-left ${
+                  isCollapsed
+                    ? 'justify-center p-2 rounded-xl'
+                    : 'justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium'
+                } ${
                   isActive
-                    ? 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-200/80 shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent'
+                    ? 'bg-emerald-50 text-emerald-900 font-bold border-l-2 border-emerald-600 shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      isActive
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
+                  <Icon
+                    className={`h-4 w-4 shrink-0 transition-colors ${
+                      isActive ? 'text-emerald-700' : 'text-slate-400 group-hover:text-slate-600'
                     }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span className="truncate">{chan.label}</span>
+                  />
+                  {!isCollapsed && (
+                    <span className="truncate">{chan.label}</span>
+                  )}
                 </div>
 
-                {chan.count > 0 && (
+                {!isCollapsed && chan.count > 0 && (
                   <span
-                    className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
                       isActive
-                        ? 'bg-emerald-200 text-emerald-900 font-bold'
-                        : 'bg-slate-200/70 text-slate-600'
+                        ? 'bg-emerald-200/80 text-emerald-900 font-bold'
+                        : 'bg-slate-100 text-slate-500'
                     }`}
                   >
                     {chan.count}
                   </span>
+                )}
+
+                {isCollapsed && chan.count > 0 && (
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500" />
                 )}
               </button>
             );
@@ -161,14 +183,16 @@ export function CommunityNav({
         </nav>
       </div>
 
-      {/* Real User Activity Navigation (Zero Fake Data) */}
+      {/* Section 2: User Activity (Zero Fake Data) */}
       {isAuthenticated && (
-        <div className="space-y-1 pt-2 border-t border-slate-100">
-          <div className="px-3 pb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            <span>Your Activity</span>
-          </div>
+        <div className={`w-full pt-4 mt-3 border-t border-slate-100 space-y-0.5`}>
+          {!isCollapsed && (
+            <div className="px-2 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              My Activity
+            </div>
+          )}
 
-          <nav className="space-y-1" aria-label="User Community Activity">
+          <nav className="space-y-0.5" aria-label="User Community Activity">
             {activityFilters.map((act) => {
               const Icon = act.icon;
               const isActive = activeFilter === act.id;
@@ -178,32 +202,34 @@ export function CommunityNav({
                   key={act.id}
                   type="button"
                   onClick={() => onSelectFilter(act.id)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all group text-left ${
+                  title={isCollapsed ? `${act.label} (${act.count})` : act.description}
+                  className={`w-full flex items-center transition-all group cursor-pointer text-left ${
+                    isCollapsed
+                      ? 'justify-center p-2 rounded-xl relative'
+                      : 'justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium'
+                  } ${
                     isActive
-                      ? 'bg-emerald-50 text-emerald-900 font-bold border border-emerald-200/80 shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 border border-transparent'
+                      ? 'bg-emerald-50 text-emerald-900 font-bold border-l-2 border-emerald-600 shadow-2xs'
+                      : 'text-slate-600 hover:bg-slate-100/70 hover:text-slate-900'
                   }`}
-                  title={act.description}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        isActive
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
+                  <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
+                    <Icon
+                      className={`h-4 w-4 shrink-0 transition-colors ${
+                        isActive ? 'text-emerald-700' : 'text-slate-400 group-hover:text-slate-600'
                       }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <span className="truncate">{act.label}</span>
+                    />
+                    {!isCollapsed && (
+                      <span className="truncate">{act.label}</span>
+                    )}
                   </div>
 
-                  {act.count > 0 && (
+                  {!isCollapsed && act.count > 0 && (
                     <span
-                      className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${
                         isActive
-                          ? 'bg-emerald-200 text-emerald-900 font-bold'
-                          : 'bg-slate-200/70 text-slate-600'
+                          ? 'bg-emerald-200/80 text-emerald-900 font-bold'
+                          : 'bg-slate-100 text-slate-500'
                       }`}
                     >
                       {act.count}
@@ -215,26 +241,6 @@ export function CommunityNav({
           </nav>
         </div>
       )}
-
-      {/* Convia Philosophy Reminder Card */}
-      <div className="mt-auto p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/60 to-indigo-50/40 border border-emerald-100/80 shadow-2xs space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
-          <Sparkles className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-          <span>The Convia Pipeline</span>
-        </div>
-        <p className="text-[11px] text-slate-600 leading-relaxed">
-          Ideas ignite in community discussions, mature through suggestions, and evolve into structured blueprints and actions.
-        </p>
-        <div className="pt-1 flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
-          <span>Idea</span>
-          <ArrowRight className="h-2.5 w-2.5" />
-          <span>Discuss</span>
-          <ArrowRight className="h-2.5 w-2.5" />
-          <span>Blueprint</span>
-          <ArrowRight className="h-2.5 w-2.5" />
-          <span>Action</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -246,5 +252,7 @@ CommunityNav.propTypes = {
   discussionCounts: PropTypes.object,
   activityCounts: PropTypes.object,
   isAuthenticated: PropTypes.bool,
+  isCollapsed: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
   className: PropTypes.string,
 };

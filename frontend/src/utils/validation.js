@@ -55,7 +55,101 @@ export function validateTaskTitle(title) {
 }
 
 export function validateOrgName(name) {
-  return validateString(name, CHAR_LIMITS.ORG_NAME, true, 'Organization name');
+  return validateWorkspaceName(name);
+}
+
+export function validateWorkspaceName(name) {
+  if (!name || typeof name !== 'string') {
+    return { valid: false, error: 'Workspace name is required.' };
+  }
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return { valid: false, error: 'Workspace name is required.' };
+  }
+  if (trimmed.length > 80) {
+    return { valid: false, error: 'Workspace name must be 80 characters or fewer.' };
+  }
+  return { valid: true };
+}
+
+export function validateProjectType(projectType) {
+  const allowed = [
+    'software',
+    'ai_ml',
+    'hardware',
+    'research',
+    'startup',
+    'academic',
+    'hackathon',
+    'other',
+  ];
+  if (!projectType || typeof projectType !== 'string' || !allowed.includes(projectType)) {
+    return { valid: false, error: 'Please select a valid project type.' };
+  }
+  return { valid: true };
+}
+
+export function validateWorkspaceDescription(desc) {
+  if (!desc || typeof desc !== 'string') {
+    return { valid: false, error: 'Description is required.' };
+  }
+  const trimmed = desc.trim();
+  if (trimmed.length === 0) {
+    return { valid: false, error: 'Description is required.' };
+  }
+  if (trimmed.length > 1000) {
+    return {
+      valid: false,
+      error: `Description must be at most 1000 characters (currently ${trimmed.length}).`,
+    };
+  }
+  return { valid: true };
+}
+
+export function validateProjectGoal(goal) {
+  if (!goal) return { valid: true };
+  if (typeof goal !== 'string') return { valid: true };
+  const trimmed = goal.trim();
+  if (trimmed.length > 300) {
+    return {
+      valid: false,
+      error: `Project goal must be 300 characters or fewer (currently ${trimmed.length}).`,
+    };
+  }
+  return { valid: true };
+}
+
+export function validateWorkspaceMembersLimit(value, min = 2, max = 50) {
+  if (value === undefined || value === null || value === '') {
+    return { valid: false, error: `Maximum members is required.` };
+  }
+  const num = Number(value);
+  if (!Number.isInteger(num)) {
+    return { valid: false, error: 'Maximum members must be a whole number.' };
+  }
+  if (num < min || num > max) {
+    return {
+      valid: false,
+      error: `Maximum members must be between ${min} and ${max}.`,
+    };
+  }
+  return { valid: true };
+}
+
+export function validateProjectUrl(url, label = 'URL') {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    return { valid: true };
+  }
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { valid: false, error: `${label} must begin with http:// or https://` };
+    }
+    return { valid: true };
+  } catch {
+    return { valid: false, error: `Please enter a valid ${label} (e.g. https://example.com).` };
+  }
 }
 
 export function validateDisplayName(name) {
@@ -72,3 +166,4 @@ export function validateEmail(email) {
   }
   return { valid: true };
 }
+

@@ -14,6 +14,7 @@ import { JoinOrgForm } from '../../features/organizations/JoinOrgForm';
 import { Card } from '../../components/ui/Card';
 import { Plus, LogIn, Users, AlertTriangle, Clock, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getProjectTypeLabel } from '../../constants/workspaceConstants';
 
 export default function WorkspacesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -33,7 +34,6 @@ export default function WorkspacesPage() {
       setLoadingOrgs(false);
       return;
     }
-    setLoadingOrgs(true);
     try {
       const orgs = await orgService.getUserOrganizations(user.uid);
       setOrganizations(orgs);
@@ -44,14 +44,19 @@ export default function WorkspacesPage() {
     }
   }, [user]);
 
-  // Load Workspaces on Auth Ready
+  // Subscribe to Real-Time Workspaces updates
   useEffect(() => {
     if (!authLoading && user) {
-      loadWorkspaces();
+      setLoadingOrgs(true);
+      const unsubscribe = orgService.subscribeToUserOrganizations(user.uid, (orgs) => {
+        setOrganizations(orgs);
+        setLoadingOrgs(false);
+      });
+      return unsubscribe;
     } else if (!authLoading && !user) {
       setLoadingOrgs(false);
     }
-  }, [user, authLoading, loadWorkspaces]);
+  }, [user, authLoading]);
 
   const handleWorkspaceCreated = (newOrg) => {
     setIsCreateOrgOpen(false);
@@ -81,8 +86,8 @@ export default function WorkspacesPage() {
     <div className="space-y-8 max-w-7xl mx-auto px-4 py-8">
       {/* Header Toolbar */}
       <PageHeader
-        title="Hackathon Workspaces"
-        subtitle="Manage private spaces to coordinate ideas, mvp consensus voting, and sprint execution boards"
+        title="Workspaces"
+        subtitle="Manage private spaces to coordinate ideas, consensus voting, and sprint execution boards"
         action={
           <div className="flex items-center gap-3">
             <Button
@@ -115,7 +120,7 @@ export default function WorkspacesPage() {
               <EmptyState
                 icon={<Users className="h-8 w-8 text-indigo-500" />}
                 title="No Active Workspaces Found"
-                description="Create a new private workspace for your hackathon team, or join an existing one using an 8-character invite code."
+                description="Create a new private workspace for your team, or join an existing one using an 8-character invite code."
                 action={
                   <div className="flex items-center gap-3">
                     <Button variant="secondary" onClick={() => setIsJoinOrgOpen(true)}>
@@ -153,7 +158,9 @@ export default function WorkspacesPage() {
                       <Card key={org.orgId} className="p-6 border border-rose-200 bg-rose-50/10 flex flex-col justify-between h-48 hover:shadow-md transition-shadow">
                         <div>
                           <h4 className="font-bold text-slate-900 truncate">{org.name}</h4>
-                          <p className="text-xs text-slate-500 mt-1">{org.hackathonName}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {org.projectType ? getProjectTypeLabel(org.projectType) : (org.hackathonName || 'General Project')}
+                          </p>
                           <div className="mt-4 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
                             <Clock className="h-3.5 w-3.5" /> Deletes permanently in {daysLeft} days
                           </div>
@@ -181,16 +188,19 @@ export default function WorkspacesPage() {
       <Modal
         isOpen={isCreateOrgOpen}
         onClose={() => setIsCreateOrgOpen(false)}
-        title="Create Hackathon Workspace"
+        title="Create a Workspace"
         size="lg"
       >
-        <CreateOrgForm onSuccess={handleWorkspaceCreated} />
+        <CreateOrgForm
+          onSuccess={handleWorkspaceCreated}
+          onCancel={() => setIsCreateOrgOpen(false)}
+        />
       </Modal>
 
       <Modal
         isOpen={isJoinOrgOpen}
         onClose={() => setIsJoinOrgOpen(false)}
-        title="Join Hackathon Workspace"
+        title="Join Workspace"
         size="md"
       >
         <JoinOrgForm

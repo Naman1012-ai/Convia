@@ -43,20 +43,21 @@ export function CommunityComposer({
     if (initialIdeaContext?.title && !content) {
       setContent(`Re: "${initialIdeaContext.title}" — `);
       setSelectedType(COMMUNITY_POST_TYPES.IDEA);
+      setIsFocused(true);
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
     }
   }, [initialIdeaContext]);
 
-  // Auto-resize textarea to fit multiline content up to 140px
+  // Dynamic textarea height management
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      const newHeight = Math.min(textareaRef.current.scrollHeight, 140);
-      textareaRef.current.style.height = `${Math.max(newHeight, 38)}px`;
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 160);
+      textareaRef.current.style.height = `${Math.max(newHeight, isFocused || content ? 52 : 36)}px`;
     }
-  }, [content]);
+  }, [content, isFocused]);
 
   const handleTextChange = (e) => {
     const val = e.target.value.substring(0, 2000);
@@ -78,11 +79,12 @@ export function CommunityComposer({
     try {
       await onSendMessage(trimmed, selectedType);
       setContent('');
+      setIsFocused(false);
       if (textareaRef.current) {
-        textareaRef.current.style.height = '38px';
+        textareaRef.current.style.height = '36px';
       }
     } catch {
-      // Error handled by parent
+      // Handled by parent
     }
   };
 
@@ -103,7 +105,7 @@ export function CommunityComposer({
 
   if (!user) {
     return (
-      <div className={`p-4 rounded-2xl bg-white border border-slate-200 text-center shadow-xs ${className}`}>
+      <div className={`p-4 rounded-xl bg-white border border-slate-200 text-center shadow-xs ${className}`}>
         <p className="text-xs text-slate-600 font-medium">
           Please sign in to participate in Convia Community discussions.
         </p>
@@ -112,26 +114,27 @@ export function CommunityComposer({
   }
 
   const currentUserDisplayName = userProfile?.displayName || user?.displayName || 'You';
-  const placeholderText = COMPOSER_PLACEHOLDERS[selectedType] || COMPOSER_PLACEHOLDERS[COMMUNITY_POST_TYPES.DISCUSSION];
+  const placeholderText = isFocused
+    ? COMPOSER_PLACEHOLDERS[selectedType] || COMPOSER_PLACEHOLDERS[COMMUNITY_POST_TYPES.DISCUSSION]
+    : 'Share something with the community...';
   const buttonLabel = COMPOSER_BUTTON_LABELS[selectedType] || 'Post Discussion';
   const canSubmit = Boolean(content.trim() && !isSending);
   const charCount = content.length;
   const isNearLimit = charCount >= 1800;
   const isAtLimit = charCount >= 2000;
+  const isExpanded = isFocused || Boolean(content.trim());
 
   return (
     <div
-      className={`rounded-2xl border transition-all duration-200 bg-white shadow-xs ${
+      className={`rounded-2xl border transition-all duration-200 bg-white/95 backdrop-blur-md shadow-sm ${
         isFocused
-          ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-md'
+          ? 'border-emerald-500/80 ring-2 ring-emerald-500/15 shadow-md'
           : 'border-slate-200/90 hover:border-slate-300'
       } ${className}`}
     >
       <form onSubmit={handleSubmit} className="flex flex-col">
-        {/* ============================================================ */}
-        {/* 1. MESSAGE INPUT AREA (Visual Primary Focus)                 */}
-        {/* ============================================================ */}
-        <div className="flex items-start gap-3 p-3 sm:p-3.5">
+        {/* Input Area */}
+        <div className="flex items-start gap-2.5 p-3">
           <Avatar
             name={currentUserDisplayName}
             src={userProfile?.avatar || user?.photoURL}
@@ -146,26 +149,30 @@ export function CommunityComposer({
               onChange={handleTextChange}
               onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
+              onBlur={() => {
+                if (!content.trim()) {
+                  setIsFocused(false);
+                }
+              }}
               placeholder={placeholderText}
-              rows={isFocused || content ? 2 : 1}
+              rows={isExpanded ? 2 : 1}
               maxLength={2000}
               aria-label="Write a community message"
-              className="w-full resize-none text-sm font-normal text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none border-0 p-0 leading-relaxed min-h-[38px] max-h-[140px] transition-all"
+              className="w-full resize-none text-xs sm:text-sm font-normal text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none border-0 p-0 leading-relaxed min-h-[36px] max-h-[160px] transition-all"
             />
           </div>
         </div>
 
-        {/* Error notification banner if present */}
+        {/* Error Notification */}
         {error && (
-          <div className="mx-3.5 mb-2 px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-xs text-rose-600 flex items-center gap-2">
+          <div className="mx-3 mb-2 px-2.5 py-1.5 rounded-lg bg-rose-50 border border-rose-100 text-xs text-rose-600 flex items-center gap-2">
             <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-500" />
             <span className="flex-1">{error}</span>
             {onClearError && (
               <button
                 type="button"
                 onClick={onClearError}
-                className="p-0.5 text-rose-400 hover:text-rose-700"
+                className="p-0.5 text-rose-400 hover:text-rose-700 cursor-pointer"
                 aria-label="Dismiss error"
               >
                 <X className="h-3 w-3" />
@@ -174,89 +181,83 @@ export function CommunityComposer({
           </div>
         )}
 
-        {/* ============================================================ */}
-        {/* 2. POST TYPE SELECTOR (BELOW the Message Input)             */}
-        {/* ============================================================ */}
-        <div className="px-3 sm:px-3.5 py-2 border-t border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
-          <div
-            role="radiogroup"
-            aria-label="Post topic"
-            className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 w-full sm:w-auto"
-          >
-            {postTypes.map(({ type, label }) => {
-              const isSelected = selectedType === type;
-              const config = COMMUNITY_POST_TYPE_CONFIG[type];
-
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  role="radio"
-                  aria-checked={isSelected}
-                  onClick={() => handleSelectType(type)}
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none cursor-pointer ${
-                    isSelected
-                      ? `${config.color} ring-1 ring-inset ring-current/25 font-bold shadow-2xs scale-[1.02]`
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/90 bg-white border border-slate-200/80'
-                  }`}
-                  title={config?.description || label}
-                >
-                  <span className="text-xs">{config?.icon}</span>
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ============================================================ */}
-        {/* 3. ACTION TOOLBAR & DYNAMIC POST SUBMISSION                  */}
-        {/* ============================================================ */}
-        <div className="px-3 sm:px-3.5 py-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs bg-white rounded-b-2xl">
-          {/* Left: Keyboard Shortcuts & Secondary Character Counter */}
-          <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium select-none">
-            <span className="hidden sm:inline">Press</span>
-            <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono text-slate-500">
-              Enter ↵
-            </kbd>
-            <span className="hidden sm:inline">to post,</span>
-            <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-[10px] font-mono text-slate-500">
-              Shift+Enter
-            </kbd>
-            <span className="hidden sm:inline">for newline</span>
-
-            <span
-              className={`font-mono text-[10px] sm:ml-1.5 ${
-                isAtLimit
-                  ? 'text-rose-600 font-bold'
-                  : isNearLimit
-                  ? 'text-amber-600 font-bold'
-                  : 'text-slate-400'
-              }`}
+        {/* Expandable Controls: Topic Selector + Post Action */}
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            isExpanded ? 'max-h-32 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Segmented Topic Selector & Action Row */}
+          <div className="px-3 py-2 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-slate-50/60 rounded-b-2xl">
+            {/* Topic Segmented Control */}
+            <div
+              role="radiogroup"
+              aria-label="Post topic"
+              className="inline-flex items-center gap-1 p-0.5 bg-slate-200/60 rounded-xl overflow-x-auto no-scrollbar"
             >
-              {charCount}/2000
-            </span>
-          </div>
+              {postTypes.map(({ type, label, icon: Icon }) => {
+                const isSelected = selectedType === type;
+                const config = COMMUNITY_POST_TYPE_CONFIG[type];
 
-          {/* Right: Dynamic Submission Action Button */}
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
-            aria-label={buttonLabel}
-          >
-            {isSending ? (
-              <>
-                <Loader2 className="animate-spin h-3.5 w-3.5" />
-                <span>Posting...</span>
-              </>
-            ) : (
-              <>
-                <span>{buttonLabel}</span>
-                <Send className="h-3.5 w-3.5" />
-              </>
-            )}
-          </button>
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => handleSelectType(type)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all select-none cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? 'bg-white text-slate-900 shadow-2xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                    }`}
+                    title={config?.description || label}
+                  >
+                    <Icon className={`h-3 w-3 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                    <span>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Counter, Shortcuts & Submit Button */}
+            <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0">
+              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 select-none">
+                <span className="hidden md:inline font-mono">Enter ↵ to post</span>
+                <span className="hidden md:inline text-slate-300">•</span>
+                <span
+                  className={`font-mono ${
+                    isAtLimit
+                      ? 'text-rose-600 font-bold'
+                      : isNearLimit
+                      ? 'text-amber-600 font-bold'
+                      : 'text-slate-400'
+                  }`}
+                >
+                  {charCount}/2000
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 shrink-0"
+                aria-label={buttonLabel}
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 className="animate-spin h-3.5 w-3.5" />
+                    <span>Posting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{buttonLabel}</span>
+                    <Send className="h-3 w-3" />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </div>

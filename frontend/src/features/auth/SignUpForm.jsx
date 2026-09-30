@@ -18,15 +18,20 @@ export function SignUpForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  const hasPendingInvitation = Boolean(sessionStorage.getItem('pendingInvitationCode'));
+  const prefillEmail = sessionStorage.getItem('prefillAuthEmail') || '';
+
   const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
 
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const redirectTarget = searchParams.get('returnUrl')
+  const redirectTarget = hasPendingInvitation
+    ? '/join'
+    : searchParams.get('returnUrl')
     ? decodeURIComponent(searchParams.get('returnUrl'))
     : '/dashboard';
 
@@ -114,10 +119,16 @@ export function SignUpForm() {
           type="email"
           placeholder="email@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => !hasPendingInvitation && setEmail(e.target.value)}
           error={errors.email}
+          disabled={Boolean(hasPendingInvitation && prefillEmail)}
           required
         />
+        {hasPendingInvitation && prefillEmail && (
+          <p className="text-[11px] text-amber-750 bg-amber-50 p-2 rounded border border-amber-200 font-medium">
+            Email is locked to the address designated in your workspace invitation.
+          </p>
+        )}
         <Input
           label="Password"
           type="password"

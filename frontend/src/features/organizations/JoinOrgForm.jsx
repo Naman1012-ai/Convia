@@ -8,6 +8,11 @@ import { orgService } from '../../services/orgService';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { LogIn } from 'lucide-react';
+import {
+  formatInvitationCodeInput,
+  normalizeInvitationCode,
+  isValidInvitationCodeFormat,
+} from '../../utils/invitationCodeHelper';
 
 export function JoinOrgForm({ initialCode = '', onSuccess = null }) {
   const { user } = useAuth();
@@ -30,31 +35,35 @@ export function JoinOrgForm({ initialCode = '', onSuccess = null }) {
       return;
     }
 
-    const cleanCode = inviteCode.trim().toUpperCase();
-    if (!cleanCode || cleanCode.length !== 8) {
-      const msg = 'Please enter a valid 8-character invite code.';
+    const raw = inviteCode.trim();
+    if (!raw) {
+      const msg = 'Please enter an invitation code.';
       setError(msg);
       toast.warning(msg);
       return;
     }
 
-    setIsSubmitting(true);
+    const cleanAlphanumeric = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-    try {
-      const orgId = await orgService.joinOrganization(user.uid, cleanCode);
-      toast.success('Joined workspace successfully!');
-      if (onSuccess) {
-        onSuccess(orgId);
-      } else {
-        navigate(`/workspaces/${orgId}/ideas`);
-      }
-    } catch (err) {
-      const msg = err.message || 'Failed to join organization.';
+    // Explicit rejection of legacy 8-character workspace join codes
+    if (cleanAlphanumeric.length === 8 && !raw.toUpperCase().startsWith('CNV')) {
+      const msg = 'Legacy 8-character workspace invite codes have been retired. Please use an email-bound invitation code (format: CNV-XXXX-XXXX).';
       setError(msg);
       toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
+      return;
     }
+
+    const normalized = normalizeInvitationCode(raw);
+
+    if (!isValidInvitationCodeFormat(normalized)) {
+      const msg = 'Enter a valid invitation code in the format CNV-XXXX-XXXX.';
+      setError(msg);
+      toast.warning(msg);
+      return;
+    }
+
+    // Direct routing to the canonical email-bound invitation verification workflow
+    navigate(`/join?code=${encodeURIComponent(normalized)}`);
   };
 
   return (
@@ -65,15 +74,25 @@ export function JoinOrgForm({ initialCode = '', onSuccess = null }) {
         </div>
       )}
 
-      <Input
-        label="Invite Code"
-        placeholder="e.g., BX7K9M2P"
-        value={inviteCode}
-        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-        maxLength={8}
-        className="font-mono uppercase tracking-widest text-center text-lg"
-        required
-      />
+      <div>
+        <Input
+          label="Invitation Code"
+          placeholder="CNV-8K4P-X7QM"
+          value={inviteCode}
+          onChange={(e) => {
+            const val = formatInvitationCodeInput(e.target.value);
+            setInviteCode(val);
+            if (error) setError('');
+          }}
+          maxLength={13}
+          className="font-mono uppercase tracking-widest text-center text-lg"
+          required
+          autoFocus
+        />
+        <p className="mt-1.5 text-[11px] text-slate-400 text-center">
+          Format: CNV-XXXX-XXXX • Email-bound invitation code
+        </p>
+      </div>
 
       <Button
         type="submit"
@@ -82,7 +101,7 @@ export function JoinOrgForm({ initialCode = '', onSuccess = null }) {
         isLoading={isSubmitting}
         icon={<LogIn className="h-4 w-4" />}
       >
-        Join Workspace
+        Continue to Join
       </Button>
     </form>
   );

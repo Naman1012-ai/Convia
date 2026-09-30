@@ -14,14 +14,19 @@ export function SignInForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [email, setEmail] = useState('');
+  const hasPendingInvitation = Boolean(sessionStorage.getItem('pendingInvitationCode'));
+  const prefillEmail = sessionStorage.getItem('prefillAuthEmail') || '';
+
+  const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
 
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const redirectTarget = searchParams.get('returnUrl')
+  const redirectTarget = hasPendingInvitation
+    ? '/join'
+    : searchParams.get('returnUrl')
     ? decodeURIComponent(searchParams.get('returnUrl'))
     : '/dashboard';
 
@@ -51,6 +56,8 @@ export function SignInForm() {
 
       const targetUrl = isAdminLogin
         ? '/admin/dashboard'
+        : hasPendingInvitation
+        ? '/join'
         : searchParams.get('returnUrl')
         ? decodeURIComponent(searchParams.get('returnUrl'))
         : '/dashboard';

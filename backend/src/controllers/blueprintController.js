@@ -637,7 +637,11 @@ export const blueprintController = {
         console.warn('⚠️ [TaskSync Auto-trigger Warning]', syncErr.message);
       });
 
-      // Phase 7: Dispatch Blueprint Completed notification to initiator
+      // Resolve workspace members to notify both initiator and all other members/owner
+      const workspaceRecipients = await notificationService.resolveWorkspaceRecipients(workspaceId).catch(() => []);
+      const allRecipients = Array.from(new Set([...workspaceRecipients, userUid].filter(Boolean)));
+
+      // Phase 7: Dispatch Blueprint Completed notification to all workspace members and initiator
       notificationService.dispatchNotificationEvent(
         NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
         {
@@ -649,6 +653,7 @@ export const blueprintController = {
           ideaTitle: mvpIdea?.title || 'Workspace MVP',
           initiatorUid: userUid,
           attemptId,
+          recipients: allRecipients,
         },
         { uid: userUid, displayName: memberRecord?.displayName || 'Team Member' }
       ).catch((notifErr) => {

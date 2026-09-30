@@ -81,15 +81,16 @@ export const rtdbService = {
   getData: async (path) => {
     const startTime = performance.now();
     try {
-      const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
-      const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
+      const isRefOrQuery = path && typeof path === 'object';
+      const cleanPath = !isRefOrQuery ? String(path || '').replace(/^\/|\/$/g, '') : (path.key || 'query');
+      const dbRef = isRefOrQuery ? path : (cleanPath ? ref(rtdb, cleanPath) : ref(rtdb));
 
       const rtdbPromise = get(dbRef);
       const snapshot = await withRtdbTimeout(rtdbPromise, 2500);
 
       if (snapshot && snapshot !== 'RTDB_TIMEOUT' && snapshot.exists()) {
         const val = snapshot.val();
-        debugLog(`getData [RTDB] (${Math.round(performance.now() - startTime)}ms)`, path, val, true);
+        debugLog(`getData [RTDB] (${Math.round(performance.now() - startTime)}ms)`, cleanPath, val, true);
         return val;
       }
 
@@ -151,15 +152,16 @@ export const rtdbService = {
    */
   subscribe: (path, callback) => {
     try {
-      const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
-      const dbRef = ref(rtdb, cleanPath);
+      const isRefOrQuery = path && typeof path === 'object';
+      const cleanPath = !isRefOrQuery ? String(path || '').replace(/^\/|\/$/g, '') : (path.key || 'query');
+      const dbRef = isRefOrQuery ? path : (cleanPath ? ref(rtdb, cleanPath) : ref(rtdb));
 
-      const listener = onValue(
+      const unsubscribe = onValue(
         dbRef,
         (snapshot) => {
           const val = snapshot.exists() ? snapshot.val() : null;
           debugLog('subscribe [RTDB Stream]', cleanPath, val, true);
-          callback(val);
+          callback(val, null);
         },
         (error) => {
           debugLog('subscribe [RTDB Err]', cleanPath, null, false, error);
@@ -172,11 +174,19 @@ export const rtdbService = {
       );
 
       return () => {
-        off(dbRef, 'value', listener);
+        if (typeof unsubscribe === 'function') {
+          unsubscribe();
+        } else {
+          try {
+            off(dbRef, 'value');
+          } catch (_) {}
+        }
       };
     } catch (error) {
       debugLog('subscribe', path, null, false, error);
-      callback(null);
+      if (typeof callback === 'function') {
+        callback(null, error);
+      }
       return () => {};
     }
   },

@@ -246,46 +246,24 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
   });
 
   // =========================================================================
-  // 8. LEGITIMATE INVITE-CODE JOIN SUCCEEDS VIA SERVER-AUTHORIZED HANDLER
+  // 8. LEGACY INVITE-CODE JOIN IS RETIRED AND REJECTED
   // =========================================================================
-  it('TEST 8: Legitimate invite-code join → succeeds via server-authorized endpoint', async () => {
-    // Mock rtdbService methods for controller test
-    const originalGetData = rtdbService.getData;
-    const originalUpdateData = rtdbService.updateData;
-
-    try {
-      rtdbService.getData = async (p) => {
-        if (p === 'platform_settings') return mockRootData.platform_settings;
-        if (p === 'invite_codes/ALPHA123' || p === 'inviteCodes/ALPHA123') return mockRootData.invite_codes.ALPHA123;
-        if (p === 'organizations/org_alpha') return mockRootData.organizations.org_alpha;
-        if (p === 'organization_members/org_alpha/user_eve') return null;
-        return null;
-      };
-
-      let updatesApplied = null;
-      rtdbService.updateData = async (path, updates) => {
-        updatesApplied = updates;
+  it('TEST 8: Legacy 8-character invite-code join is retired and strictly rejected', async () => {
+    await assert.rejects(
+      async () => {
+        await workspaceMembershipController.joinWorkspaceByCodeHandler(
+          'user_eve',
+          'ALPHA123',
+          null
+        );
+      },
+      (err) => {
+        assert.strictEqual(err.statusCode, 410);
+        assert.strictEqual(err.code, 'LEGACY_CODE_RETIRED');
+        assert.ok(err.message.includes('retired'));
         return true;
-      };
-
-      const result = await workspaceMembershipController.joinWorkspaceByCodeHandler(
-        'user_eve',
-        'ALPHA123',
-        null
-      );
-
-      assert.strictEqual(result.orgId, 'org_alpha');
-      assert.strictEqual(result.role, 'member');
-      assert.strictEqual(result.alreadyMember, false);
-      assert.ok(updatesApplied, 'Atomic updates must be dispatched');
-      assert.strictEqual(updatesApplied['organization_members/org_alpha/user_eve'].role, 'member');
-      assert.strictEqual(updatesApplied['organization_members/org_alpha/user_eve'].uid, 'user_eve');
-      assert.strictEqual(updatesApplied['organizations/org_alpha/memberCount'], 3);
-      assert.strictEqual(updatesApplied['users/user_eve/organizationId'], 'org_alpha');
-    } finally {
-      rtdbService.getData = originalGetData;
-      rtdbService.updateData = originalUpdateData;
-    }
+      }
+    );
   });
 
   // =========================================================================
@@ -365,78 +343,29 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
   // =========================================================================
   // 14. SERVER JOIN ENDPOINT ENFORCEMENT & CAPACITY TESTS
   // =========================================================================
-  describe('🔒 Server Join Endpoint Edge Cases & Capacity Defense', () => {
-    it('rejects invalid invite code with 404', async () => {
-      const originalGetData = rtdbService.getData;
-      try {
-        rtdbService.getData = async (p) => {
-          if (p === 'platform_settings') return mockRootData.platform_settings;
-          return null; // Code not found
-        };
+  describe('🔒 Server Join Endpoint Retirement & Legacy Code Defense', () => {
+    it('strictly rejects any legacy 8-character invite code with 410 LEGACY_CODE_RETIRED', async () => {
+      await assert.rejects(
+        async () => {
+          await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'INVALID9', null);
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 410);
+          assert.strictEqual(err.code, 'LEGACY_CODE_RETIRED');
+          return true;
+        }
+      );
 
-        await assert.rejects(
-          async () => {
-            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'INVALID9', null);
-          },
-          (err) => {
-            assert.strictEqual(err.statusCode, 404);
-            assert.strictEqual(err.code, 'INVALID_INVITE_CODE');
-            return true;
-          }
-        );
-      } finally {
-        rtdbService.getData = originalGetData;
-      }
-    });
-
-    it('rejects join when team capacity is reached (full workspace)', async () => {
-      const originalGetData = rtdbService.getData;
-      try {
-        rtdbService.getData = async (p) => {
-          if (p === 'platform_settings') return mockRootData.platform_settings;
-          if (p.startsWith('invite_codes/')) return { orgId: 'org_full' };
-          if (p === 'organizations/org_full') return { orgId: 'org_full', memberCount: 5, teamSizeLimit: 5 };
-          return null;
-        };
-
-        await assert.rejects(
-          async () => {
-            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'ALPHA123', null);
-          },
-          (err) => {
-            assert.strictEqual(err.statusCode, 400);
-            assert.strictEqual(err.code, 'WORKSPACE_FULL');
-            return true;
-          }
-        );
-      } finally {
-        rtdbService.getData = originalGetData;
-      }
-    });
-
-    it('rejects join when platform admin has disabled joining', async () => {
-      const originalGetData = rtdbService.getData;
-      try {
-        rtdbService.getData = async (p) => {
-          if (p === 'platform_settings') {
-            return { workspaces: { allowWorkspaceJoining: false } };
-          }
-          return null;
-        };
-
-        await assert.rejects(
-          async () => {
-            await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'ALPHA123', null);
-          },
-          (err) => {
-            assert.strictEqual(err.statusCode, 403);
-            assert.strictEqual(err.code, 'WORKSPACE_JOINING_DISABLED');
-            return true;
-          }
-        );
-      } finally {
-        rtdbService.getData = originalGetData;
-      }
+      await assert.rejects(
+        async () => {
+          await workspaceMembershipController.joinWorkspaceByCodeHandler('user_eve', 'ALPHA123', null);
+        },
+        (err) => {
+          assert.strictEqual(err.statusCode, 410);
+          assert.strictEqual(err.code, 'LEGACY_CODE_RETIRED');
+          return true;
+        }
+      );
     });
   });
 
@@ -476,6 +405,13 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
         false,
         'database.rules.json must contain zero references to workspace_members'
       );
+    });
+
+    it('verifies legacy invite_codes and inviteCodes roots are completely locked down (read: false, write: false)', () => {
+      assert.strictEqual(rawRules.rules.invite_codes['.read'], false);
+      assert.strictEqual(rawRules.rules.invite_codes['.write'], false);
+      assert.strictEqual(rawRules.rules.inviteCodes['.read'], false);
+      assert.strictEqual(rawRules.rules.inviteCodes['.write'], false);
     });
   });
 
@@ -524,40 +460,28 @@ describe('🛡️ CONVIA P0 SECURITY FIX #1 — WORKSPACE MEMBERSHIP & SELF-JOIN
       assert.strictEqual(nextCalled, false);
     });
 
-    it('processes authenticated join request and returns 200 with orgId', async () => {
-      const originalGetData = rtdbService.getData;
-      const originalUpdateData = rtdbService.updateData;
+    it('processes authenticated join request and rejects legacy code with 410 LEGACY_CODE_RETIRED', async () => {
+      const { req, res } = createMockReqRes({
+        user: { uid: 'user_eve', authenticated: true },
+        body: { inviteCode: 'ALPHA123' },
+      });
 
       try {
-        rtdbService.getData = async (p) => {
-          if (p === 'platform_settings') return mockRootData.platform_settings;
-          if (p === 'invite_codes/ALPHA123' || p === 'inviteCodes/ALPHA123') return mockRootData.invite_codes.ALPHA123;
-          if (p === 'organizations/org_alpha') return mockRootData.organizations.org_alpha;
-          if (p === 'organization_members/org_alpha/user_eve') return null;
-          return null;
-        };
-        rtdbService.updateData = async () => true;
-
-        const { req, res } = createMockReqRes({
-          user: { uid: 'user_eve', authenticated: true },
-          body: { inviteCode: 'ALPHA123' },
-        });
-
-        const result = await workspaceMembershipController.joinWorkspaceByCodeHandler(
+        await workspaceMembershipController.joinWorkspaceByCodeHandler(
           req.user.uid,
           req.body.inviteCode,
           req
         );
-
-        res.json({ success: true, data: result });
-
-        assert.strictEqual(res.getStatusCode(), 200);
-        assert.strictEqual(res.getJsonResponse().success, true);
-        assert.strictEqual(res.getJsonResponse().data.orgId, 'org_alpha');
-      } finally {
-        rtdbService.getData = originalGetData;
-        rtdbService.updateData = originalUpdateData;
+      } catch (err) {
+        res.status(err.statusCode || 500).json({
+          success: false,
+          error: { message: err.message, code: err.code },
+        });
       }
+
+      assert.strictEqual(res.getStatusCode(), 410);
+      assert.strictEqual(res.getJsonResponse().success, false);
+      assert.strictEqual(res.getJsonResponse().error.code, 'LEGACY_CODE_RETIRED');
     });
   });
 

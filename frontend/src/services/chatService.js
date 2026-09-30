@@ -25,6 +25,7 @@ import {
   getMessagePath,
   getChannelMetadataPath,
   getMessageRepliesRootPath,
+  getMessageRepliesPath,
   getMessageReplyPath,
   getMessageReactionsRootPath,
   getMessageReactionPath,
@@ -923,6 +924,29 @@ export const chatService = {
       return { action: 'removed', emoji: validation.cleanEmoji };
     } else {
       await set(ref(rtdb, reactionPath), true);
+
+      // Phase 7B: Dispatch reaction notification to the message author
+      try {
+        const msg = await chatService.getMessage(workspaceId, activeChannelId, messageId);
+        const msgAuthorId = msg?.senderId || msg?.authorId;
+        if (msgAuthorId && msgAuthorId !== user.uid && !msg?.isSystem) {
+          inAppNotificationService.dispatchNotificationEvent(
+            NOTIFICATION_TYPES.CHAT_REACTION,
+            {
+              workspaceId,
+              channelId: activeChannelId,
+              messageId,
+              emoji: validation.cleanEmoji,
+              recipientId: msgAuthorId,
+              content: msg.content || '',
+            },
+            user
+          ).catch((e) => console.warn('[chatService] Reaction notification warning:', e));
+        }
+      } catch (err) {
+        console.warn('[chatService] Reaction notification error:', err?.message || err);
+      }
+
       return { action: 'added', emoji: validation.cleanEmoji };
     }
   },

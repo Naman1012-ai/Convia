@@ -138,43 +138,43 @@ function WorkspaceDashboardContent() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 overflow-x-hidden">
       {/* 1. DASHBOARD HEADER / HERO BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 text-white shadow-xl border border-indigo-900/30">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/30 p-6 sm:p-8 border border-slate-200/80 shadow-sm">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs">
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Workspace Overview
               </span>
 
               {isSprintPhase ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <Kanban className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200/80 shadow-xs">
+                  <Kanban className="h-3.5 w-3.5 text-emerald-600" />
                   Sprint Execution Phase
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Lightbulb className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200/80 shadow-xs">
+                  <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
                   Ideation & Brainstorming
                 </span>
               )}
 
               {isLeader && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  <Shield className="h-3 w-3" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-xs">
+                  <Shield className="h-3 w-3 text-purple-600" />
                   Lead
                 </span>
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900">
               {currentOrg?.name || 'Workspace Dashboard'}
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 line-clamp-2 max-w-xl font-normal leading-relaxed">
+            <p className="text-sm sm:text-base text-slate-600 line-clamp-2 max-w-xl font-normal leading-relaxed">
               {currentOrg?.description ||
                 'Collaborative space for submitting proposals, shaping MVPs, synthesizing blueprints, and executing sprint delivery.'}
             </p>
@@ -185,9 +185,9 @@ function WorkspaceDashboardContent() {
             <Button
               variant="secondary"
               size="sm"
-              icon={<Search className="h-4 w-4" />}
+              icon={<Search className="h-4 w-4 text-slate-500" />}
               onClick={() => setIsSearchModalOpen(true)}
-              className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700 font-semibold text-xs"
+              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
             >
               Search (Ctrl+K)
             </Button>
@@ -195,10 +195,10 @@ function WorkspaceDashboardContent() {
             <Button
               variant="secondary"
               size="sm"
-              icon={<RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />}
+              icon={<RefreshCw className={cn('h-3.5 w-3.5 text-slate-500', loading && 'animate-spin')} />}
               onClick={handleRefresh}
               disabled={loading}
-              className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700 font-semibold text-xs"
+              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
             >
               Refresh
             </Button>
@@ -209,7 +209,7 @@ function WorkspaceDashboardContent() {
                 size="sm"
                 icon={<Plus className="h-4 w-4" />}
                 onClick={handleOpenCreateModal}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/30 text-xs"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 text-xs"
               >
                 Propose Idea
               </Button>
@@ -219,8 +219,8 @@ function WorkspaceDashboardContent() {
               <Button
                 variant="secondary"
                 size="sm"
-                icon={<MessageSquare className="h-4 w-4" />}
-                className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700 font-semibold text-xs"
+                icon={<MessageSquare className="h-4 w-4 text-slate-500" />}
+                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
               >
                 Team Chat
               </Button>
@@ -462,7 +462,7 @@ function WorkspaceDashboardContent() {
       </div>
 
       {/* 4. BLUEPRINT / SPRINT STATE HIGHLIGHT CARD */}
-      <Card className="p-6 bg-linear-to-br from-white via-slate-50 to-indigo-50/20 border border-slate-200 rounded-3xl shadow-sm space-y-5">
+      <Card className="p-6 bg-gradient-to-br from-white via-slate-50 to-indigo-50/20 border border-slate-200 rounded-3xl shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/70 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30">

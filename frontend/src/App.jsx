@@ -52,6 +52,7 @@ const WorkspaceChatPage = lazy(() => import('./pages/organization/WorkspaceChatP
 const WorkspaceActivityPage = lazy(() => import('./pages/organization/WorkspaceActivityPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const SettingsPage = lazy(() => import('./pages/organization/SettingsPage'));
+const JoinWorkspacePage = lazy(() => import('./pages/organization/JoinWorkspacePage'));
 
 // Admin Pages
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
@@ -97,6 +98,10 @@ export function App() {
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
               <Route path="/terms" element={<TermsOfServicePage />} />
               <Route path="/contact" element={<ContactEngineeringPage />} />
+
+              {/* Workspace Invitation Routes (Accessible to authenticated & unauthenticated users) */}
+              <Route path="/join" element={<JoinWorkspacePage />} />
+              <Route path="/join-workspace" element={<Navigate to="/join" replace />} />
 
               {/* Public-Only Auth Routes */}
               <Route element={<PublicOnlyGuard />}>

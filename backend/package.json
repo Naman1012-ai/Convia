@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node src/index.js"
+    "dev": "node --watch src/index.js"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

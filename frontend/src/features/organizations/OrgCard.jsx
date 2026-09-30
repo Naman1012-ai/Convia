@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatTimestamp } from '../../utils/formatting';
 import { Users, Calendar, Lightbulb, User } from 'lucide-react';
+import { getProjectTypeLabel } from '../../constants/workspaceConstants';
 
 export function OrgCard({ org, currentUid, onJoinClick = null }) {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export function OrgCard({ org, currentUid, onJoinClick = null }) {
               {org.name}
             </h3>
             <p className="text-xs font-bold text-slate-400 truncate">
-              {org.hackathonName || 'Hackathon Project'}
+              {org.projectType ? getProjectTypeLabel(org.projectType) : (org.hackathonName || 'General Project')}
             </p>
           </div>
           <Badge variant={roleVariant} className="shrink-0 font-extrabold uppercase text-[10px] tracking-wider">
@@ -76,7 +77,7 @@ export function OrgCard({ org, currentUid, onJoinClick = null }) {
         <div className="grid grid-cols-2 gap-3 py-1 text-slate-500 text-xs font-semibold">
           <div className="flex items-center gap-1.5">
             <Users className="h-4 w-4 text-slate-400 shrink-0" />
-            <span>{org.memberCount || 1} / {org.teamSizeLimit || 5} members</span>
+            <span>{typeof org.memberCount === 'number' ? org.memberCount : 1} / {org.maxMembers || org.teamSizeLimit || 5} members</span>
           </div>
           <div className="flex items-center gap-1.5 justify-end">
             <Calendar className="h-3.5 w-3.5 text-slate-400 shrink-0" />
@@ -118,10 +119,13 @@ OrgCard.propTypes = {
   org: PropTypes.shape({
     orgId: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
+    projectType: PropTypes.string,
+    description: PropTypes.string,
     hackathonName: PropTypes.string,
     status: PropTypes.string,
     ownerId: PropTypes.string.isRequired,
     memberCount: PropTypes.number,
+    maxMembers: PropTypes.number,
     teamSizeLimit: PropTypes.number,
     createdAt: PropTypes.number,
     isMember: PropTypes.bool,

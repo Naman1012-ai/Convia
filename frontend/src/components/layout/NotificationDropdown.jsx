@@ -13,6 +13,7 @@ import {
   MessageCircle,
   HelpCircle,
   Info,
+  Smile,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -32,8 +33,11 @@ export function NotificationDropdown() {
   const {
     notifications,
     unreadCount,
+    loading,
+    error,
     markAsRead,
     markAllAsRead,
+    refresh,
   } = useNotifications();
 
   const senderIds = useMemo(() => {
@@ -132,6 +136,12 @@ export function NotificationDropdown() {
           icon: <MessageSquare className="h-2.5 w-2.5" />,
           color: 'bg-blue-500',
         };
+      case NOTIFICATION_TYPES.CHAT_REACTION:
+      case NOTIFICATION_TYPES.MESSAGE_REACTION:
+        return {
+          icon: <Smile className="h-2.5 w-2.5" />,
+          color: 'bg-pink-500',
+        };
       case NOTIFICATION_TYPES.BLUEPRINT_COMPLETED:
       case NOTIFICATION_TYPES.BLUEPRINT_VERSION_APPROVED:
         return {
@@ -192,7 +202,7 @@ export function NotificationDropdown() {
         title="Notifications"
       >
         <Bell className="h-5 w-5" />
-        {unreadCount > 0 && (
+        {!loading && unreadCount > 0 && (
           <span className="absolute top-1 right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-rose-500 text-[10px] font-extrabold text-white shadow-xs animate-in zoom-in-50">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
@@ -212,14 +222,14 @@ export function NotificationDropdown() {
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                 Notifications
               </h3>
-              {unreadCount > 0 && (
+              {!loading && unreadCount > 0 && (
                 <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
                   {unreadCount} new
                 </span>
               )}
             </div>
 
-            {unreadCount > 0 && (
+            {!loading && unreadCount > 0 && (
               <button
                 type="button"
                 onClick={handleMarkAllAsRead}
@@ -234,7 +244,27 @@ export function NotificationDropdown() {
 
           {/* Notification List */}
           <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50 p-1">
-            {notifications.length === 0 ? (
+            {loading ? (
+              <div className="py-12 text-center text-xs text-slate-400 space-y-3">
+                <div className="h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="font-medium text-slate-500">Loading notifications...</p>
+              </div>
+            ) : error ? (
+              <div className="py-10 text-center text-xs text-slate-500 space-y-2 px-4">
+                <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto" />
+                <p className="font-semibold text-slate-700">Unable to load notifications</p>
+                <p className="text-[11px] text-slate-400">Please check your connection and try again.</p>
+                {typeof refresh === 'function' && (
+                  <button
+                    type="button"
+                    onClick={() => refresh()}
+                    className="mt-2 inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            ) : notifications.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 space-y-2">
                 <Bell className="h-8 w-8 text-slate-300 mx-auto" />
                 <p className="font-semibold text-slate-600">No notifications yet</p>
@@ -258,8 +288,10 @@ export function NotificationDropdown() {
                 const itemTitle = item.title || (
                   item.type === 'CHAT_MENTION'
                     ? `${senderName} mentioned you`
-                    : item.type === 'CHAT_REPLY'
+                    : item.type === 'CHAT_REPLY' || item.type === 'MESSAGE_REPLY'
                     ? `${senderName} replied to your message`
+                    : item.type === 'CHAT_REACTION' || item.type === 'MESSAGE_REACTION'
+                    ? `${senderName} reacted to your message`
                     : senderName
                 );
 

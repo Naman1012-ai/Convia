@@ -27,17 +27,21 @@ export const inAppNotificationService = {
    * @param {Function} callback - Callback receiving { notifications, unreadCount }
    * @returns {Function} Unsubscribe cleaner
    */
-  subscribeToUserNotifications: (userId, callback) => {
+  subscribeToUserNotifications: (userId, callback, errorCallback) => {
     if (!userId) {
       if (typeof callback === 'function') callback({ notifications: [], unreadCount: 0 });
       return () => {};
     }
 
     const notifRoot = getUserNotificationsRootPath(userId);
-    const notifRef = ref(rtdb, notifRoot);
-    const recentQuery = query(notifRef, orderByKey(), limitToLast(50));
 
-    return rtdbService.subscribeRtdbOnly(recentQuery, (rawVal) => {
+    return rtdbService.subscribeRtdbOnly(notifRoot, (rawVal, error) => {
+      if (error) {
+        console.warn(`[inAppNotificationService] RTDB subscription error for ${userId}:`, error?.message || error);
+        if (typeof errorCallback === 'function') errorCallback(error);
+        return;
+      }
+
       if (!rawVal || typeof rawVal !== 'object') {
         if (typeof callback === 'function') callback({ notifications: [], unreadCount: 0 });
         return;
@@ -49,6 +53,7 @@ export const inAppNotificationService = {
           if (!item || typeof item !== 'object') return null;
           return {
             ...item,
+            id: item.id || item.notificationId || key,
             notificationId: item.notificationId || key,
           };
         })
@@ -95,13 +100,14 @@ export const inAppNotificationService = {
 
       notifications.forEach((n) => {
         if (n && !n.read && n.notificationId) {
-          updates[`user_notifications/${userId}/${n.notificationId}/read`] = true;
-          updates[`user_notifications/${userId}/${n.notificationId}/readAt`] = now;
+          updates[`${n.notificationId}/read`] = true;
+          updates[`${n.notificationId}/readAt`] = now;
         }
       });
 
       if (Object.keys(updates).length > 0) {
-        await rtdbService.updateRtdbOnly('/', updates);
+        const notifRoot = getUserNotificationsRootPath(userId);
+        await rtdbService.updateRtdbOnly(notifRoot, updates);
       }
     } catch (e) {
       console.warn('[inAppNotificationService] markAllNotificationsAsRead error:', e.message);
@@ -219,10 +225,13 @@ export const inAppNotificationService = {
         ? `notif_${String(payload.dedupeKey).replace(/[^a-zA-Z0-9_-]/g, '_')}`
         : push(ref(rtdb, notifRoot)).key);
 
+      const effectiveSenderId = payload.senderId || payload.actorId;
       const canonical = createCanonicalNotification({
         ...payload,
         notificationId: notifId,
         recipientId: recipientUid,
+        senderId: effectiveSenderId,
+        actorId: effectiveSenderId,
       });
 
       const notifRef = ref(rtdb, getUserNotificationsPath(recipientUid, notifId));
@@ -235,21 +244,22 @@ export const inAppNotificationService = {
   },
 
   /**
-   * Bulk creates notifications across multiple recipients using atomic multi-path update.
+   * Bulk creates notifications across multiple recipients using per-recipient writes.
    */
   createNotificationsForRecipients: async (recipientUids = [], payload = {}) => {
     const validUids = Array.from(new Set((recipientUids || []).filter(Boolean)));
     if (validUids.length === 0) return [];
 
     try {
-      const updates = {};
       const timestamp = Date.now();
       const createdList = [];
       const baseDedupe = payload.notificationId || (payload.dedupeKey
         ? `notif_${String(payload.dedupeKey).replace(/[^a-zA-Z0-9_-]/g, '_')}`
         : null);
 
-      for (const uid of validUids) {
+      const effectiveSenderId = payload.senderId || payload.actorId;
+
+      const setPromises = validUids.map(async (uid) => {
         const notifRoot = getUserNotificationsRootPath(uid);
         const notifId = baseDedupe
           ? `${baseDedupe}_${uid.replace(/[^a-zA-Z0-9_-]/g, '_')}`
@@ -257,17 +267,25 @@ export const inAppNotificationService = {
 
         const canonical = createCanonicalNotification({
           ...payload,
+          senderId: effectiveSenderId,
+          actorId: effectiveSenderId,
           notificationId: notifId,
           recipientId: uid,
           createdAt: timestamp,
         });
 
-        updates[`user_notifications/${uid}/${notifId}`] = canonical;
-        createdList.push(canonical);
-      }
+        const notifRef = ref(rtdb, getUserNotificationsPath(uid, notifId));
+        await set(notifRef, canonical);
+        return canonical;
+      });
 
-      if (Object.keys(updates).length > 0) {
-        await rtdbService.updateRtdbOnly('/', updates);
+      const settled = await Promise.allSettled(setPromises);
+      for (const res of settled) {
+        if (res.status === 'fulfilled' && res.value) {
+          createdList.push(res.value);
+        } else if (res.status === 'rejected') {
+          console.warn('[inAppNotificationService] Single recipient write error:', res.reason?.message);
+        }
       }
 
       return createdList;
@@ -288,22 +306,40 @@ export const inAppNotificationService = {
 
       if (Array.isArray(existingMembers) && existingMembers.length > 0) {
         existingMembers.forEach((m) => {
-          if (m?.uid) memberUids.add(m.uid);
+          if (m?.uid && m.status !== 'removed' && m.status !== 'inactive' && !m.isDeleted) {
+            memberUids.add(m.uid);
+          }
         });
-      } else {
-        const [orgMembers, orgDoc] = await Promise.all([
+      }
+
+      if (memberUids.size <= 1) {
+        const [orgMembers, orgDoc, wsDoc] = await Promise.all([
           rtdbService.getRtdbOnly(`organization_members/${workspaceId}`).catch(() => null),
           rtdbService.getRtdbOnly(`organizations/${workspaceId}`).catch(() => null),
+          rtdbService.getRtdbOnly(`workspaces/${workspaceId}`).catch(() => null),
         ]);
 
         if (orgMembers && typeof orgMembers === 'object') {
-          Object.keys(orgMembers).forEach((uid) => memberUids.add(uid));
+          Object.entries(orgMembers).forEach(([uid, val]) => {
+            if (!val || typeof val !== 'object') {
+              memberUids.add(uid);
+            } else if (val.status !== 'removed' && val.status !== 'inactive' && !val.isDeleted) {
+              memberUids.add(val.uid || uid);
+            }
+          });
         }
         if (orgDoc && typeof orgDoc === 'object') {
           if (orgDoc.ownerId) memberUids.add(orgDoc.ownerId);
           if (orgDoc.createdBy) memberUids.add(orgDoc.createdBy);
           if (orgDoc.members && typeof orgDoc.members === 'object') {
             Object.keys(orgDoc.members).forEach((uid) => memberUids.add(uid));
+          }
+        }
+        if (wsDoc && typeof wsDoc === 'object') {
+          if (wsDoc.ownerId) memberUids.add(wsDoc.ownerId);
+          if (wsDoc.createdBy) memberUids.add(wsDoc.createdBy);
+          if (wsDoc.members && typeof wsDoc.members === 'object') {
+            Object.keys(wsDoc.members).forEach((uid) => memberUids.add(uid));
           }
         }
       }
@@ -332,9 +368,14 @@ export const inAppNotificationService = {
     try {
       switch (eventType) {
         case NOTIFICATION_TYPES.BLUEPRINT_COMPLETED: {
-          const { workspaceId, version, ideaTitle } = eventData;
-          const recipients = await inAppNotificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
-          const allRecipients = Array.from(new Set([...recipients, actorUid].filter(Boolean)));
+          const { workspaceId, version, ideaTitle, mvpIdeaId, recipients: customRecipients } = eventData;
+          let allRecipients = customRecipients;
+          if (!Array.isArray(allRecipients) || allRecipients.length === 0) {
+            const recipients = await inAppNotificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+            allRecipients = Array.from(new Set([...recipients, actorUid].filter(Boolean)));
+          }
+
+          const resolvedResourceId = eventData.resourceId || (mvpIdeaId ? `bp_${workspaceId}_${mvpIdeaId}` : `bp_${workspaceId}`);
 
           return await inAppNotificationService.createNotificationsForRecipients(allRecipients, {
             type: NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
@@ -342,12 +383,14 @@ export const inAppNotificationService = {
             orgId: workspaceId,
             title: `Blueprint v${version || '1.0'} Completed`,
             body: `AI Architecture Blueprint for "${ideaTitle || 'Workspace MVP'}" is ready for review.`,
-            actorId: actorUid || 'system',
+            actorId: actorUid,
+            senderId: actorUid,
             actorName: 'Convia AI Engine',
             resourceType: 'blueprint',
-            resourceId: `bp_${workspaceId}`,
+            resourceId: resolvedResourceId,
             actionUrl: `/workspaces/${workspaceId}/blueprint`,
-            metadata: { version, workspaceId },
+            allowSelfNotification: true,
+            metadata: { version, workspaceId, mvpIdeaId: mvpIdeaId || null },
           });
         }
 
@@ -655,6 +698,39 @@ export const inAppNotificationService = {
             metadata: { channelId: activeChannel, parentMessageId, replyId, workspaceId },
             dedupeKey: `chat_reply_${workspaceId}_${activeChannel}_${parentMessageId}_${replyId}_${actorUid}`,
           });
+        }
+
+        case NOTIFICATION_TYPES.CHAT_REACTION:
+        case NOTIFICATION_TYPES.MESSAGE_REACTION: {
+          const { workspaceId, channelId = 'general', messageId, emoji, recipientId, content } = eventData;
+          if (!workspaceId || !messageId || !recipientId || recipientId === actorUid) return [];
+
+          const activeChannel = (channelId || 'general').trim();
+          const preview = (content || '').substring(0, 100);
+          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+
+          const notif = await inAppNotificationService.createNotification(recipientId, {
+            type: NOTIFICATION_TYPES.CHAT_REACTION,
+            workspaceId,
+            orgId: workspaceId,
+            channelId: activeChannel,
+            title: `${actorName} reacted ${emoji || '👍'} to your message`,
+            body: preview ? `"${preview}"` : `${actorName} reacted to your message in #${activeChannel}.`,
+            previewText: preview,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'chat_message',
+            resourceId: messageId,
+            actionUrl: deepLink,
+            metadata: { channelId: activeChannel, messageId, emoji, workspaceId },
+            dedupeKey: `chat_react_${workspaceId}_${activeChannel}_${messageId}_${actorUid}_${emoji}`,
+          });
+
+          return notif ? [notif] : [];
         }
 
         default:

@@ -121,21 +121,35 @@ export const notificationService = {
 
     try {
       const cleanWorkspaceId = String(workspaceId).trim();
-      const [orgMembers, orgDoc] = await Promise.all([
+      const [orgMembers, orgDoc, wsDoc] = await Promise.all([
         rtdbService.getData(`organization_members/${cleanWorkspaceId}`).catch(() => null),
         rtdbService.getData(`organizations/${cleanWorkspaceId}`).catch(() => null),
+        rtdbService.getData(`workspaces/${cleanWorkspaceId}`).catch(() => null),
       ]);
 
       const memberUids = new Set();
 
       if (orgMembers && typeof orgMembers === 'object') {
-        Object.keys(orgMembers).forEach((uid) => memberUids.add(uid));
+        Object.entries(orgMembers).forEach(([uid, val]) => {
+          if (!val || typeof val !== 'object') {
+            memberUids.add(uid);
+          } else if (val.status !== 'removed' && val.status !== 'inactive' && !val.isDeleted) {
+            memberUids.add(val.uid || uid);
+          }
+        });
       }
       if (orgDoc && typeof orgDoc === 'object') {
         if (orgDoc.ownerId) memberUids.add(orgDoc.ownerId);
         if (orgDoc.createdBy) memberUids.add(orgDoc.createdBy);
         if (orgDoc.members && typeof orgDoc.members === 'object') {
           Object.keys(orgDoc.members).forEach((uid) => memberUids.add(uid));
+        }
+      }
+      if (wsDoc && typeof wsDoc === 'object') {
+        if (wsDoc.ownerId) memberUids.add(wsDoc.ownerId);
+        if (wsDoc.createdBy) memberUids.add(wsDoc.createdBy);
+        if (wsDoc.members && typeof wsDoc.members === 'object') {
+          Object.keys(wsDoc.members).forEach((uid) => memberUids.add(uid));
         }
       }
 
@@ -535,6 +549,37 @@ export const notificationService = {
             actionUrl: deepLink,
             metadata: { channelId: activeChannel, parentMessageId, replyId, workspaceId },
             dedupeKey: `chat_reply_${workspaceId}_${activeChannel}_${parentMessageId}_${replyId}_${actorUid}`,
+          });
+        }
+
+        case NOTIFICATION_TYPES.CHAT_REACTION:
+        case NOTIFICATION_TYPES.MESSAGE_REACTION: {
+          const { workspaceId, channelId = 'general', messageId, emoji, recipientId, content } = eventData;
+          if (!workspaceId || !messageId || !recipientId || recipientId === actorUid) return [];
+
+          const activeChannel = (channelId || 'general').trim();
+          const preview = (content || '').substring(0, 100);
+          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+
+          return await notificationService.createNotificationsForRecipients([recipientId], {
+            type: NOTIFICATION_TYPES.CHAT_REACTION,
+            workspaceId,
+            orgId: workspaceId,
+            channelId: activeChannel,
+            title: `${actorName} reacted ${emoji || '👍'} to your message`,
+            body: preview ? `"${preview}"` : `${actorName} reacted to your message in #${activeChannel}.`,
+            previewText: preview,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'chat_message',
+            resourceId: messageId,
+            actionUrl: deepLink,
+            metadata: { channelId: activeChannel, messageId, emoji, workspaceId },
+            dedupeKey: `chat_react_${workspaceId}_${activeChannel}_${messageId}_${actorUid}_${emoji}`,
           });
         }
 

@@ -10,6 +10,8 @@ export const NOTIFICATION_TYPES = {
   CHAT_REPLY: 'CHAT_REPLY',
   MESSAGE_REPLY: 'MESSAGE_REPLY',
   MENTION: 'MENTION',
+  CHAT_REACTION: 'CHAT_REACTION',
+  MESSAGE_REACTION: 'MESSAGE_REACTION',
 
   // 2. BLUEPRINT
   BLUEPRINT_COMPLETED: 'BLUEPRINT_COMPLETED',
@@ -60,6 +62,8 @@ export function getNotificationCategory(type) {
     case NOTIFICATION_TYPES.CHAT_REPLY:
     case NOTIFICATION_TYPES.MESSAGE_REPLY:
     case NOTIFICATION_TYPES.MENTION:
+    case NOTIFICATION_TYPES.CHAT_REACTION:
+    case NOTIFICATION_TYPES.MESSAGE_REACTION:
       return NOTIFICATION_CATEGORIES.CHAT;
 
     case NOTIFICATION_TYPES.BLUEPRINT_COMPLETED:
@@ -138,7 +142,9 @@ export function buildNotificationActionUrl({
   switch (type) {
     case NOTIFICATION_TYPES.CHAT_MESSAGE:
     case NOTIFICATION_TYPES.CHAT_MENTION:
-    case NOTIFICATION_TYPES.MENTION: {
+    case NOTIFICATION_TYPES.MENTION:
+    case NOTIFICATION_TYPES.CHAT_REACTION:
+    case NOTIFICATION_TYPES.MESSAGE_REACTION: {
       const channel = metadata.channelId || 'general';
       const msgId = metadata.messageId || resourceId;
       return org
@@ -239,6 +245,7 @@ export function createCanonicalNotification({
 }) {
   const finalNotifId = String(id || notificationId).trim();
   const effectiveOrg = (workspaceId || orgId || null);
+  const isSpecialOrg = effectiveOrg === 'community' || effectiveOrg === 'public' || effectiveOrg === 'global';
   const effectiveActorId = (senderId || actorId || 'system');
   const effectiveActorName = (actorDisplayName || senderName || actorName || 'Member');
   const effectiveActorAvatar = (senderAvatar || actorAvatar || '');
@@ -274,7 +281,7 @@ export function createCanonicalNotification({
     notificationId: finalNotifId,
     recipientId: String(recipientId).trim(),
     workspaceId: effectiveOrg ? String(effectiveOrg).trim() : null,
-    orgId: effectiveOrg ? String(effectiveOrg).trim() : null,
+    orgId: (effectiveOrg && !isSpecialOrg) ? String(effectiveOrg).trim() : null,
     type: String(type).trim(),
     title: String(title || 'New Notification').trim(),
     body: effectiveBody.substring(0, 300),

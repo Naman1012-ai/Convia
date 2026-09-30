@@ -84,3 +84,76 @@ workspaceDashboardRouter.post('/:workspaceId/activity', activityController.recor
  */
 workspaceDashboardRouter.get('/:workspaceId/activity', activityController.getWorkspaceActivitiesHandler);
 
+/**
+ * POST /api/workspace/:workspaceId/leave
+ * Authoritative leave-workspace endpoint.
+ */
+workspaceDashboardRouter.post('/:workspaceId/leave', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const verifiedUserUid = req.user.uid;
+
+    const result = await workspaceMembershipController.leaveWorkspaceHandler(
+      verifiedUserUid,
+      rawWorkspaceId,
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'LEAVE_WORKSPACE_ERROR' },
+    });
+  }
+});
+
+/**
+ * DELETE /api/workspace/:workspaceId/members/:memberUid
+ * Authoritative member removal endpoint.
+ */
+workspaceDashboardRouter.delete('/:workspaceId/members/:memberUid', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const rawTargetUid = req.params.memberUid;
+    const verifiedUserUid = req.user.uid;
+
+    const result = await workspaceMembershipController.removeMemberHandler(
+      verifiedUserUid,
+      rawWorkspaceId,
+      rawTargetUid,
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'REMOVE_MEMBER_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/:workspaceId/reconcile-members
+ * Authoritative member-count reconciliation endpoint.
+ */
+workspaceDashboardRouter.post('/:workspaceId/reconcile-members', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const result = await workspaceMembershipController.reconcileWorkspaceMemberCountHandler(
+      rawWorkspaceId
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'RECONCILE_MEMBERS_ERROR' },
+    });
+  }
+});
+
