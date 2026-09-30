@@ -9,7 +9,22 @@ import { ErrorMessage } from '../components/feedback/ErrorMessage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ideaService } from '../services/ideaService';
-import { ChevronRight, Lock, Search, Command } from 'lucide-react';
+import {
+  ChevronRight,
+  Lock,
+  Search,
+  Command,
+  LayoutDashboard,
+  Lightbulb,
+  Layers,
+  CheckSquare,
+  Users,
+  BarChart2,
+  MessageSquare,
+  Activity,
+  Settings,
+  FileText,
+} from 'lucide-react';
 import { WorkspaceSearchModal } from '../components/search/WorkspaceSearchModal';
 
 function OrgLayoutContent() {
@@ -104,43 +119,53 @@ function OrgLayoutContent() {
   const currentPath = location.pathname;
   let segmentLabel = 'Workspace Dashboard';
   let segmentSubtitle = 'Unified activity overview, collaboration insights & project status';
+  let SegmentIcon = LayoutDashboard;
   let isSubpage = false;
 
   if (currentPath.includes('/ideas') && !ideaId) {
     segmentLabel = 'Idea Board';
     segmentSubtitle = 'Propose, evaluate, and vote on hackathon project ideas';
+    SegmentIcon = Lightbulb;
     isSubpage = true;
   } else if (currentPath.includes('/blueprint')) {
     segmentLabel = 'Project Blueprint';
     segmentSubtitle = 'Authoritative build specification compiled from selected MVP';
+    SegmentIcon = Layers;
     isSubpage = true;
   } else if (currentPath.includes('/tasks')) {
     segmentLabel = 'Sprint Task Board';
     segmentSubtitle = 'Decompose your Project Blueprint into actionable developer tasks & track execution';
+    SegmentIcon = CheckSquare;
     isSubpage = true;
   } else if (currentPath.includes('/members')) {
     segmentLabel = 'Team Members';
     segmentSubtitle = `Manage hackathon collaborators for ${org.name}`;
+    SegmentIcon = Users;
     isSubpage = true;
   } else if (currentPath.includes('/dashboard')) {
     segmentLabel = 'Progress Dashboard';
     segmentSubtitle = 'Real-time velocity & sprint metrics analytics';
+    SegmentIcon = BarChart2;
     isSubpage = true;
   } else if (currentPath.includes('/chat')) {
     segmentLabel = 'Workspace Team Chat';
     segmentSubtitle = `Real-time channel messaging & collaboration for ${org.name}`;
+    SegmentIcon = MessageSquare;
     isSubpage = true;
   } else if (currentPath.includes('/activity')) {
     segmentLabel = 'Workspace Activity';
     segmentSubtitle = `Real-time audit log of all collaboration events for ${org.name}`;
+    SegmentIcon = Activity;
     isSubpage = true;
   } else if (currentPath.includes('/settings')) {
     segmentLabel = 'Workspace Settings';
     segmentSubtitle = 'Configure workspace parameters, roles, and preferences';
+    SegmentIcon = Settings;
     isSubpage = true;
   } else if (ideaId) {
     segmentLabel = activeIdea ? activeIdea.title : 'Proposal Details';
     segmentSubtitle = 'Detailed proposal breakdown, team discussion, and status management';
+    SegmentIcon = FileText;
     isSubpage = true;
   }
 
@@ -158,19 +183,19 @@ function OrgLayoutContent() {
         />
         <main className="flex-1 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6">
           {/* Centralized Workspace Top Navigation Header */}
-          <div className="border-b border-slate-200 pb-5 space-y-3">
+          <div className="border-b border-slate-200/80 pb-5 space-y-3.5">
             {/* Single Breadcrumb System */}
             <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
               <Link to="/workspaces" className="hover:text-indigo-600 transition-colors">
                 Workspaces
               </Link>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-              <Link to={workspaceRootPath} className="hover:text-indigo-600 transition-colors font-semibold">
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+              <Link to={workspaceRootPath} className="hover:text-indigo-600 transition-colors font-semibold text-slate-700">
                 {org.name}
               </Link>
               {isIdeaActive && (
                 <>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
                   <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-indigo-600 transition-colors truncate max-w-[160px]">
                     {activeIdea ? activeIdea.title : 'Selected Idea'}
                   </Link>
@@ -178,7 +203,7 @@ function OrgLayoutContent() {
               )}
               {isSubpage && (
                 <>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
                   <span className="text-slate-900 font-bold">{segmentLabel}</span>
                 </>
               )}
@@ -186,22 +211,32 @@ function OrgLayoutContent() {
 
             {/* Single Main Title Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                  {segmentLabel}
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                    org.status === 'project'
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200'
-                  }`}>
-                    {org.status === 'project' ? '⚡ Sprint Phase' : '📝 Ideation Phase'}
-                  </span>
-                </h1>
-                <p className="text-xs text-slate-500 mt-1 font-medium">{segmentSubtitle}</p>
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100/80 text-indigo-600 shadow-xs">
+                  <SegmentIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
+                      {segmentLabel}
+                    </h1>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      org.status === 'project'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                    }`}>
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        org.status === 'project' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                      }`} />
+                      {org.status === 'project' ? 'Sprint Phase' : 'Ideation Phase'}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-normal leading-relaxed">{segmentSubtitle}</p>
+                </div>
               </div>
 
               {/* Workspace Search Trigger Button */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(true)}

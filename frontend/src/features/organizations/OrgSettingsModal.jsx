@@ -36,6 +36,7 @@ export function OrgSettingsModal({ isOpen, onClose, onSuccess = () => {} }) {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
 
   useEffect(() => {
     if (org && isOpen) {
@@ -156,9 +157,12 @@ export function OrgSettingsModal({ isOpen, onClose, onSuccess = () => {} }) {
           placeholder="Describe what this workspace is for and what the team is building..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          onFocus={() => setIsDescriptionFocused(true)}
+          onBlur={() => setIsDescriptionFocused(false)}
           error={errors.description}
           rows={3}
           maxLength={WORKSPACE_LIMITS.DESCRIPTION_MAX}
+          showCount={isDescriptionFocused || description !== (org?.description || org?.hackathonDescription || '')}
           required
         />
 

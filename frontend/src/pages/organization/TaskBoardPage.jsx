@@ -4,7 +4,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { useOrg } from '../../hooks/useOrg';
 import { useToast } from '../../hooks/useToast';
 import { TaskProvider, TaskContext } from '../../contexts/TaskContext';
-import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';

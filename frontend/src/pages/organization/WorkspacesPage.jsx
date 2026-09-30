@@ -6,6 +6,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
+import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { NotificationService } from '../../services/notificationService';
 import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { OrgCard } from '../../features/organizations/OrgCard';
@@ -27,6 +28,8 @@ export default function WorkspacesPage() {
   // Modals & Feedback
   const [isCreateOrgOpen, setIsCreateOrgOpen] = useState(false);
   const [isJoinOrgOpen, setIsJoinOrgOpen] = useState(false);
+  const [workspaceToRestore, setWorkspaceToRestore] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Load Workspaces
   const loadWorkspaces = useCallback(async () => {
@@ -69,13 +72,18 @@ export default function WorkspacesPage() {
     }
   };
 
-  const handleRestoreWorkspace = async (orgId) => {
+  const confirmRestoreWorkspace = async () => {
+    if (!workspaceToRestore?.orgId) return;
+    setIsRestoring(true);
     try {
-      await orgService.restoreWorkspace(orgId);
+      await orgService.restoreWorkspace(workspaceToRestore.orgId);
       NotificationService.success(NOTIFICATION_MESSAGES.WORKSPACE.RESTORED);
+      setWorkspaceToRestore(null);
       loadWorkspaces();
     } catch (err) {
-      NotificationService.error('Failed to restore workspace: ' + err.message);
+      NotificationService.error('Failed to restore workspace: ' + (err.message || err));
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -168,7 +176,7 @@ export default function WorkspacesPage() {
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => handleRestoreWorkspace(org.orgId)}
+                          onClick={() => setWorkspaceToRestore(org)}
                           icon={<RotateCcw className="h-3.5 w-3.5" />}
                           className="border-rose-200 text-rose-700 bg-white hover:bg-rose-50 w-full font-bold"
                         >
@@ -214,6 +222,19 @@ export default function WorkspacesPage() {
           }}
         />
       </Modal>
+
+      {/* Restore Workspace Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!workspaceToRestore}
+        onCancel={() => setWorkspaceToRestore(null)}
+        onConfirm={confirmRestoreWorkspace}
+        isLoading={isRestoring}
+        title="Restore Workspace"
+        description={`Are you sure you want to restore "${workspaceToRestore?.name}"? It will be returned to your active workspaces with all ideas, boards, and members intact.`}
+        confirmLabel="Restore Workspace"
+        cancelLabel="Cancel"
+        variant="primary"
+      />
     </div>
   );
 }

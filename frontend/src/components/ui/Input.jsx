@@ -5,6 +5,7 @@ import { cn } from '../../utils/cn';
 
 export function Input({
   label,
+  action = null,
   id,
   type = 'text',
   placeholder = '',
@@ -30,10 +31,15 @@ export function Input({
 
   return (
     <div className="w-full">
-      {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-slate-700 mb-1">
-          {label} {required && <span className="text-rose-500">*</span>}
-        </label>
+      {(label || action) && (
+        <div className="flex items-center justify-between mb-1 gap-2">
+          {label ? (
+            <label htmlFor={inputId} className="block text-sm font-medium text-slate-700">
+              {label} {required && <span className="text-rose-500">*</span>}
+            </label>
+          ) : <div />}
+          {action}
+        </div>
       )}
       <div className="relative w-full">
         <input
@@ -45,7 +51,7 @@ export function Input({
           maxLength={maxLength}
           required={required}
           className={cn(
-            'w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed',
+            'w-full rounded-lg border bg-white px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:bg-slate-50/80 disabled:text-slate-700 disabled:border-slate-200 disabled:cursor-default',
             shouldShowToggle && 'pr-10',
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
@@ -77,6 +83,7 @@ export function Input({
 
 Input.propTypes = {
   label: PropTypes.string,
+  action: PropTypes.node,
   id: PropTypes.string,
   type: PropTypes.string,
   placeholder: PropTypes.string,

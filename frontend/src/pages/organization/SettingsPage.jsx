@@ -11,7 +11,6 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
-import { PageHeader } from '../../components/layout/PageHeader';
 import { NotificationService } from '../../services/notificationService';
 import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
@@ -36,7 +35,6 @@ import {
   Settings,
   Users,
   Shield,
-  Sliders,
   Info,
   AlertTriangle,
   Save,
@@ -54,6 +52,10 @@ import {
   ChevronUp,
   Copy,
   Check,
+  Clock,
+  Crown,
+  Edit3,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -84,15 +86,6 @@ export default function SettingsPage() {
 
   const [legacyExpanded, setLegacyExpanded] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
-
-  const [preferences, setPreferences] = useState({
-    enableRealtime: true,
-    enableNotifications: false,
-    defaultIdeaSort: 'Most Votes',
-    defaultTaskView: 'Board',
-    autoArchiveMvps: false,
-  });
-
   const [members, setMembers] = useState([]);
   const [currentUserRole, setCurrentUserRole] = useState('member');
 
@@ -111,15 +104,18 @@ export default function SettingsPage() {
   const [primaryReady, setPrimaryReady] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
-  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Dialog Confirmations
   const [confirmLeave, setConfirmLeave] = useState(false);
 
-  // Delete Workspace Confirmation steps
-  const [deleteStep, setDeleteStep] = useState(0); // 0 = closed, 1 = warning, 2 = type name, 3 = final
+  // Delete Workspace Confirmation Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [typedOrgName, setTypedOrgName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Field focus states
+  const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
 
   // Phase 1: Hydrate from OrgContext (instant — zero network calls)
   useEffect(() => {
@@ -163,23 +159,12 @@ export default function SettingsPage() {
     async function loadSecondary() {
       setStatsLoading(true);
       try {
-        const [prefs, ideas, tasks] = await Promise.all([
-          orgService.getWorkspacePreferences(orgId),
+        const [ideas, tasks] = await Promise.all([
           rtdbService.getData(`ideas/${orgId}`),
           rtdbService.getData(`tasks/${orgId}`),
         ]);
 
         if (!active) return;
-
-        if (prefs) {
-          setPreferences({
-            enableRealtime: prefs.enableRealtime ?? true,
-            enableNotifications: prefs.enableNotifications ?? false,
-            defaultIdeaSort: prefs.defaultIdeaSort || 'Most Votes',
-            defaultTaskView: prefs.defaultTaskView || 'Board',
-            autoArchiveMvps: prefs.autoArchiveMvps ?? false,
-          });
-        }
 
         const ideasObj = ideas || {};
         const tasksObj = tasks || {};
@@ -302,6 +287,7 @@ export default function SettingsPage() {
 
       await orgService.updateOrganizationGeneralSettings(orgId, payload);
       NotificationService.success(NOTIFICATION_MESSAGES.WORKSPACE.UPDATED);
+      setIsEditing(false);
     } catch (err) {
       const errMsg = (err.code === 'PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED') || err.message?.includes('permission'))
         ? "You don't have permission to modify this workspace."
@@ -332,27 +318,7 @@ export default function SettingsPage() {
       endDate: org.endDate || '',
     });
     setValidationErrors({});
-  };
-
-  const handlePreferencesSave = async (e) => {
-    e.preventDefault();
-    if (currentUserRole !== 'owner' && currentUserRole !== 'admin') {
-      NotificationService.error("You don't have permission to modify this workspace.");
-      return;
-    }
-
-    setSavingPreferences(true);
-    try {
-      await orgService.updateWorkspacePreferences(orgId, preferences);
-      NotificationService.success(NOTIFICATION_MESSAGES.WORKSPACE.PREFERENCES_UPDATED);
-    } catch (err) {
-      const errMsg = (err.code === 'PERMISSION_DENIED' || err.message?.includes('PERMISSION_DENIED') || err.message?.includes('permission'))
-        ? "You don't have permission to modify this workspace."
-        : (err.message || 'Failed to update workspace preferences.');
-      NotificationService.error(errMsg);
-    } finally {
-      setSavingPreferences(false);
-    }
+    setIsEditing(false);
   };
 
   // Member Management Actions
@@ -435,7 +401,7 @@ export default function SettingsPage() {
     } catch (err) {
       NotificationService.error(err);
       setIsDeleting(false);
-      setDeleteStep(0);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -471,24 +437,173 @@ export default function SettingsPage() {
 
   const isOwner = currentUserRole === 'owner';
   const isAdmin = currentUserRole === 'admin';
-  const isReadOnly = currentUserRole === 'member';
+  const canEdit = isOwner || isAdmin;
+  const isReadOnly = !canEdit;
+  const isFormDisabled = !isEditing || isReadOnly;
   const isLegacy = isLegacyHackathonWorkspace(org);
+
+  const initialDescription = org?.description || org?.hackathonDescription || '';
+  const isDescriptionChanged = generalSettings.description !== initialDescription;
+  const isChangingDescription = isEditing && (isDescriptionFocused || isDescriptionChanged);
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-16">
-      {/* Page Title Header */}
-      <PageHeader
-        title="Workspace Settings"
-        subtitle="Manage workspace profile, project resources, membership capacity, and operational preferences"
-      />
+      {/* Context Quick-Bar & Section Navigation */}
+      <div className="space-y-4">
+        {/* Workspace Context Summary Card */}
+        <Card className="p-5 bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xs rounded-2xl sticky top-4 z-20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-indigo-100 shrink-0">
+                {org.name ? org.name.charAt(0).toUpperCase() : 'W'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-bold text-slate-900">{org.name}</h2>
+                  {isOwner ? (
+                    <Badge variant="warning" className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+                      <Crown className="h-3 w-3 text-amber-600" /> Owner
+                    </Badge>
+                  ) : isAdmin ? (
+                    <Badge variant="primary" className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+                      <Shield className="h-3 w-3 text-indigo-600" /> Admin
+                    </Badge>
+                  ) : (
+                    <Badge variant="default" className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
+                      <Lock className="h-3 w-3 text-slate-400" /> Member (Read-Only)
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-medium flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Users className="h-3.5 w-3.5 text-slate-400" />
+                    {members.length} / {generalSettings.maxMembers || 5} Members
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Lock className="h-3.5 w-3.5 text-slate-400" />
+                    Private Workspace
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+              {canEdit && !isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  icon={<Edit3 className="h-3.5 w-3.5 text-indigo-600" />}
+                  className="text-xs font-semibold text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100/70 border-indigo-200/80 shadow-2xs"
+                >
+                  Edit Settings
+                </Button>
+              )}
+              {canEdit && isEditing && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGeneralReset}
+                    icon={<RotateCcw className="h-3.5 w-3.5" />}
+                    className="text-xs font-semibold text-slate-600"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    form="workspace-settings-form"
+                    variant="primary"
+                    size="sm"
+                    isLoading={savingGeneral}
+                    icon={<Save className="h-3.5 w-3.5" />}
+                    className="text-xs font-semibold"
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+              <div className="text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${isReadOnly ? 'bg-slate-400' : isEditing ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                <span className="font-semibold text-slate-700">
+                  {isReadOnly ? 'Read-only Access' : isEditing ? 'Editing Mode' : 'View Mode'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Quick-Jump Section Anchor Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => scrollToSection('settings-general')}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <Settings className="h-3.5 w-3.5 text-indigo-600" /> General
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection('settings-links')}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <FolderGit2 className="h-3.5 w-3.5 text-indigo-600" /> Project Links
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection('settings-access')}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <Shield className="h-3.5 w-3.5 text-indigo-600" /> Access & Team
+          </button>
+          {isLegacy && (
+            <button
+              type="button"
+              onClick={() => scrollToSection('settings-legacy')}
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+            >
+              <Archive className="h-3.5 w-3.5 text-amber-600" /> Legacy Archive
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => scrollToSection('settings-info')}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <Info className="h-3.5 w-3.5 text-slate-500" /> Details
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection('settings-danger')}
+            className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 border border-rose-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 ml-auto cursor-pointer"
+          >
+            <AlertTriangle className="h-3.5 w-3.5 text-rose-500" /> Danger Zone
+          </button>
+        </div>
+      </div>
 
       {/* Main Settings Form */}
-      <form onSubmit={handleGeneralSave} className="space-y-8">
+      <form id="workspace-settings-form" onSubmit={handleGeneralSave} className="space-y-8">
         {/* SECTION 1: GENERAL */}
-        <Card className="p-6 bg-white border border-slate-200/80 shadow-sm relative">
-          <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-            <Settings className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-slate-900">General Information</h2>
+        <Card id="settings-general" className="p-6 bg-white border border-slate-200/80 shadow-sm relative rounded-2xl scroll-mt-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Settings className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">General Information</h2>
+              <p className="text-xs text-slate-500">Workspace name, project type, and core objectives</p>
+            </div>
             {isReadOnly && (
               <Badge
                 variant="default"
@@ -509,7 +624,7 @@ export default function SettingsPage() {
                   setValidationErrors((prev) => ({ ...prev, name: undefined }));
                 }}
                 required
-                disabled={isReadOnly}
+                disabled={isFormDisabled}
                 maxLength={WORKSPACE_LIMITS.NAME_MAX}
                 error={validationErrors.name}
               />
@@ -523,7 +638,7 @@ export default function SettingsPage() {
                 }}
                 options={PROJECT_TYPES}
                 required
-                disabled={isReadOnly}
+                disabled={isFormDisabled}
                 error={validationErrors.projectType}
               />
             </div>
@@ -536,9 +651,12 @@ export default function SettingsPage() {
                 setGeneralSettings({ ...generalSettings, description: e.target.value });
                 setValidationErrors((prev) => ({ ...prev, description: undefined }));
               }}
-              disabled={isReadOnly}
+              onFocus={() => setIsDescriptionFocused(true)}
+              onBlur={() => setIsDescriptionFocused(false)}
+              disabled={isFormDisabled}
               placeholder="Describe what this workspace is for and what the team is building..."
               maxLength={WORKSPACE_LIMITS.DESCRIPTION_MAX}
+              showCount={isChangingDescription}
               error={validationErrors.description}
               required
             />
@@ -550,7 +668,7 @@ export default function SettingsPage() {
                 setGeneralSettings({ ...generalSettings, projectGoal: e.target.value });
                 setValidationErrors((prev) => ({ ...prev, projectGoal: undefined }));
               }}
-              disabled={isReadOnly}
+              disabled={isFormDisabled}
               placeholder="What do you want this project to accomplish?"
               maxLength={WORKSPACE_LIMITS.PROJECT_GOAL_MAX}
               error={validationErrors.projectGoal}
@@ -559,10 +677,15 @@ export default function SettingsPage() {
         </Card>
 
         {/* SECTION 2: PROJECT LINKS */}
-        <Card className="p-6 bg-white border border-slate-200/80 shadow-sm">
-          <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-            <FolderGit2 className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-slate-900">Project Links</h2>
+        <Card id="settings-links" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <FolderGit2 className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Project Links</h2>
+              <p className="text-xs text-slate-500">Repository, deployment, and documentation links</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -574,8 +697,20 @@ export default function SettingsPage() {
                 setGeneralSettings({ ...generalSettings, repositoryUrl: e.target.value });
                 setValidationErrors((prev) => ({ ...prev, repositoryUrl: undefined }));
               }}
-              disabled={isReadOnly}
+              disabled={isFormDisabled}
               error={validationErrors.repositoryUrl}
+              action={
+                generalSettings.repositoryUrl ? (
+                  <a
+                    href={generalSettings.repositoryUrl.startsWith('http') ? generalSettings.repositoryUrl : `https://${generalSettings.repositoryUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                  >
+                    Open <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null
+              }
             />
 
             <Input
@@ -586,8 +721,20 @@ export default function SettingsPage() {
                 setGeneralSettings({ ...generalSettings, projectUrl: e.target.value });
                 setValidationErrors((prev) => ({ ...prev, projectUrl: undefined }));
               }}
-              disabled={isReadOnly}
+              disabled={isFormDisabled}
               error={validationErrors.projectUrl}
+              action={
+                generalSettings.projectUrl ? (
+                  <a
+                    href={generalSettings.projectUrl.startsWith('http') ? generalSettings.projectUrl : `https://${generalSettings.projectUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                  >
+                    Open <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null
+              }
             />
 
             <Input
@@ -598,17 +745,34 @@ export default function SettingsPage() {
                 setGeneralSettings({ ...generalSettings, documentationUrl: e.target.value });
                 setValidationErrors((prev) => ({ ...prev, documentationUrl: undefined }));
               }}
-              disabled={isReadOnly}
+              disabled={isFormDisabled}
               error={validationErrors.documentationUrl}
+              action={
+                generalSettings.documentationUrl ? (
+                  <a
+                    href={generalSettings.documentationUrl.startsWith('http') ? generalSettings.documentationUrl : `https://${generalSettings.documentationUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                  >
+                    Open <ExternalLink className="h-3 w-3" />
+                  </a>
+                ) : null
+              }
             />
           </div>
         </Card>
 
         {/* SECTION 3: ACCESS & TEAM */}
-        <Card className="p-6 bg-white border border-slate-200/80 shadow-sm">
-          <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-            <Shield className="h-5 w-5 text-indigo-600" />
-            <h2 className="text-lg font-bold text-slate-900">Access &amp; Team</h2>
+        <Card id="settings-access" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
+          <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Shield className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900">Access &amp; Team</h2>
+              <p className="text-xs text-slate-500">Workspace visibility and maximum membership capacity</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -636,7 +800,7 @@ export default function SettingsPage() {
                 setValidationErrors((prev) => ({ ...prev, maxMembers: undefined }));
               }}
               required
-              disabled={isReadOnly}
+              disabled={isFormDisabled}
               error={validationErrors.maxMembers}
             />
           </div>
@@ -644,16 +808,18 @@ export default function SettingsPage() {
 
         {/* SECTION 4 (CONDITIONAL): LEGACY HACKATHON DETAILS */}
         {isLegacy && (
-          <Card className="p-6 bg-slate-50/70 border border-slate-200/80 shadow-sm rounded-2xl space-y-4">
+          <Card id="settings-legacy" className="p-6 bg-slate-50/70 border border-slate-200/80 shadow-sm rounded-2xl space-y-4 scroll-mt-6">
             <div
               className="flex items-center justify-between cursor-pointer select-none"
               onClick={() => setLegacyExpanded((prev) => !prev)}
             >
               <div className="flex items-center gap-3">
-                <Archive className="h-5 w-5 text-amber-600 shrink-0" />
+                <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <Archive className="h-4 w-4" />
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">
+                    <h3 className="text-base font-bold text-slate-900">
                       Legacy Hackathon Archive
                     </h3>
                     <Badge variant="warning" className="text-[9px] uppercase tracking-wider font-extrabold">
@@ -683,7 +849,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGeneralSettings({ ...generalSettings, hackathonName: e.target.value })
                     }
-                    disabled={isReadOnly}
+                    disabled={isFormDisabled}
                     placeholder="e.g., Global AI Hackathon"
                   />
                   <Input
@@ -692,7 +858,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGeneralSettings({ ...generalSettings, hackathonTheme: e.target.value })
                     }
-                    disabled={isReadOnly}
+                    disabled={isFormDisabled}
                     placeholder="e.g., Sustainable Tech"
                   />
                 </div>
@@ -703,7 +869,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGeneralSettings({ ...generalSettings, hackathonLocation: e.target.value })
                     }
-                    disabled={isReadOnly}
+                    disabled={isFormDisabled}
                     placeholder="e.g., San Francisco / Hybrid"
                   />
                   <Input
@@ -713,7 +879,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGeneralSettings({ ...generalSettings, startDate: e.target.value })
                     }
-                    disabled={isReadOnly}
+                    disabled={isFormDisabled}
                   />
                   <Input
                     label="End Date"
@@ -722,7 +888,7 @@ export default function SettingsPage() {
                     onChange={(e) =>
                       setGeneralSettings({ ...generalSettings, endDate: e.target.value })
                     }
-                    disabled={isReadOnly}
+                    disabled={isFormDisabled}
                   />
                 </div>
               </div>
@@ -730,34 +896,18 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* SETTINGS FORM ACTIONS */}
-        {!isReadOnly && (
-          <div className="flex items-center gap-3 pt-2">
-            <Button
-              variant="primary"
-              type="submit"
-              isLoading={savingGeneral}
-              icon={<Save className="h-4 w-4" />}
-            >
-              Save Changes
-            </Button>
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={handleGeneralReset}
-              icon={<RotateCcw className="h-4 w-4" />}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
       </form>
 
       {/* SECTION 5: WORKSPACE INFORMATION */}
-      <Card className="p-6 bg-white border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-          <Info className="h-5 w-5 text-slate-500" />
-          <h2 className="text-lg font-bold text-slate-900">Workspace Information</h2>
+      <Card id="settings-info" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
+        <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
+          <div className="h-8 w-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+            <Info className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-900">Workspace Information</h2>
+            <p className="text-xs text-slate-500">Metadata, system IDs, and ownership details</p>
+          </div>
           {statsLoading && (
             <span className="ml-auto text-[10px] text-slate-400 font-semibold animate-pulse">
               Loading stats...
@@ -972,126 +1122,16 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      {/* SECTION 7: WORKSPACE PREFERENCES */}
-      <Card className="p-6 bg-white border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-          <Sliders className="h-5 w-5 text-slate-500" />
-          <h2 className="text-lg font-bold text-slate-900">Workspace Preferences</h2>
-          {isReadOnly && (
-            <Badge
-              variant="default"
-              className="ml-auto bg-slate-100 text-slate-500 flex items-center gap-1 border-none font-bold"
-            >
-              <Lock className="h-3 w-3" /> Read Only
-            </Badge>
-          )}
-        </div>
-
-        <form onSubmit={handlePreferencesSave} className="space-y-6">
-          <div className="space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preferences.enableRealtime}
-                onChange={(e) =>
-                  setPreferences({ ...preferences, enableRealtime: e.target.checked })
-                }
-                disabled={isReadOnly}
-                className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <div>
-                <span className="text-sm font-bold text-slate-900 block">
-                  Realtime synchronization
-                </span>
-                <span className="text-xs text-slate-500">
-                  Instantly update cards and board actions as they occur.
-                </span>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preferences.enableNotifications}
-                onChange={(e) =>
-                  setPreferences({ ...preferences, enableNotifications: e.target.checked })
-                }
-                disabled={isReadOnly}
-                className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <div>
-                <span className="text-sm font-bold text-slate-900 block">Email Notifications</span>
-                <span className="text-xs text-slate-500">
-                  Notify me about task deadlines, blueprint updates, and discussion activities.
-                </span>
-              </div>
-            </label>
-
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preferences.autoArchiveMvps}
-                onChange={(e) =>
-                  setPreferences({ ...preferences, autoArchiveMvps: e.target.checked })
-                }
-                disabled={isReadOnly}
-                className="mt-1 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <div>
-                <span className="text-sm font-bold text-slate-900 block">
-                  Auto-Archive Completed MVP Projects
-                </span>
-                <span className="text-xs text-slate-500">
-                  Move task boards and proposals into records immediately when marked Done.
-                </span>
-              </div>
-            </label>
+      {/* SECTION 6: DANGER ZONE */}
+      <div id="settings-danger" className="space-y-4 scroll-mt-6">
+        <div className="flex items-center gap-3 border-b border-rose-100 pb-3">
+          <div className="h-8 w-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertTriangle className="h-4 w-4" />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
-            <Select
-              label="Idea Board Default Sorting"
-              value={preferences.defaultIdeaSort}
-              onChange={(e) => setPreferences({ ...preferences, defaultIdeaSort: e.target.value })}
-              disabled={isReadOnly}
-              options={[
-                { value: 'Latest', label: 'Latest' },
-                { value: 'Most Votes', label: 'Most Votes' },
-                { value: 'Most Active', label: 'Most Active' },
-              ]}
-            />
-            <Select
-              label="Task Board Default View"
-              value={preferences.defaultTaskView}
-              onChange={(e) => setPreferences({ ...preferences, defaultTaskView: e.target.value })}
-              disabled={isReadOnly}
-              options={[
-                { value: 'Board', label: 'Board (Kanban)' },
-                { value: 'List', label: 'List (Backlog)' },
-              ]}
-            />
+          <div>
+            <h2 className="text-base font-bold text-rose-600">Danger Zone</h2>
+            <p className="text-xs text-slate-500">Irreversible actions and workspace lifecycle management</p>
           </div>
-
-          {!isReadOnly && (
-            <div className="pt-2">
-              <Button
-                variant="primary"
-                type="submit"
-                isLoading={savingPreferences}
-                icon={<Save className="h-4 w-4" />}
-              >
-                Save Preferences
-              </Button>
-            </div>
-          )}
-        </form>
-      </Card>
-
-      {/* SECTION 8: DANGER ZONE */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 border-b border-rose-100 pb-2">
-          <AlertTriangle className="h-5 w-5 text-rose-500" />
-          <h2 className="text-lg font-bold text-rose-600">Danger Zone</h2>
         </div>
 
         <Card className="p-6 bg-rose-50/30 border border-rose-200 rounded-2xl space-y-6">
@@ -1118,28 +1158,23 @@ export default function SettingsPage() {
           {/* Delete Workspace Option */}
           {isOwner && (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1 max-w-xl">
-                <h4 className="text-sm font-extrabold text-slate-900">Delete Workspace</h4>
-                <p className="text-xs text-slate-500">
-                  Permanently delete this workspace. This will destroy:
+              <div className="space-y-1.5 max-w-xl">
+                <h4 className="text-sm font-extrabold text-slate-900">Schedule Workspace Deletion</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Schedule this workspace for permanent deletion:
                 </p>
-                <ul className="text-xs text-slate-500 list-disc list-inside mt-1 space-y-0.5">
-                  <li>Workspace metadata &amp; settings</li>
-                  <li>All proposed ideas</li>
-                  <li>Discussions &amp; suggestions</li>
-                  <li>Votes &amp; vote history</li>
-                  <li>Project blueprint</li>
-                  <li>Sprint tasks &amp; assignments</li>
-                  <li>Activity history</li>
-                  <li>Member relationships</li>
+                <ul className="text-xs text-slate-500 list-disc list-inside space-y-1">
+                  <li>The workspace will enter a <strong>7-day recovery grace period</strong>.</li>
+                  <li>During this period, the workspace is hidden from regular navigation and search, but can be restored anytime by the owner from the Workspaces page.</li>
+                  <li>After 7 days, all ideas, blueprint boards, tasks, comments, and member associations will be permanently removed.</li>
                 </ul>
-                <p className="text-xs font-bold text-rose-600 mt-1.5">
-                  This action CANNOT be undone.
-                </p>
               </div>
               <Button
                 variant="primary"
-                onClick={() => setDeleteStep(1)}
+                onClick={() => {
+                  setTypedOrgName('');
+                  setIsDeleteModalOpen(true);
+                }}
                 icon={<Trash2 className="h-4 w-4" />}
                 className="bg-rose-600 hover:bg-rose-700 text-white font-bold border-none shadow-sm shadow-rose-200 shrink-0"
               >
@@ -1161,27 +1196,27 @@ export default function SettingsPage() {
         cancelLabel="Cancel"
       />
 
-      {/* Delete Workspace Step 1: Warning Dialog */}
-      <ConfirmDialog
-        isOpen={deleteStep === 1}
-        onCancel={() => setDeleteStep(0)}
-        onConfirm={() => setDeleteStep(2)}
-        title="⚠️ Delete Workspace permanently?"
-        description={`You are about to delete "${org.name}". This will wipe out all ideas, blueprint boards, tasks, comments, and members. Are you sure you want to proceed?`}
-        confirmLabel="Yes, Proceed"
-        cancelLabel="No, Cancel"
-      />
-
-      {/* Delete Workspace Step 2: Name Verification Dialog */}
-      {deleteStep === 2 && (
+      {/* Delete Workspace Single Confirmation Modal */}
+      {isDeleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <Card className="max-w-md w-full bg-white p-6 border border-slate-200 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-lg font-black text-rose-600 mb-2 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5" /> Verification Required
+              <AlertTriangle className="h-5 w-5 shrink-0" /> Schedule Workspace Deletion
             </h3>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              To confirm deletion, please type the exact workspace name below:
-              <strong className="block mt-1 font-mono text-slate-800 bg-slate-50 px-2 py-1 rounded border border-slate-100 text-center select-all">
+            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+              You are scheduling <strong className="text-slate-900 font-bold">{org.name}</strong> for deletion.
+            </p>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 mb-4 space-y-1">
+              <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600" /> 7-Day Recovery Grace Period
+              </p>
+              <p className="text-amber-700 leading-normal">
+                This workspace will enter a 7-day grace period before permanent removal. You can restore it anytime within the next 7 days from the Workspaces page.
+              </p>
+            </div>
+            <p className="text-xs text-slate-600 mb-2">
+              To confirm, please type the exact workspace name below:
+              <strong className="block mt-1 font-mono text-slate-800 bg-slate-50 px-2 py-1.5 rounded border border-slate-200 text-center select-all">
                 {org.name}
               </strong>
             </p>
@@ -1189,36 +1224,30 @@ export default function SettingsPage() {
               value={typedOrgName}
               onChange={(e) => setTypedOrgName(e.target.value)}
               placeholder="Type workspace name..."
-              className="mb-6 font-semibold"
+              className="mb-5 font-semibold"
+              autoFocus
             />
             <div className="flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <Button variant="ghost" onClick={() => setDeleteStep(0)}>
+              <Button
+                variant="ghost"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+              >
                 Cancel
               </Button>
               <Button
                 variant="primary"
-                onClick={() => setDeleteStep(3)}
-                disabled={typedOrgName !== org.name}
+                onClick={handleDeleteWorkspace}
+                isLoading={isDeleting}
+                disabled={typedOrgName.trim() !== org.name || isDeleting}
                 className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
               >
-                Continue Deletion
+                Schedule Deletion
               </Button>
             </div>
           </Card>
         </div>
       )}
-
-      {/* Delete Workspace Step 3: Final confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={deleteStep === 3}
-        onCancel={() => setDeleteStep(0)}
-        onConfirm={handleDeleteWorkspace}
-        isLoading={isDeleting}
-        title="🚨 Final Confirmation"
-        description={`Last warning: there is no undo. Clicking confirm will destroy the workspace "${org.name}" permanently. Proceed?`}
-        confirmLabel="Confirm Permanent Delete"
-        cancelLabel="No, Keep Workspace"
-      />
     </div>
   );
 }

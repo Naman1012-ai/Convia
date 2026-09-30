@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useOrg } from '../../hooks/useOrg';
-import { PageHeader } from '../../components/layout/PageHeader';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { NotificationService } from '../../services/notificationService';
