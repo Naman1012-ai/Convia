@@ -168,6 +168,7 @@ export const orgService = {
         uids.map(async (uid) => {
           const profile = (await rtdbService.getData(`users/${uid}`)) || {};
           const resolvedDisplayName = resolveMemberDisplayName(profile);
+          const memberData = membersObj[uid] || {};
           return {
             uid,
             id: uid,
@@ -176,10 +177,12 @@ export const orgService = {
             username: profile.username || '',
             avatar: profile.avatar || profile.photoURL || '',
             photoURL: profile.photoURL || profile.avatar || '',
-            role: membersObj[uid].role || 'member',
-            workspaceRole: membersObj[uid].role || 'member',
-            joinedAt: membersObj[uid].joinedAt,
-            email: profile.email || '',
+            role: memberData.role || 'member',
+            workspaceRole: memberData.role || 'member',
+            isSecondOwner: Boolean(memberData.isSecondOwner || memberData.role === 'second_owner'),
+            isTeamCaptain: Boolean(memberData.isTeamCaptain || memberData.role === 'team_captain'),
+            joinedAt: memberData.joinedAt,
+            email: profile.email || memberData.email || '',
             onlineStatus: profile.onlineStatus || 'offline',
             skills: profile.skills || '',
             declaredSkills: Array.isArray(profile.skills) ? profile.skills : typeof profile.skills === 'string' ? profile.skills.split(',').map((s) => s.trim()).filter(Boolean) : [],
@@ -386,15 +389,18 @@ export const orgService = {
       const memberProfiles = await Promise.all(
         uids.map(async (uid) => {
           const profile = (await rtdbService.getData(`users/${uid}`)) || {};
+          const memberData = membersObj[uid] || {};
           return {
             uid,
             id: uid,
             name: profile.displayName || profile.name || (profile.email ? profile.email.split('@')[0] : 'Team Member'),
-            role: membersObj[uid].role || 'member',
-            workspaceRole: membersObj[uid].role || 'member',
-            joinedAt: membersObj[uid].joinedAt,
+            role: memberData.role || 'member',
+            workspaceRole: memberData.role || 'member',
+            isSecondOwner: Boolean(memberData.isSecondOwner || memberData.role === 'second_owner'),
+            isTeamCaptain: Boolean(memberData.isTeamCaptain || memberData.role === 'team_captain'),
+            joinedAt: memberData.joinedAt,
             displayName: profile.displayName || 'Team Member',
-            email: profile.email || '',
+            email: profile.email || memberData.email || '',
             onlineStatus: profile.onlineStatus || 'offline',
             skills: profile.skills || '',
             declaredSkills: Array.isArray(profile.skills) ? profile.skills : typeof profile.skills === 'string' ? profile.skills.split(',').map((s) => s.trim()).filter(Boolean) : [],
@@ -478,6 +484,52 @@ export const orgService = {
       role,
       updatedAt: Date.now(),
     });
+  },
+
+  /**
+   * Assign or remove Second Owner designation authoritatively via Express API.
+   */
+  updateSecondOwner: async (orgId, targetUid, action = 'assign') => {
+    if (!orgId || !targetUid) throw new Error('Workspace ID and target UID are required.');
+    const response = await apiClient.post(`/api/workspace/${orgId}/members/${targetUid}/second-owner`, { action });
+    if (response && response.success) {
+      return response.data;
+    }
+    throw new Error(response?.error?.message || 'Failed to update Second Owner designation.');
+  },
+
+  /**
+   * Assign or remove Team Captain designation authoritatively via Express API.
+   */
+  updateTeamCaptain: async (orgId, targetUid, action = 'assign') => {
+    if (!orgId || !targetUid) throw new Error('Workspace ID and target UID are required.');
+    const response = await apiClient.post(`/api/workspace/${orgId}/members/${targetUid}/team-captain`, { action });
+    if (response && response.success) {
+      return response.data;
+    }
+    throw new Error(response?.error?.message || 'Failed to update Team Captain designation.');
+  },
+
+  /**
+   * Transfer workspace ownership authoritatively via Express API.
+   */
+  transferOwnership: async (orgId, newOwnerUid, formerOwnerRole = 'team_captain') => {
+    if (!orgId || !newOwnerUid) throw new Error('Workspace ID and new Owner UID are required.');
+    const response = await apiClient.post(`/api/workspace/${orgId}/transfer-ownership`, {
+      newOwnerUid,
+      formerOwnerRole,
+    });
+    if (response && response.success) {
+      return response.data;
+    }
+    throw new Error(response?.error?.message || 'Failed to transfer workspace ownership.');
+  },
+
+  /**
+   * Compatibility alias for removeMemberFromWorkspace.
+   */
+  removeMember: async (ownerUid, orgId, targetUid) => {
+    return orgService.removeMemberFromWorkspace(orgId || ownerUid, targetUid || orgId);
   },
 
   /**

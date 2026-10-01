@@ -25,6 +25,13 @@ const testFiles = [
   './taskSyncEngine.test.js',
   './blueprintExportEngine.test.js',
   './blueprintUi2Verification.test.js',
+  './workspaceRoleRestructuring.test.js',
+  './invitationBugFixAndTeamCaptainConsistency.test.js',
+  './threeRoleOwnershipTransfer.test.js',
+  './separatedRoleManagementAndPermissions.test.js',
+  './buttonVisualStateAndContrast.test.js',
+  './globalTimestampAudit.test.js',
+  './joinTimeChatAccessControl.test.js',
 ];
 
 async function main() {

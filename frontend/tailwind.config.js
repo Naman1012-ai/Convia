@@ -8,16 +8,22 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#EEF2FF',
-          100: '#E0E7FF',
-          200: '#C7D2FE',
-          300: '#A5B4FC',
-          400: '#818CF8',
-          500: '#6366F1', // Primary brand
-          600: '#4F46E5', // Hover state
-          700: '#4338CA', // Active state
-          800: '#3730A3',
-          900: '#312E81',
+          50: '#F5F3FF',
+          100: '#EDE9FE',
+          200: '#DDD6FE',
+          300: '#C4B5FD',
+          400: '#A78BFA',
+          500: '#8B5CF6', // Core Brand Lavender
+          600: '#7C3AED', // Hover state
+          700: '#6D28D9', // Active state
+          800: '#5B21B6',
+          900: '#4C1D95',
+          950: '#2E1065',
+        },
+        lavender: {
+          surface: '#FAF9FE', // Lavender page surface
+          card: '#FFFFFF',    // White card surface
+          border: '#E9E5F5',  // Lavender border
         },
         neutral: {
           50: '#F8FAFC',

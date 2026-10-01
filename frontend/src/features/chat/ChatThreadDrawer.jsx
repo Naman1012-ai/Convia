@@ -24,6 +24,7 @@ import { formatMessageTime, formatFullDateTime } from '../../utils/chatFeedHelpe
 import { resolveMemberDisplayName } from '../../utils/memberIdentity';
 import { renderFormattedContent, getMentionSuggestions } from '../../utils/chatMentions';
 import { useUserProfiles } from '../../hooks/useUserProfile';
+import { CHAT_PAGE_SIZE } from '../../constants/chatSchema';
 
 export function ChatThreadDrawer({
   workspaceId,
@@ -33,6 +34,7 @@ export function ChatThreadDrawer({
   currentUser,
   members = [],
   isWorkspaceAdmin = false,
+  memberJoinedAt = null,
   onClose = () => {},
   onOpenPreview = () => {},
 }) {
@@ -120,7 +122,7 @@ export function ChatThreadDrawer({
     setIsLoading(true);
 
     chatService
-      .loadRecentReplies(workspaceId, channelId, parentMessage.messageId)
+      .loadRecentReplies(workspaceId, channelId, parentMessage.messageId, CHAT_PAGE_SIZE, memberJoinedAt)
       .then(({ replies: loadedReplies, hasMore: moreAvailable }) => {
         if (isMounted) {
           setReplies(loadedReplies);
@@ -164,7 +166,8 @@ export function ChatThreadDrawer({
         onError: (err) => {
           console.error('[ChatThreadDrawer] Thread listener error:', err);
         },
-      }
+      },
+      memberJoinedAt
     );
 
     // Subscribe to thread typing state
@@ -188,7 +191,7 @@ export function ChatThreadDrawer({
           .catch(() => {});
       }
     };
-  }, [workspaceId, channelId, parentMessage?.messageId, currentUser]);
+  }, [workspaceId, channelId, parentMessage?.messageId, currentUser, memberJoinedAt]);
 
   // Auto-scroll on initial load or new replies
   useEffect(() => {
@@ -210,7 +213,9 @@ export function ChatThreadDrawer({
           workspaceId,
           channelId,
           parentMessage.messageId,
-          oldestReply.replyId
+          oldestReply.replyId,
+          CHAT_PAGE_SIZE,
+          memberJoinedAt
         );
 
       setReplies((prev) => {

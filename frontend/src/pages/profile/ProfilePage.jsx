@@ -15,7 +15,7 @@ import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { EditProfileModal } from '../../features/profile/EditProfileModal';
 import { DeleteAccountModal } from '../../features/profile/DeleteAccountModal';
 import { UserReportsList } from '../../features/reports/UserReportsList';
-import { formatTimestamp } from '../../utils/formatting';
+import { formatTimestamp, formatPlatformJoinDate } from '../../utils/formatting';
 import {
   Pencil,
   UserCheck,
@@ -336,7 +336,7 @@ export default function ProfilePage() {
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5 text-indigo-400" /> Joined {formatTimestamp(userProfile.joinedAt) || 'Recently'}
+                  <Calendar className="h-3.5 w-3.5 text-indigo-400" /> {formatPlatformJoinDate(userProfile.firstSignedInAt || userProfile.joinedAt || userProfile.createdAt)}
                 </span>
               </div>
             </div>
@@ -662,7 +662,7 @@ export default function ProfilePage() {
 
               <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Joined Date</span>
-                <span className="font-semibold text-slate-800">{formatTimestamp(userProfile.joinedAt) || 'Recently'}</span>
+                <span className="font-semibold text-slate-800">{formatPlatformJoinDate(userProfile.firstSignedInAt || userProfile.joinedAt || userProfile.createdAt)}</span>
               </div>
             </div>
           </Card>

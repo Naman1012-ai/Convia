@@ -254,12 +254,18 @@ export default function JoinWorkspacePage() {
                 <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
                   {/* Role Badge */}
                   <Badge
-                    variant={lookupResult.role === 'admin' ? 'purple' : 'blue'}
+                    variant={
+                      lookupResult.isTeamCaptain || lookupResult.role === 'team_captain' || lookupResult.isSecondOwner || lookupResult.role === 'second_owner'
+                        ? 'purple'
+                        : 'blue'
+                    }
                     className="px-3 py-1 text-xs"
                   >
                     <span className="text-slate-500 font-normal mr-1.5">Role:</span>
                     <span className="font-bold text-slate-900">
-                      {lookupResult.role === 'admin' ? 'Admin' : 'Member'}
+                      {lookupResult.isTeamCaptain || lookupResult.role === 'team_captain' || lookupResult.isSecondOwner || lookupResult.role === 'second_owner'
+                        ? '⚡ Team Captain'
+                        : 'Member'}
                     </span>
                   </Badge>
 
@@ -267,6 +273,10 @@ export default function JoinWorkspacePage() {
                   {lookupResult.status === 'accepted' ? (
                     <Badge variant="success" className="px-3 py-1 text-xs font-semibold">
                       Status: Accepted
+                    </Badge>
+                  ) : lookupResult.status === 'declined' ? (
+                    <Badge variant="danger" className="px-3 py-1 text-xs font-semibold">
+                      Status: Declined
                     </Badge>
                   ) : lookupResult.status === 'revoked' ? (
                     <Badge variant="danger" className="px-3 py-1 text-xs font-semibold">
@@ -304,7 +314,7 @@ export default function JoinWorkspacePage() {
               </div>
 
               {/* Expired Warning Banner */}
-              {isExpired && !alreadyMemberOrgId && (
+              {isExpired && lookupResult.status === 'pending' && !alreadyMemberOrgId && (
                 <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-center space-y-1">
                   <div className="flex items-center justify-center gap-2 text-rose-800 font-bold text-sm">
                     <AlertTriangle className="h-5 w-5 text-rose-600" />
@@ -312,6 +322,32 @@ export default function JoinWorkspacePage() {
                   </div>
                   <p className="text-xs text-rose-600">
                     Invitation codes are valid for 5 minutes. Please contact the workspace owner to request a new code.
+                  </p>
+                </div>
+              )}
+
+              {/* Declined Warning Banner */}
+              {lookupResult.status === 'declined' && !alreadyMemberOrgId && (
+                <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-rose-800 font-bold text-sm">
+                    <AlertTriangle className="h-5 w-5 text-rose-600" />
+                    This invitation was declined.
+                  </div>
+                  <p className="text-xs text-rose-600">
+                    Declined invitations cannot be accepted. Please contact the workspace owner if you need a new invitation.
+                  </p>
+                </div>
+              )}
+
+              {/* Revoked Warning Banner */}
+              {lookupResult.status === 'revoked' && !alreadyMemberOrgId && (
+                <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-rose-800 font-bold text-sm">
+                    <AlertTriangle className="h-5 w-5 text-rose-600" />
+                    This invitation was revoked.
+                  </div>
+                  <p className="text-xs text-rose-600">
+                    This invitation was revoked by the workspace administrator and can no longer be used.
                   </p>
                 </div>
               )}
@@ -391,20 +427,32 @@ export default function JoinWorkspacePage() {
                       variant="primary"
                       className="flex-1 h-11 text-sm font-semibold flex items-center justify-center gap-1.5"
                       onClick={handleAccept}
-                      disabled={accepting || isExpired}
+                      disabled={accepting || isExpired || lookupResult.status !== 'pending'}
                     >
                       <UserCheck className="h-4 w-4" />
-                      {accepting ? 'Joining...' : isExpired ? 'Invitation Expired' : 'Accept Invitation'}
+                      {accepting
+                        ? 'Joining...'
+                        : lookupResult.status === 'accepted'
+                        ? 'Accepted'
+                        : lookupResult.status === 'declined'
+                        ? 'Declined'
+                        : lookupResult.status === 'revoked'
+                        ? 'Revoked'
+                        : isExpired
+                        ? 'Invitation Expired'
+                        : 'Accept Invitation'}
                     </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-11 text-xs text-slate-500 hover:text-rose-600"
-                      onClick={handleDecline}
-                      disabled={declining || accepting}
-                    >
-                      {declining ? 'Declining...' : 'Decline'}
-                    </Button>
+                    {lookupResult.status === 'pending' && !isExpired && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-11 text-xs text-slate-500 hover:text-rose-600"
+                        onClick={handleDecline}
+                        disabled={declining || accepting}
+                      >
+                        {declining ? 'Declining...' : 'Decline'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}

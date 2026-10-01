@@ -157,3 +157,89 @@ workspaceDashboardRouter.post('/:workspaceId/reconcile-members', async (req, res
   }
 });
 
+/**
+ * POST /api/workspace/:workspaceId/members/:memberUid/second-owner
+ * Authoritative Second Owner designation management endpoint.
+ */
+workspaceDashboardRouter.post('/:workspaceId/members/:memberUid/second-owner', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const rawTargetUid = req.params.memberUid;
+    const verifiedUserUid = req.user.uid;
+    const { action } = req.body || {};
+
+    const result = await workspaceMembershipController.updateSecondOwnerHandler(
+      verifiedUserUid,
+      rawWorkspaceId,
+      rawTargetUid,
+      action || 'assign',
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'SECOND_OWNER_UPDATE_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/:workspaceId/members/:memberUid/team-captain
+ * Authoritative Team Captain designation management endpoint.
+ */
+workspaceDashboardRouter.post('/:workspaceId/members/:memberUid/team-captain', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const rawTargetUid = req.params.memberUid;
+    const verifiedUserUid = req.user.uid;
+    const { action } = req.body || {};
+
+    const result = await workspaceMembershipController.updateTeamCaptainHandler(
+      verifiedUserUid,
+      rawWorkspaceId,
+      rawTargetUid,
+      action || 'assign',
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'TEAM_CAPTAIN_UPDATE_ERROR' },
+    });
+  }
+});
+
+/**
+ * POST /api/workspace/:workspaceId/transfer-ownership
+ * Authoritative workspace ownership transfer endpoint.
+ */
+workspaceDashboardRouter.post('/:workspaceId/transfer-ownership', async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const verifiedUserUid = req.user.uid;
+    const { newOwnerUid, formerOwnerRole } = req.body || {};
+
+    const result = await workspaceMembershipController.transferOwnershipHandler(
+      verifiedUserUid,
+      rawWorkspaceId,
+      newOwnerUid,
+      formerOwnerRole || 'team_captain',
+      req
+    );
+
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'TRANSFER_OWNERSHIP_ERROR' },
+    });
+  }
+});
+

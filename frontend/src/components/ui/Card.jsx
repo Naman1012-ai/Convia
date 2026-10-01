@@ -23,7 +23,7 @@ export function Card({
       className={cn(
         'rounded-xl border border-slate-200 bg-white shadow-sm transition-all duration-200',
         paddings[padding],
-        hover && 'hover:border-indigo-300 hover:shadow-md cursor-pointer',
+        hover && 'hover:border-primary-300 hover:shadow-md cursor-pointer',
         className
       )}
       {...props}

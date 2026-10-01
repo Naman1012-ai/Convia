@@ -242,14 +242,22 @@ export const chatService = {
    * @param {string} messageId - Message ID
    * @returns {Promise<Object|null>} Normalized message or null
    */
-  getMessage: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, messageId) => {
+  getMessage: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, messageId, memberJoinedAt = null) => {
     if (!workspaceId || !messageId) return null;
     try {
       const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
       const msgPath = getMessagePath(workspaceId, activeChannelId, messageId);
       const snap = await rtdbService.getRtdbOnly(msgPath).catch(() => null);
       if (!snap || typeof snap !== 'object') return null;
-      return normalizeChatMessage(snap, messageId);
+      const normalized = normalizeChatMessage(snap, messageId);
+      if (!normalized) return null;
+
+      // Enforce join-time-based chat history visibility boundary
+      if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+        return null;
+      }
+
+      return normalized;
     } catch (e) {
       console.warn('[chatService] getMessage error:', e.message);
       return null;
@@ -262,9 +270,10 @@ export const chatService = {
    * @param {string} workspaceId - Workspace ID
    * @param {string} [channelId='general'] - Channel ID
    * @param {number} [pageSize=CHAT_PAGE_SIZE] - Number of messages to retrieve (Default: 50)
+   * @param {number|null} [memberJoinedAt=null] - Authoritative workspace membership join boundary
    * @returns {Promise<{ messages: Array<Object>, hasMore: boolean, oldestKey: string|null, newestKey: string|null, count: number }>}
    */
-  loadRecentMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, pageSize = CHAT_PAGE_SIZE) => {
+  loadRecentMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, pageSize = CHAT_PAGE_SIZE, memberJoinedAt = null) => {
     if (!workspaceId || typeof workspaceId !== 'string' || !workspaceId.trim()) {
       return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
     }
@@ -284,18 +293,27 @@ export const chatService = {
       return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
     }
 
-    const messages = Object.entries(rawVal)
+    const rawList = Object.entries(rawVal)
       .map(([key, raw]) => normalizeChatMessage(raw, key))
       .filter((msg) => msg && msg.messageId)
       .sort(compareMessages);
 
+    // Filter out messages created before memberJoinedAt boundary
+    const messages = rawList.filter(
+      (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
+    );
+
+    const hitPreJoinBoundary = rawList.some(
+      (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
+    );
+
     const meta = calculatePaginationMetadata(messages, pageSize);
     return {
       messages,
-      hasMore: meta.hasMore,
+      hasMore: meta.hasMore && !hitPreJoinBoundary,
       oldestKey: meta.oldestKey,
       newestKey: meta.newestKey,
-      count: meta.count,
+      count: messages.length,
     };
   },
 
@@ -306,9 +324,10 @@ export const chatService = {
    * @param {string} [channelId='general'] - Channel ID
    * @param {string} beforeMessageId - Canonical RTDB push key cursor
    * @param {number} [pageSize=CHAT_PAGE_SIZE] - Number of older messages to retrieve (Default: 50)
+   * @param {number|null} [memberJoinedAt=null] - Authoritative workspace membership join boundary
    * @returns {Promise<{ messages: Array<Object>, hasMore: boolean, oldestKey: string|null, newestKey: string|null, count: number }>}
    */
-  loadOlderMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, beforeMessageId, pageSize = CHAT_PAGE_SIZE) => {
+  loadOlderMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, beforeMessageId, pageSize = CHAT_PAGE_SIZE, memberJoinedAt = null) => {
     if (
       !workspaceId ||
       typeof workspaceId !== 'string' ||
@@ -336,18 +355,27 @@ export const chatService = {
       return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
     }
 
-    const messages = Object.entries(rawVal)
+    const rawList = Object.entries(rawVal)
       .map(([key, raw]) => normalizeChatMessage(raw, key))
       .filter((msg) => msg && msg.messageId)
       .sort(compareMessages);
 
+    // Filter out messages created before memberJoinedAt boundary
+    const messages = rawList.filter(
+      (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
+    );
+
+    const hitPreJoinBoundary = rawList.some(
+      (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
+    );
+
     const meta = calculatePaginationMetadata(messages, pageSize);
     return {
       messages,
-      hasMore: meta.hasMore,
+      hasMore: meta.hasMore && !hitPreJoinBoundary,
       oldestKey: meta.oldestKey,
       newestKey: meta.newestKey,
-      count: meta.count,
+      count: messages.length,
     };
   },
 
@@ -361,9 +389,10 @@ export const chatService = {
    * @param {Function} [callbacks.onMessageChanged] - Fired on message child modification (edit/soft-delete)
    * @param {Function} [callbacks.onMessageRemoved] - Fired on message child physical removal
    * @param {Function} [callbacks.onError] - Error callback
+   * @param {number|null} [memberJoinedAt=null] - Authoritative workspace membership join boundary
    * @returns {Function} Deterministic unsubscribe function
    */
-  subscribeToLiveMessages: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, callbacks = {}) => {
+  subscribeToLiveMessages: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, callbacks = {}, memberJoinedAt = null) => {
     if (!workspaceId || typeof workspaceId !== 'string' || !workspaceId.trim()) {
       return () => {};
     }
@@ -388,6 +417,9 @@ export const chatService = {
         if (!snapshot.exists()) return;
         const normalized = normalizeChatMessage(snapshot.val(), snapshot.key);
         if (normalized) {
+          if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+            return;
+          }
           onMessageAdded(normalized);
         }
       },
@@ -404,6 +436,9 @@ export const chatService = {
         if (!snapshot.exists()) return;
         const normalized = normalizeChatMessage(snapshot.val(), snapshot.key);
         if (normalized) {
+          if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+            return;
+          }
           onMessageChanged(normalized);
         }
       },
@@ -445,9 +480,10 @@ export const chatService = {
    * @param {string} workspaceId - Workspace ID
    * @param {string} [channelId='general'] - Channel ID
    * @param {Function} callback - Callback receiving (messagesArray, error)
+   * @param {number|null} [memberJoinedAt=null] - Authoritative workspace membership join boundary
    * @returns {Function} Unsubscribe function
    */
-  subscribeToMessages: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, callback) => {
+  subscribeToMessages: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, callback, memberJoinedAt = null) => {
     if (!workspaceId) {
       callback([], null);
       return () => {};
@@ -456,30 +492,35 @@ export const chatService = {
     let localCache = [];
     let isMounted = true;
 
-    const unsubLive = chatService.subscribeToLiveMessages(workspaceId, channelId, {
-      onMessageAdded: (newMsg) => {
-        if (!isMounted) return;
-        localCache = upsertMessage(localCache, newMsg);
-        callback([...localCache], null);
+    const unsubLive = chatService.subscribeToLiveMessages(
+      workspaceId,
+      channelId,
+      {
+        onMessageAdded: (newMsg) => {
+          if (!isMounted) return;
+          localCache = upsertMessage(localCache, newMsg);
+          callback([...localCache], null);
+        },
+        onMessageChanged: (changedMsg) => {
+          if (!isMounted) return;
+          localCache = upsertMessage(localCache, changedMsg);
+          callback([...localCache], null);
+        },
+        onMessageRemoved: (removedId) => {
+          if (!isMounted) return;
+          localCache = removeMessageById(localCache, removedId);
+          callback([...localCache], null);
+        },
+        onError: (err) => {
+          if (!isMounted) return;
+          callback(localCache, err);
+        },
       },
-      onMessageChanged: (changedMsg) => {
-        if (!isMounted) return;
-        localCache = upsertMessage(localCache, changedMsg);
-        callback([...localCache], null);
-      },
-      onMessageRemoved: (removedId) => {
-        if (!isMounted) return;
-        localCache = removeMessageById(localCache, removedId);
-        callback([...localCache], null);
-      },
-      onError: (err) => {
-        if (!isMounted) return;
-        callback(localCache, err);
-      },
-    });
+      memberJoinedAt
+    );
 
     chatService
-      .loadRecentMessages(workspaceId, channelId, CHAT_PAGE_SIZE)
+      .loadRecentMessages(workspaceId, channelId, CHAT_PAGE_SIZE, memberJoinedAt)
       .then(({ messages }) => {
         if (!isMounted) return;
         localCache = prependOlderMessages(localCache, messages);
@@ -682,7 +723,7 @@ export const chatService = {
   /**
    * Load the initial bounded batch of recent replies for a thread.
    */
-  loadRecentReplies: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, pageSize = CHAT_PAGE_SIZE) => {
+  loadRecentReplies: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, pageSize = CHAT_PAGE_SIZE, memberJoinedAt = null) => {
     if (!workspaceId || !parentMessageId) return { replies: [], hasMore: false };
     const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
     const repliesPath = getMessageRepliesPath(workspaceId, activeChannelId, parentMessageId);
@@ -698,7 +739,12 @@ export const chatService = {
     const repliesList = [];
     snapshot.forEach((childSnap) => {
       const normalized = normalizeChatReply(childSnap.val(), childSnap.key);
-      if (normalized) repliesList.push(normalized);
+      if (normalized) {
+        if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+          return;
+        }
+        repliesList.push(normalized);
+      }
     });
 
     repliesList.sort(compareMessages);
@@ -711,7 +757,7 @@ export const chatService = {
   /**
    * Load an older batch of replies for a thread using cursor-based pagination.
    */
-  loadOlderReplies: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, beforeReplyKey, pageSize = CHAT_PAGE_SIZE) => {
+  loadOlderReplies: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, beforeReplyKey, pageSize = CHAT_PAGE_SIZE, memberJoinedAt = null) => {
     if (!workspaceId || !parentMessageId || !beforeReplyKey) return { replies: [], hasMore: false };
     const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
     const repliesPath = getMessageRepliesPath(workspaceId, activeChannelId, parentMessageId);
@@ -727,7 +773,12 @@ export const chatService = {
     const repliesList = [];
     snapshot.forEach((childSnap) => {
       const normalized = normalizeChatReply(childSnap.val(), childSnap.key);
-      if (normalized) repliesList.push(normalized);
+      if (normalized) {
+        if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+          return;
+        }
+        repliesList.push(normalized);
+      }
     });
 
     repliesList.sort(compareMessages);
@@ -740,7 +791,7 @@ export const chatService = {
   /**
    * Subscribe to real-time live reply updates for an open thread.
    */
-  subscribeToThread: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, callbacks = {}) => {
+  subscribeToThread: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, parentMessageId, callbacks = {}, memberJoinedAt = null) => {
     if (!workspaceId || !parentMessageId) return () => {};
     const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
     const repliesPath = getMessageRepliesPath(workspaceId, activeChannelId, parentMessageId);
@@ -753,7 +804,12 @@ export const chatService = {
       addedQuery,
       (snapshot) => {
         const normalized = normalizeChatReply(snapshot.val(), snapshot.key);
-        if (normalized && typeof onReplyAdded === 'function') onReplyAdded(normalized);
+        if (normalized) {
+          if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+            return;
+          }
+          if (typeof onReplyAdded === 'function') onReplyAdded(normalized);
+        }
       },
       (err) => {
         if (typeof onError === 'function') onError(err);
@@ -764,7 +820,12 @@ export const chatService = {
       repliesRef,
       (snapshot) => {
         const normalized = normalizeChatReply(snapshot.val(), snapshot.key);
-        if (normalized && typeof onReplyChanged === 'function') onReplyChanged(normalized);
+        if (normalized) {
+          if (memberJoinedAt && typeof normalized.createdAt === 'number' && normalized.createdAt < memberJoinedAt) {
+            return;
+          }
+          if (typeof onReplyChanged === 'function') onReplyChanged(normalized);
+        }
       },
       (err) => {
         if (typeof onError === 'function') onError(err);
@@ -1126,7 +1187,7 @@ export const chatService = {
   /**
    * Phase 7: Search messages and replies in a workspace channel.
    */
-  searchMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, queryText = '', limit = 30) => {
+  searchMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, queryText = '', limit = 30, memberJoinedAt = null) => {
     const cleanQuery = (queryText || '').toLowerCase().trim();
     if (!workspaceId || !cleanQuery) return [];
 
@@ -1146,6 +1207,11 @@ export const chatService = {
     Object.entries(rawVal).forEach(([key, rawMsg]) => {
       const msg = normalizeChatMessage(rawMsg, key);
       if (!msg || msg.deleted || msg.isSystem) return;
+
+      // Enforce join-time-based chat history visibility boundary
+      if (memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt) {
+        return;
+      }
 
       const contentMatch = (msg.content || '').toLowerCase().includes(cleanQuery);
       const senderMatch = (msg.senderName || '').toLowerCase().includes(cleanQuery);

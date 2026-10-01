@@ -16,6 +16,7 @@ export function ChatSearchModal({
   workspaceId,
   channelId = 'general',
   members = [],
+  memberJoinedAt = null,
   onSelectResult = () => {},
 }) {
   const [queryText, setQueryText] = useState('');
@@ -78,7 +79,7 @@ export function ChatSearchModal({
     setIsSearching(true);
     const timeoutId = setTimeout(async () => {
       try {
-        const found = await chatService.searchMessages(workspaceId, channelId, cleanQuery);
+        const found = await chatService.searchMessages(workspaceId, channelId, cleanQuery, 30, memberJoinedAt);
         setResults(found);
       } catch (err) {
         console.error('[ChatSearchModal] search error:', err);
@@ -88,7 +89,7 @@ export function ChatSearchModal({
     }, 250);
 
     return () => clearTimeout(timeoutId);
-  }, [queryText, workspaceId, channelId]);
+  }, [queryText, workspaceId, channelId, memberJoinedAt]);
 
   const highlightMatch = (text, query) => {
     if (!query || !text) return text;

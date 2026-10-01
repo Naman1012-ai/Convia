@@ -6,15 +6,17 @@ export function Badge({ variant = 'default', children, className = '' }) {
   const variants = {
     // Semantic tokens
     default: 'bg-slate-100 text-slate-700 border-slate-200',
-    info: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    info: 'bg-primary-50 text-primary-800 border-primary-200',
     success: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-900 border-amber-300',
+    warning: 'bg-amber-100 text-amber-950 border-amber-300/80',
     danger: 'bg-rose-50 text-rose-800 border-rose-200',
 
     // Direct color names mapped to high-contrast WCAG AAA tokens
     blue: 'bg-blue-50 text-blue-800 border-blue-200',
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    purple: 'bg-purple-50 text-purple-800 border-purple-200',
+    indigo: 'bg-primary-50 text-primary-800 border-primary-200',
+    purple: 'bg-purple-100 text-purple-950 border-purple-300/80',
+    primary: 'bg-primary-50 text-primary-800 border-primary-200',
+    lavender: 'bg-primary-50 text-primary-800 border-primary-200',
     green: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
     amber: 'bg-amber-50 text-amber-900 border-amber-300',

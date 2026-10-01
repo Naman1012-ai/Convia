@@ -56,7 +56,7 @@ export const workspaceInvitationController = {
    * Generates a new email-bound invitation code for a workspace teammate.
    * Only Workspace Owner and Authorized Admins can create invitations.
    */
-  createInvitationHandler: async (workspaceId, userUid, { email, role = 'member' }, req = null) => {
+  createInvitationHandler: async (workspaceId, userUid, { email, role = 'member', isTeamCaptain = false } = {}, req = null) => {
     if (!workspaceId || !userUid) {
       const err = new Error('Workspace ID and User UID are required.');
       err.statusCode = 400;
@@ -83,11 +83,10 @@ export const workspaceInvitationController = {
       throw err;
     }
 
-    // 3. Validate role (Owner cannot be assigned via invitation)
-    const validRoles = ['member', 'admin'];
-    const assignedRole = validRoles.includes(String(role).toLowerCase())
-      ? String(role).toLowerCase()
-      : 'member';
+    // 3. Validate role and designations (Original Owner cannot be assigned via invitation)
+    const inputRole = typeof role === 'string' ? role.toLowerCase() : 'member';
+    const isTeamCaptainReq = inputRole === 'team_captain' || Boolean(isTeamCaptain || req?.body?.isTeamCaptain || (typeof role === 'object' && role?.isTeamCaptain));
+    const assignedRole = isTeamCaptainReq ? 'team_captain' : 'member';
 
     // 4. Verify Authoritative Workspace Member Capacity (Section 8)
     const membersObj = (await rtdbService.getData(`organization_members/${workspaceId}`)) || {};
@@ -101,6 +100,23 @@ export const workspaceInvitationController = {
       err.currentCount = activeMemberCount;
       err.memberLimit = maxMembersLimit;
       throw err;
+    }
+
+    // 4b. Verify Designation Availability for Team Captain (At most 1 active Team Captain)
+    const existingMembersList = Object.values(membersObj).filter(
+      (m) => m && m.status !== 'removed' && m.status !== 'inactive' && !m.isDeleted
+    );
+
+    if (isTeamCaptainReq) {
+      const teamCaptainExists = existingMembersList.some(
+        (m) => m.isTeamCaptain || m.role === 'team_captain' || m.isSecondOwner || m.role === 'second_owner'
+      );
+      if (teamCaptainExists) {
+        const err = new Error('A Team Captain is already assigned for this workspace. Only 1 Team Captain is allowed per workspace.');
+        err.statusCode = 409;
+        err.code = 'TEAM_CAPTAIN_OCCUPIED';
+        throw err;
+      }
     }
 
     // 5. Check if user with this email is already a member
@@ -153,7 +169,7 @@ export const workspaceInvitationController = {
       }
     }
 
-    // 7. Check for existing pending invitation (Section 10 & 14)
+    // 7. Check for existing pending invitation and active designation conflicts
     const existingInvitesObj = (await rtdbService.getData(`workspace_invitations/${workspaceId}`)) || {};
     const existingInvites = Object.values(existingInvitesObj);
     const existingPending = existingInvites.find(
@@ -174,7 +190,23 @@ export const workspaceInvitationController = {
       };
     }
 
-    // 6. Generate cryptographically secure invitation code
+    const activePendingInvites = existingInvites.filter(
+      (inv) => inv && inv.status === 'pending' && inv.expiresAt && Date.now() < inv.expiresAt
+    );
+
+    if (isTeamCaptainReq) {
+      const pendingTeamCaptain = activePendingInvites.some(
+        (inv) => inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner'
+      );
+      if (pendingTeamCaptain) {
+        const err = new Error('An active pending invitation for Team Captain already exists.');
+        err.statusCode = 409;
+        err.code = 'TEAM_CAPTAIN_OCCUPIED';
+        throw err;
+      }
+    }
+
+    // 8. Generate cryptographically secure invitation code
     const rawCode = generateInvitationCode();
     const codeHash = hashInvitationCode(rawCode);
     const timestamp = Date.now();
@@ -186,6 +218,8 @@ export const workspaceInvitationController = {
       workspaceId,
       invitedEmail: cleanEmail,
       role: assignedRole,
+      isSecondOwner: false,
+      isTeamCaptain: isTeamCaptainReq,
       invitedBy: userUid,
       status: 'pending',
       codeHash,
@@ -203,6 +237,8 @@ export const workspaceInvitationController = {
       workspaceId,
       invitedEmail: cleanEmail,
       role: assignedRole,
+      isSecondOwner: false,
+      isTeamCaptain: isTeamCaptainReq,
       status: 'pending',
       expiresAt,
       createdAt: timestamp,
@@ -556,6 +592,9 @@ export const workspaceInvitationController = {
       description: org.description || '',
       invitedEmail: invitation.invitedEmail,
       role: invitation.role || 'member',
+      isSecondOwner: Boolean(invitation.isSecondOwner || invitation.role === 'second_owner'),
+      isTeamCaptain: Boolean(invitation.isTeamCaptain || invitation.role === 'team_captain'),
+      status: invitation.status || 'pending',
       expiresAt: invitation.expiresAt,
     };
   },
@@ -725,14 +764,37 @@ export const workspaceInvitationController = {
 
     const timestamp = Date.now();
     const newMemberCount = freshActiveCount + 1;
-    // Default or invited role (Role escalation defense: cannot be owner)
-    const assignedRole = invitation.role === 'admin' ? 'admin' : 'member';
+
+    const isTeamCaptainReq = Boolean(invitation.isTeamCaptain || invitation.role === 'team_captain' || invitation.isSecondOwner || invitation.role === 'second_owner');
+
+    // Re-verify designation availability upon acceptance
+    const freshMembersList = Object.values(freshMembersObj).filter(
+      (m) => m && m.status !== 'removed' && m.status !== 'inactive' && !m.isDeleted
+    );
+
+    if (isTeamCaptainReq) {
+      const teamCaptainExists = freshMembersList.some(
+        (m) => m.isTeamCaptain || m.role === 'team_captain' || m.isSecondOwner || m.role === 'second_owner'
+      );
+      if (teamCaptainExists) {
+        const err = new Error('The Team Captain position is no longer available as another member holds this role.');
+        err.statusCode = 409;
+        err.code = 'DESIGNATION_OCCUPIED';
+        throw err;
+      }
+    }
+
+    const assignedRole = isTeamCaptainReq ? 'team_captain' : 'member';
 
     const atomicUpdates = {
       [`organization_members/${workspaceId}/${userUid}`]: {
         uid: userUid,
+        email: userEmail,
         role: assignedRole,
+        isSecondOwner: false,
+        isTeamCaptain: isTeamCaptainReq,
         joinedAt: timestamp,
+        updatedAt: timestamp,
       },
       [`organizations/${workspaceId}/memberCount`]: newMemberCount,
       [`organizations/${workspaceId}/updatedAt`]: timestamp,

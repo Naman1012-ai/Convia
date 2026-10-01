@@ -1,97 +1,75 @@
-import React, { useState } from 'react';
+import React from 'react';
 import PropTypes from 'prop-types';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrg } from '../../hooks/useOrg';
-import { orgService } from '../../services/orgService';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
-import { Trash2, Wifi } from 'lucide-react';
+import { formatWorkspaceJoinDate } from '../../utils/formatting';
 
 export function OrgMemberList({ onToast = () => {} }) {
   const { user } = useAuth();
-  const { org, members, isLeader } = useOrg();
-
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [isRemoving, setIsRemoving] = useState(false);
-
-  const handleConfirmRemove = async () => {
-    if (!selectedMember || !org) return;
-
-    setIsRemoving(true);
-    try {
-      await orgService.removeMember(user.uid, org.orgId, selectedMember.uid);
-      onToast(`Removed ${selectedMember.displayName} from organization.`);
-      setSelectedMember(null);
-    } catch (err) {
-      onToast(err.message || 'Failed to remove member.');
-    } finally {
-      setIsRemoving(false);
-    }
-  };
+  const { org, members } = useOrg();
 
   return (
     <div className="space-y-4">
+      {/* Read-Only Members Roster List */}
       <div className="divide-y divide-slate-100">
         {members.map((member) => {
-          const isMemberOwner = member.role === 'owner';
-          const isSelf = member.uid === user?.uid;
+          const memberUid = member.uid || member.id;
+          const isMemberOwner =
+            memberUid === org?.ownerId || memberUid === org?.ownerUid || member.role === 'owner';
+          const isCaptain =
+            !isMemberOwner &&
+            (member.isTeamCaptain ||
+              member.role === 'team_captain' ||
+              member.isSecondOwner ||
+              member.role === 'second_owner');
+          const isSelf = memberUid === user?.uid;
           const isOnline = member.onlineStatus === 'online';
 
           return (
-            <div key={member.uid} className="flex items-center justify-between py-3.5">
-              <div className="flex items-center gap-3">
-                <Avatar name={member.displayName} size="md" />
-                <div>
+            <div key={memberUid} className="flex items-center justify-between py-3.5 gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar name={member.displayName || member.name} size="md" />
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-900">
-                      {member.displayName} {isSelf && '(You)'}
+                    <span className="text-sm font-semibold text-slate-900 truncate">
+                      {member.displayName || member.name} {isSelf && '(You)'}
                     </span>
                     <span
                       title={isOnline ? 'Online' : 'Offline'}
-                      className={`h-2 w-2 rounded-full ${
+                      className={`h-2 w-2 rounded-full shrink-0 ${
                         isOnline ? 'bg-emerald-500' : 'bg-slate-300'
                       }`}
                     />
                   </div>
-                  <p className="text-xs text-slate-500">{member.email}</p>
+                  <p className="text-xs text-slate-500 truncate">{member.email}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {formatWorkspaceJoinDate(member.joinedAt)}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Badge variant={isMemberOwner ? 'info' : 'default'}>
-                  {isMemberOwner ? 'Leader' : 'Member'}
-                </Badge>
-
-                {isLeader && !isMemberOwner && !isSelf && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-rose-600 hover:bg-rose-50"
-                    icon={<Trash2 className="h-4 w-4" />}
-                    onClick={() => setSelectedMember(member)}
-                  >
-                    Remove
-                  </Button>
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Read-Only Role Display Badges */}
+                {isMemberOwner ? (
+                  <Badge variant="warning" className="font-bold flex items-center gap-1">
+                    👑 Owner
+                  </Badge>
+                ) : isCaptain ? (
+                  <Badge variant="purple" className="font-bold flex items-center gap-1">
+                    ⚡ Team Captain
+                  </Badge>
+                ) : (
+                  <Badge variant="default" className="font-semibold">
+                    Member
+                  </Badge>
                 )}
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Remove Member Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={Boolean(selectedMember)}
-        title="Remove Team Member"
-        description={`Are you sure you want to remove ${selectedMember?.displayName} from this organization?`}
-        confirmLabel="Remove Member"
-        variant="danger"
-        isLoading={isRemoving}
-        onConfirm={handleConfirmRemove}
-        onCancel={() => setSelectedMember(null)}
-      />
     </div>
   );
 }

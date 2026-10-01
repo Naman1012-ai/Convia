@@ -1,3 +1,16 @@
+:root {
+  /* Premium Lavender Design Tokens */
+  --color-primary: #8B5CF6;
+  --color-primary-hover: #7C3AED;
+  --color-primary-active: #6D28D9;
+  --color-page-bg: #FAF9FE;
+  --color-card-bg: #FFFFFF;
+  --color-border-subtle: #E9E5F5;
+  --color-text-primary: #0F172A;
+  --color-text-muted: #64748B;
+  --color-focus-ring: #8B5CF6;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

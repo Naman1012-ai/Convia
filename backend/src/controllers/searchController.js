@@ -47,11 +47,12 @@ export const searchController = {
     // -------------------------------------------------------------
     // 1. STRICT AUTHORIZATION VERIFICATION BEFORE SEARCH
     // -------------------------------------------------------------
-    const { org: orgRecord } = await requireWorkspaceMember(
+    const membership = await requireWorkspaceMember(
       workspaceId,
       userUid,
       'Unauthorized: You must be an authorized member of this workspace to search its resources.'
     );
+    const { org: orgRecord, joinedAt: memberJoinedAt, isOwner } = membership;
 
     // -------------------------------------------------------------
     // 2. RESOURCE QUERIES (BOUNDED & SAFE)
@@ -263,6 +264,11 @@ export const searchController = {
             if (rawMessages && typeof rawMessages === 'object') {
               Object.entries(rawMessages).forEach(([msgId, msg]) => {
                 if (!msg || typeof msg !== 'object' || msg.deleted || msg.isSystem) return;
+
+                // Enforce join-time-based chat history access control
+                if (!isOwner && memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt) {
+                  return;
+                }
 
                 const content = msg.content || '';
                 const sender = msg.senderName || 'Member';

@@ -94,12 +94,18 @@ export function OrgProvider({ orgId, children }) {
         photoURL: liveAvatar || member.photoURL || member.avatar || '',
         role: member.role || member.workspaceRole || 'member',
         workspaceRole: member.role || member.workspaceRole || 'member',
+        isSecondOwner: Boolean(member.isSecondOwner || member.role === 'second_owner'),
+        isTeamCaptain: Boolean(member.isTeamCaptain || member.role === 'team_captain'),
       };
     });
   }, [rawMembers, profiles]);
 
   const currentMember = members.find((m) => m.uid === user?.uid);
-  const isLeader = Boolean(user && org && (org.ownerId === user.uid || org.createdBy === user.uid));
+  const isOwner = Boolean(user && org && (org.ownerId === user.uid || org.ownerUid === user.uid));
+  const isTeamCaptain = Boolean(
+    currentMember && (currentMember.role === 'team_captain' || currentMember.isTeamCaptain)
+  );
+  const isLeader = Boolean(isOwner || isTeamCaptain);
   const isOrgAdmin = Boolean(isLeader || currentMember?.role === 'admin');
   const isFrozen = Boolean(org && org.status === 'project');
 
@@ -113,7 +119,7 @@ export function OrgProvider({ orgId, children }) {
   }, [org, members.length]);
 
   return (
-    <OrgContext.Provider value={{ org: resolvedOrg, members, isLeader, isOrgAdmin, isFrozen, loading, error }}>
+    <OrgContext.Provider value={{ org: resolvedOrg, members, currentMember, isLeader, isOrgAdmin, isFrozen, loading, error }}>
       {children}
     </OrgContext.Provider>
   );

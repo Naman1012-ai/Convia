@@ -67,6 +67,18 @@ function formatUserFriendlyError(err, fallback = "We couldn't generate the invit
   ) {
     return 'An active invitation already exists for this email.';
   }
+  if (code === 'SECOND_OWNER_OCCUPIED' || lowerMsg.includes('second owner')) {
+    return 'A Second Owner is already assigned to this workspace. Only 1 Second Owner is allowed.';
+  }
+  if (code === 'TEAM_CAPTAIN_OCCUPIED' || lowerMsg.includes('team captain')) {
+    return 'A Team Captain is already assigned to this workspace. Only 1 Team Captain is allowed.';
+  }
+  if (code === 'DESIGNATION_OCCUPIED' || lowerMsg.includes('designation')) {
+    return 'One of the requested designations (Second Owner or Team Captain) is already occupied.';
+  }
+  if (code === 'CANNOT_ASSIGN_ORIGINAL_OWNER' || lowerMsg.includes('original owner')) {
+    return 'The Original Owner cannot be assigned as Second Owner.';
+  }
   if (
     code === 'UNAUTHORIZED' ||
     code === 'FORBIDDEN' ||
@@ -230,7 +242,12 @@ export function WorkspaceInvitationsManager({
 
     setIsSubmitting(true);
     try {
-      const res = await invitationService.createInvitation(workspaceId, cleanEmail, roleInput);
+      const res = await invitationService.createInvitation(
+        workspaceId,
+        cleanEmail,
+        roleInput,
+        roleInput === 'team_captain'
+      );
 
       if (res.existing && res.invitation) {
         // Section 14: Existing invitation found
@@ -406,7 +423,7 @@ export function WorkspaceInvitationsManager({
 
             <div className="sm:col-span-3">
               <label htmlFor="invite-role" className="block text-xs font-semibold text-slate-700 mb-1">
-                Role
+                Workspace Role
               </label>
               <Select
                 id="invite-role"
@@ -414,11 +431,11 @@ export function WorkspaceInvitationsManager({
                 onChange={(e) => setRoleInput(e.target.value)}
                 options={[
                   { value: 'member', label: 'Member' },
-                  { value: 'admin', label: 'Admin' },
+                  { value: 'team_captain', label: 'Team Captain ⚡' },
                 ]}
                 disabled={isFull || isSubmitting}
                 aria-disabled={isFull || isSubmitting}
-                className="text-sm"
+                className="text-sm font-medium"
               />
             </div>
 
@@ -480,9 +497,11 @@ export function WorkspaceInvitationsManager({
                 A unique invitation code has been generated for:
               </p>
               <p className="text-base font-bold text-slate-900 mt-1">{createdInvite.invitedEmail}</p>
-              <div className="flex items-center justify-center gap-2 mt-1">
-                <Badge variant={createdInvite.role === 'admin' ? 'purple' : 'blue'}>
-                  {createdInvite.role === 'admin' ? 'Admin' : 'Member'}
+              <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+                <Badge variant={createdInvite.isTeamCaptain || createdInvite.role === 'team_captain' || createdInvite.isSecondOwner || createdInvite.role === 'second_owner' ? 'purple' : 'blue'}>
+                  {createdInvite.isTeamCaptain || createdInvite.role === 'team_captain' || createdInvite.isSecondOwner || createdInvite.role === 'second_owner'
+                    ? '⚡ Team Captain'
+                    : 'Member'}
                 </Badge>
                 <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
                   {formatInvitationExpiry(createdInvite.expiresAt, currentTime)}
@@ -672,8 +691,10 @@ export function WorkspaceInvitationsManager({
                           {inv.invitedEmail}
                         </td>
                         <td className="py-3 px-3">
-                          <Badge variant={inv.role === 'admin' ? 'purple' : 'blue'}>
-                            {inv.role === 'admin' ? 'Admin' : 'Member'}
+                          <Badge variant={inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner' ? 'purple' : 'blue'}>
+                            {inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner'
+                              ? '⚡ Team Captain'
+                              : 'Member'}
                           </Badge>
                         </td>
                         <td className="py-3 px-3">

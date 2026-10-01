@@ -114,12 +114,12 @@ workspaceInvitationRouter.post('/workspace/:workspaceId', requireAuth, standardR
   try {
     const rawWorkspaceId = req.params.workspaceId;
     const resolvedWorkspaceId = validatePathSegment(rawWorkspaceId, 'workspaceId');
-    const { email, role, requireRegistered } = req.body || {};
+    const { email, role, isTeamCaptain, requireRegistered } = req.body || {};
 
     const result = await workspaceInvitationController.createInvitationHandler(
       resolvedWorkspaceId,
       req.user.uid,
-      { email, role, requireRegistered },
+      { email, role, isTeamCaptain, requireRegistered },
       req
     );
 

@@ -62,40 +62,81 @@ export async function resolveWorkspaceMembership(rawWorkspaceId, rawUserUid) {
       memberRecord: null,
       isMember: false,
       isOwner: false,
+      isOriginalOwner: false,
+      isSecondOwner: false,
+      isTeamCaptain: false,
+      canManageWorkspace: false,
       role: null,
     };
   }
 
   const memberRecord = orgMember || null;
+
+  // Primary owner check: check canonical ownerId/ownerUid, memberRecord role, or fallback to createdBy if ownerId is unset
   const isOwner = Boolean(
-    orgRecord.ownerId === userUid ||
-    orgRecord.createdBy === userUid ||
-    orgRecord.ownerUid === userUid
+    (orgRecord.ownerId && orgRecord.ownerId === userUid) ||
+    (orgRecord.ownerUid && orgRecord.ownerUid === userUid) ||
+    (memberRecord && memberRecord.role === 'owner') ||
+    (!orgRecord.ownerId && !orgRecord.ownerUid && orgRecord.createdBy === userUid)
   );
 
-  // Role hierarchy
-  let role = null;
+  const isOriginalOwner = Boolean(
+    orgRecord.createdBy === userUid ||
+    (!orgRecord.createdBy && orgRecord.ownerId === userUid)
+  );
+
+  const isTeamCaptain = !isOwner && Boolean(
+    memberRecord?.isTeamCaptain ||
+    memberRecord?.role === 'team_captain' ||
+    memberRecord?.isSecondOwner ||
+    memberRecord?.role === 'second_owner'
+  );
+
+  const isSecondOwner = !isOwner && Boolean(
+    memberRecord?.isSecondOwner ||
+    memberRecord?.role === 'second_owner'
+  );
+
+  // Both Owner and Team Captain hold ordinary owner-level workspace management privileges
+  const canManageWorkspace = Boolean(isOwner || isTeamCaptain);
+
+  // Role string representation for display and canonical 3-role model
+  let role = 'member';
   if (isOwner) {
     role = 'owner';
+  } else if (isTeamCaptain || isSecondOwner) {
+    role = 'team_captain';
   } else if (memberRecord && memberRecord.role) {
-    role = String(memberRecord.role).toLowerCase();
-  } else if (memberRecord) {
-    role = 'member';
+    role = String(memberRecord.role).toLowerCase() === 'second_owner' ? 'team_captain' : String(memberRecord.role).toLowerCase();
   } else if (orgRecord.members && orgRecord.members[userUid]) {
-    role = typeof orgRecord.members[userUid] === 'string'
+    const rawRole = typeof orgRecord.members[userUid] === 'string'
       ? orgRecord.members[userUid].toLowerCase()
       : (orgRecord.members[userUid].role || 'member').toLowerCase();
+    role = rawRole === 'second_owner' ? 'team_captain' : rawRole;
   }
 
-  const isMember = Boolean(isOwner || memberRecord || (orgRecord.members && orgRecord.members[userUid]));
+  const isMember = Boolean(isOwner || isOriginalOwner || memberRecord || (orgRecord.members && orgRecord.members[userUid]));
+  const joinedAt = memberRecord?.joinedAt || (isOwner ? (orgRecord.createdAt || null) : null);
 
   return {
     exists: true,
     workspaceId,
     org: orgRecord,
     memberRecord,
+    joinedAt,
     isMember,
     isOwner,
+    isOriginalOwner,
+    isSecondOwner,
+    isTeamCaptain,
+    canManageWorkspace,
+    canManageInvitations: canManageWorkspace,
+    canManageMembers: canManageWorkspace,
+    canEditWorkspaceSettings: canManageWorkspace,
+    canManageRoles: canManageWorkspace,
+    canTransferOriginalOwnership: isOwner,
+    canTransferOwnership: isOwner,
+    canPerformProtectedWorkspaceDeletion: isOriginalOwner || isOwner,
     role,
   };
 }
@@ -112,6 +153,10 @@ export async function resolveWorkspaceMembership(rawWorkspaceId, rawUserUid) {
  *   org: object,
  *   memberRecord: object|null,
  *   isOwner: boolean,
+ *   isOriginalOwner: boolean,
+ *   isSecondOwner: boolean,
+ *   isTeamCaptain: boolean,
+ *   canManageWorkspace: boolean,
  *   role: string,
  * }>}
  */
@@ -140,48 +185,62 @@ export async function requireWorkspaceMember(
     workspaceId: resolved.workspaceId,
     org: resolved.org,
     memberRecord: resolved.memberRecord,
+    joinedAt: resolved.joinedAt,
     isOwner: resolved.isOwner,
+    isOriginalOwner: resolved.isOriginalOwner,
+    isSecondOwner: resolved.isSecondOwner,
+    isTeamCaptain: resolved.isTeamCaptain,
+    canManageWorkspace: resolved.canManageWorkspace,
+    canManageInvitations: resolved.canManageInvitations,
+    canManageMembers: resolved.canManageMembers,
+    canEditWorkspaceSettings: resolved.canEditWorkspaceSettings,
+    canManageRoles: resolved.canManageRoles,
     role: resolved.role || 'member',
   };
 }
 
 /**
- * Ensures the user holds one of the required roles in the target workspace.
- * Owner implicitly passes all role requirements.
+ * Ensures the user holds one of the required roles or permissions in the target workspace.
+ * Original Owner and Second Owner implicitly pass owner/admin level management requirements.
  *
  * @param {string} workspaceId - Target workspace/org ID
  * @param {string} userUid - Verified user Auth UID
- * @param {Array<string>} allowedRoles - Allowed roles (e.g. ['owner', 'admin'])
+ * @param {Array<string>} allowedRoles - Allowed roles (e.g. ['owner', 'admin', 'second_owner'])
  * @param {string} [customUnauthorizedMsg] - Optional custom error message
- * @returns {Promise<{
- *   workspaceId: string,
- *   org: object,
- *   memberRecord: object|null,
- *   isOwner: boolean,
- *   role: string,
- * }>}
+ * @returns {Promise<Object>} Membership object
  */
 export async function requireWorkspaceRole(
   workspaceId,
   userUid,
-  allowedRoles = ['owner', 'admin'],
+  allowedRoles = ['owner', 'admin', 'team_captain'],
   customUnauthorizedMsg = 'Unauthorized. You do not possess the required workspace role for this operation.'
 ) {
   const membership = await requireWorkspaceMember(workspaceId, userUid, customUnauthorizedMsg);
 
-  if (membership.isOwner) {
-    return membership;
-  }
-
   const normalizedAllowed = allowedRoles.map((r) => String(r).toLowerCase());
-  if (!normalizedAllowed.includes(membership.role)) {
-    const err = new Error(customUnauthorizedMsg);
+  const requiresExclusiveOriginalOwner = normalizedAllowed.includes('original_owner') || normalizedAllowed.includes('creator');
+
+  if (requiresExclusiveOriginalOwner) {
+    if (membership.isOriginalOwner) return membership;
+    const err = new Error(customUnauthorizedMsg || 'Unauthorized. Only the original workspace creator can perform this protected operation.');
     err.statusCode = 403;
-    err.code = 'INSUFFICIENT_ROLE';
+    err.code = 'ORIGINAL_OWNER_REQUIRED';
     throw err;
   }
 
-  return membership;
+  // Original Owner and Team Captain carry owner-level ordinary management privileges
+  if (membership.canManageWorkspace || membership.isOriginalOwner || membership.isTeamCaptain || membership.isSecondOwner) {
+    return membership;
+  }
+
+  if (normalizedAllowed.includes(membership.role)) {
+    return membership;
+  }
+
+  const err = new Error(customUnauthorizedMsg);
+  err.statusCode = 403;
+  err.code = 'INSUFFICIENT_ROLE';
+  throw err;
 }
 
 /**

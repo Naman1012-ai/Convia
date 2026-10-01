@@ -33,6 +33,66 @@ export function formatTimestamp(timestamp) {
   });
 }
 
+/**
+ * Safely parses input into a valid Date object or null.
+ */
+function parseDate(timestamp) {
+  if (!timestamp) return null;
+  if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return null;
+  return date;
+}
+
+/**
+ * Formats a timestamp into an absolute date string (e.g., "Sep 12, 2026").
+ * Returns fallback string if invalid.
+ */
+export function formatDate(timestamp, fallback = 'Join date unavailable') {
+  const date = parseDate(timestamp);
+  if (!date) return fallback;
+
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Formats a workspace membership join timestamp.
+ * Example output: "Joined Sep 12, 2026" or fallback "Join date unavailable".
+ */
+export function formatWorkspaceJoinDate(timestamp) {
+  const date = parseDate(timestamp);
+  if (!date) return 'Join date unavailable';
+
+  const formatted = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Joined ${formatted}`;
+}
+
+/**
+ * Formats a platform user registration / first sign-in timestamp.
+ * Example output: "Joined Convia Sep 12, 2026" or fallback "Join date unavailable".
+ */
+export function formatPlatformJoinDate(timestamp) {
+  const date = parseDate(timestamp);
+  if (!date) return 'Join date unavailable';
+
+  const formatted = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Joined Convia ${formatted}`;
+}
+
 export function truncateText(text, maxLength) {
   if (!text) return '';
   if (text.length <= maxLength) return text;
@@ -46,3 +106,4 @@ export function getInitials(name) {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
+

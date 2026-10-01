@@ -28,8 +28,8 @@ export function VoteButton({ ideaId, isPublic = false, orgId = null, initialCoun
         isSmall ? 'px-2.5 py-1 text-xs' : 'px-3.5 py-1.5 text-sm'
       } ${
         hasVoted
-          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
-          : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+          ? 'bg-primary-600 text-white shadow-md shadow-primary-200/50 scale-105'
+          : 'bg-primary-50 text-primary-800 hover:bg-primary-100 border border-primary-200/60'
       }`}
     >
       <ThumbsUp className={`${isSmall ? 'h-3.5 w-3.5' : 'h-4 w-4'} ${hasVoted ? 'fill-current' : ''}`} />

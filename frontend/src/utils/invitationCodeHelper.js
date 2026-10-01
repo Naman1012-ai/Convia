@@ -156,6 +156,9 @@ export function formatInvitationStatusDate(inv, now = Date.now()) {
   if (inv.status === 'accepted') {
     return formatInvitationEventDate('Accepted', inv.acceptedAt || inv.updatedAt || inv.createdAt);
   }
+  if (inv.status === 'declined') {
+    return formatInvitationEventDate('Declined', inv.declinedAt || inv.updatedAt || inv.createdAt);
+  }
   if (inv.status === 'revoked') {
     return formatInvitationEventDate('Revoked', inv.revokedAt || inv.updatedAt || inv.createdAt);
   }

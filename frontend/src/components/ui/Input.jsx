@@ -55,7 +55,7 @@ export function Input({
             shouldShowToggle && 'pr-10',
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/20'
-              : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-500/20',
+              : 'border-slate-300 focus:border-primary-500 focus:ring-primary-500/20',
             className
           )}
           {...props}
@@ -64,7 +64,7 @@ export function Input({
           <button
             type="button"
             onClick={togglePasswordVisibility}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:text-indigo-600 focus:outline-none rounded transition-colors duration-150"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 focus:text-primary-600 focus:outline-none rounded transition-colors duration-150"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
             title={showPassword ? 'Hide password' : 'Show password'}
           >

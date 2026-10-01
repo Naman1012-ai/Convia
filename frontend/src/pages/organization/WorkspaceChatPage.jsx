@@ -49,10 +49,17 @@ export default function WorkspaceChatPage() {
   const { orgId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
-  const { org, members, isLeader, loading: orgLoading, error: orgError } = useOrg();
+  const { org, members, currentMember, isLeader, loading: orgLoading, error: orgError } = useOrg();
   const { user } = useAuth();
   const { userProfile } = useUser();
   const { toast } = useToast();
+
+  const memberJoinedAt = useMemo(() => {
+    if (!user?.uid || !org) return null;
+    const isOwner = Boolean(org.ownerId === user.uid || org.ownerUid === user.uid);
+    if (isOwner) return null;
+    return currentMember?.joinedAt ?? null;
+  }, [user?.uid, org, currentMember?.joinedAt]);
 
   const effectiveUser = useMemo(() => {
     if (!user) return null;
@@ -237,7 +244,7 @@ export default function WorkspaceChatPage() {
       }
       // If parent is not in initial batch and not loading, attempt direct lookup
       if (!loadingMessages && orgId) {
-        chatService.getMessage(orgId, activeChannelId, targetThreadId).then((fetched) => {
+        chatService.getMessage(orgId, activeChannelId, targetThreadId, memberJoinedAt).then((fetched) => {
           if (fetched && !fetched.deleted) {
             setActiveThreadMessage(fetched);
           }
@@ -254,7 +261,7 @@ export default function WorkspaceChatPage() {
       const timer = setTimeout(() => setTargetHighlightedMessageId(null), 3500);
       return () => clearTimeout(timer);
     }
-  }, [searchParams, messages, loadingMessages, orgId, activeChannelId]);
+  }, [searchParams, messages, loadingMessages, orgId, activeChannelId, memberJoinedAt]);
 
   // Load older messages (bounded cursor pagination)
   const handleLoadOlder = useCallback(async () => {
@@ -278,7 +285,7 @@ export default function WorkspaceChatPage() {
     };
 
     try {
-      const result = await chatService.loadOlderMessages(orgId, activeChannelId, oldestKey, CHAT_PAGE_SIZE);
+      const result = await chatService.loadOlderMessages(orgId, activeChannelId, oldestKey, CHAT_PAGE_SIZE, memberJoinedAt);
 
       if (activeSessionIdRef.current !== currentSession) return;
 
@@ -296,13 +303,13 @@ export default function WorkspaceChatPage() {
         setIsLoadingOlder(false);
       }
     }
-  }, [isLoadingOlder, loadingMessages, hasMoreOlder, messages, orgId, activeChannelId, toast]);
+  }, [isLoadingOlder, loadingMessages, hasMoreOlder, messages, orgId, activeChannelId, memberJoinedAt, toast]);
 
   // Initial message fetch and real-time subscription setup
   const initializeChat = useCallback(() => {
     if (!orgId) return;
 
-    const currentSession = Symbol(`${orgId}_${activeChannelId}`);
+    const currentSession = Symbol(`${orgId}_${activeChannelId}_${memberJoinedAt}`);
     activeSessionIdRef.current = currentSession;
     isInitialLoadCompleteRef.current = false;
     setLoadingMessages(true);
@@ -348,11 +355,11 @@ export default function WorkspaceChatPage() {
           setLoadError('You do not have permission to view this channel.');
         }
       },
-    });
+    }, memberJoinedAt);
 
     // 2. Fetch the initial bounded recent message batch (limitToLast 50)
     chatService
-      .loadRecentMessages(orgId, activeChannelId, CHAT_PAGE_SIZE)
+      .loadRecentMessages(orgId, activeChannelId, CHAT_PAGE_SIZE, memberJoinedAt)
       .then(({ messages: initialBatch, hasMore }) => {
         if (activeSessionIdRef.current !== currentSession) return;
         setMessages((prev) => prependOlderMessages(prev, initialBatch));
@@ -375,7 +382,7 @@ export default function WorkspaceChatPage() {
       });
 
     return unsubscribeLive;
-  }, [orgId, activeChannelId, user?.uid]);
+  }, [orgId, activeChannelId, user?.uid, memberJoinedAt]);
 
   useEffect(() => {
     const unsubscribe = initializeChat();
@@ -893,6 +900,7 @@ export default function WorkspaceChatPage() {
             currentUser={effectiveUser || user}
             members={members}
             isWorkspaceAdmin={isLeader}
+            memberJoinedAt={memberJoinedAt}
             onClose={handleCloseThread}
             onOpenPreview={handleOpenPreview}
           />
@@ -931,6 +939,7 @@ export default function WorkspaceChatPage() {
           workspaceId={orgId}
           channelId={activeChannelId}
           members={members}
+          memberJoinedAt={memberJoinedAt}
           onSelectResult={handleSelectSearchResult}
         />
 

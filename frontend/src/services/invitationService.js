@@ -9,6 +9,7 @@ export const invitationService = {
     return await apiClient.post(`/api/invitations/workspace/${workspaceId}`, {
       email: normalizeEmail(email),
       role,
+      isTeamCaptain: role === 'team_captain',
     });
   },
 

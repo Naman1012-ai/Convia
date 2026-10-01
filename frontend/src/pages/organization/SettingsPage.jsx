@@ -15,7 +15,7 @@ import { NotificationService } from '../../services/notificationService';
 import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
-import { formatTimestamp } from '../../utils/formatting';
+import { formatTimestamp, formatWorkspaceJoinDate } from '../../utils/formatting';
 import {
   validateWorkspaceName,
   validateProjectType,
@@ -56,7 +56,10 @@ import {
   Crown,
   Edit3,
   ExternalLink,
+  Zap,
+  Loader2,
 } from 'lucide-react';
+import { TransferOwnershipModal } from '../../features/organizations/TransferOwnershipModal';
 
 export default function SettingsPage() {
   const { orgId } = useParams();
@@ -113,6 +116,12 @@ export default function SettingsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [typedOrgName, setTypedOrgName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Member Role Management & Modal States
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
+  const [updatingRoleMemberUid, setUpdatingRoleMemberUid] = useState(null);
 
   // Field focus states
   const [isDescriptionFocused, setIsDescriptionFocused] = useState(false);
@@ -321,63 +330,50 @@ export default function SettingsPage() {
     setIsEditing(false);
   };
 
-  // Member Management Actions
-  const handleRoleChange = async (targetUid, currentRole, action) => {
-    if (currentUserRole !== 'owner') {
-      NotificationService.warning('Only the Owner can promote or demote members.');
-      return;
-    }
+  // Member Role Management Actions
+  const handleRoleSelectChange = async (targetMember, newRoleValue) => {
+    if (!orgId || !targetMember) return;
+    const targetUid = targetMember.uid || targetMember.id;
+    const currentIsCaptain = Boolean(
+      targetMember.isTeamCaptain ||
+        targetMember.role === 'team_captain' ||
+        targetMember.isSecondOwner ||
+        targetMember.role === 'second_owner'
+    );
 
+    const targetIsCaptain = newRoleValue === 'team_captain';
+    if (currentIsCaptain === targetIsCaptain) return;
+
+    setUpdatingRoleMemberUid(targetUid);
     try {
-      let nextRole = 'member';
-      if (action === 'promote') nextRole = 'admin';
-
-      await orgService.updateMemberRole(orgId, targetUid, nextRole);
-
-      setMembers((prev) =>
-        prev.map((m) => (m.uid === targetUid ? { ...m, role: nextRole } : m))
+      const action = targetIsCaptain ? 'assign' : 'remove';
+      const res = await orgService.updateTeamCaptain(orgId, targetUid, action);
+      NotificationService.success(
+        res?.message ||
+          `Updated ${targetMember.displayName || targetMember.name || 'Member'}'s role to ${
+            targetIsCaptain ? 'Team Captain ⚡' : 'Member'
+          }.`
       );
-      NotificationService.success(NOTIFICATION_MESSAGES.MEMBER.ROLE_UPDATED);
     } catch (err) {
-      NotificationService.error(err);
+      NotificationService.error(err.message || 'Failed to update member role.');
+    } finally {
+      setUpdatingRoleMemberUid(null);
     }
   };
 
-  const handleRemoveMember = async (targetUid, memberName) => {
-    const isOwner = currentUserRole === 'owner';
-    const isAdmin = currentUserRole === 'admin';
-
-    if (!isOwner && !isAdmin) {
-      NotificationService.warning('Unauthorized role.');
-      return;
-    }
-
+  const handleConfirmRemoveMember = async () => {
+    if (!memberToRemove || !orgId) return;
+    setIsRemovingMember(true);
     try {
-      await orgService.removeMemberFromWorkspace(orgId, targetUid);
-      setMembers((prev) => prev.filter((m) => m.uid !== targetUid));
-      NotificationService.success(NOTIFICATION_MESSAGES.MEMBER.REMOVED);
-    } catch (err) {
-      NotificationService.error(err);
-    }
-  };
-
-  const handleTransferOwnership = async (newOwnerUid, newOwnerName) => {
-    if (currentUserRole !== 'owner') return;
-
-    try {
-      await orgService.transferWorkspaceOwnership(orgId, user.uid, newOwnerUid);
-      setCurrentUserRole('admin');
-
-      setMembers((prev) =>
-        prev.map((m) => {
-          if (m.uid === user.uid) return { ...m, role: 'admin' };
-          if (m.uid === newOwnerUid) return { ...m, role: 'owner' };
-          return m;
-        })
+      await orgService.removeMemberFromWorkspace(orgId, memberToRemove.uid || memberToRemove.id);
+      NotificationService.success(
+        `Removed ${memberToRemove.displayName || memberToRemove.name} from workspace.`
       );
-      NotificationService.success(NOTIFICATION_MESSAGES.MEMBER.OWNERSHIP_TRANSFERRED);
+      setMemberToRemove(null);
     } catch (err) {
-      NotificationService.error(err);
+      NotificationService.error(err.message || 'Failed to remove member.');
+    } finally {
+      setIsRemovingMember(false);
     }
   };
 
@@ -1016,104 +1012,112 @@ export default function SettingsPage() {
       </Card>
 
       {/* SECTION 6: MEMBERS & ROLES */}
-      <Card className="p-6 bg-white border border-slate-200/80 shadow-sm">
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-3">
-          <Users className="h-5 w-5 text-slate-500" />
-          <h2 className="text-lg font-bold text-slate-900">Members &amp; Roles</h2>
-          <span className="ml-auto text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
-            {members.length} / {generalSettings.maxMembers} Members
-          </span>
+      <Card id="settings-access" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Users className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900">Members &amp; Roles</h2>
+                <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
+                  {members.length} / {generalSettings.maxMembers || 5} Members
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Manage workspace roles, team privileges, and ownership</p>
+            </div>
+          </div>
+
+          {isOwner && (
+            <Button
+              type="button"
+              variant="warning"
+              size="sm"
+              onClick={() => setIsTransferModalOpen(true)}
+              className="font-bold flex items-center gap-1.5 shrink-0 shadow-xs"
+            >
+              <Crown className="h-3.5 w-3.5" />
+              <span>Transfer Ownership</span>
+            </Button>
+          )}
         </div>
 
         <div className="divide-y divide-slate-100">
           {members.map((member) => {
-            const isSelf = member.uid === user.uid;
+            const memberUid = member.uid || member.id;
+            const isMemberOwner = memberUid === org?.ownerId || memberUid === org?.ownerUid || member.role === 'owner';
+            const isCaptain = !isMemberOwner && (member.isTeamCaptain || member.role === 'team_captain' || member.isSecondOwner || member.role === 'second_owner');
+            const isSelf = memberUid === user?.uid;
+            const isUpdatingThisMember = updatingRoleMemberUid === memberUid;
+
+            const currentRoleValue = isMemberOwner ? 'owner' : isCaptain ? 'team_captain' : 'member';
 
             return (
               <div
-                key={member.uid}
+                key={memberUid}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
               >
-                <div className="flex items-center gap-3">
-                  <Avatar name={member.displayName} size="md" />
-                  <div>
-                    <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
-                      {member.displayName}
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar name={member.displayName || member.name} size="md" />
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-slate-900 flex items-center gap-1.5 truncate">
+                      {member.displayName || member.name}
                       {isSelf && (
                         <span className="text-[10px] bg-indigo-50 text-indigo-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
                           You
                         </span>
                       )}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{member.email}</p>
-                    {member.joinedAt && (
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Joined {formatTimestamp(member.joinedAt)}
-                      </p>
-                    )}
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">{member.email}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      {formatWorkspaceJoinDate(member.joinedAt)}
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant={
-                      member.role === 'owner'
-                        ? 'success'
-                        : member.role === 'admin'
-                          ? 'info'
-                          : 'default'
-                    }
-                  >
-                    {member.role.toUpperCase()}
-                  </Badge>
-
-                  {/* Actions depending on Role rules */}
-                  {!isSelf && !isReadOnly && (
-                    <div className="flex items-center gap-1.5">
-                      {/* Owner permissions */}
-                      {isOwner && (
-                        <>
-                          {member.role === 'member' && (
-                            <button
-                              onClick={() => handleRoleChange(member.uid, member.role, 'promote')}
-                              className="rounded-lg p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors text-xs flex items-center gap-1 font-bold"
-                              title="Promote to Admin"
-                            >
-                              <Shield className="h-3.5 w-3.5" /> Promote
-                            </button>
-                          )}
-                          {member.role === 'admin' && (
-                            <button
-                              onClick={() => handleRoleChange(member.uid, member.role, 'demote')}
-                              className="rounded-lg p-1.5 text-amber-600 hover:bg-amber-50 transition-colors text-xs flex items-center gap-1 font-bold"
-                              title="Demote to Member"
-                            >
-                              <UserX className="h-3.5 w-3.5" /> Demote
-                            </button>
-                          )}
-                          <button
-                            onClick={() =>
-                              handleTransferOwnership(member.uid, member.displayName)
-                            }
-                            className="rounded-lg p-1.5 text-emerald-600 hover:bg-emerald-50 transition-colors text-xs flex items-center gap-1 font-bold"
-                            title="Transfer Ownership"
-                          >
-                            <UserCheck className="h-3.5 w-3.5" /> Transfer
-                          </button>
-                        </>
-                      )}
-
-                      {/* Owner or Admin can remove member (Admins cannot remove owners/admins) */}
-                      {(isOwner || (isAdmin && member.role === 'member')) && (
-                        <button
-                          onClick={() => handleRemoveMember(member.uid, member.displayName)}
-                          className="rounded-lg p-1.5 text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors text-xs flex items-center gap-1 font-bold"
-                          title="Remove Member"
-                        >
-                          <UserX className="h-3.5 w-3.5" /> Remove
-                        </button>
-                      )}
+                <div className="flex items-center gap-3 shrink-0">
+                  {/* Role Display & Role Management Selector */}
+                  {isMemberOwner ? (
+                    <Badge variant="warning" className="font-bold flex items-center gap-1">
+                      👑 Owner
+                    </Badge>
+                  ) : canEdit && !isSelf ? (
+                    <div className="flex items-center gap-2">
+                      {isUpdatingThisMember && <Loader2 className="h-3.5 w-3.5 text-indigo-600 animate-spin" />}
+                      <Select
+                        value={currentRoleValue}
+                        onChange={(e) => handleRoleSelectChange(member, e.target.value)}
+                        disabled={isUpdatingThisMember}
+                        options={[
+                          { value: 'member', label: 'Member' },
+                          { value: 'team_captain', label: '⚡ Team Captain' },
+                        ]}
+                        className="text-xs py-1 px-2.5 font-medium rounded-lg h-8 border-slate-200"
+                      />
                     </div>
+                  ) : isCaptain ? (
+                    <Badge variant="purple" className="font-bold flex items-center gap-1">
+                      ⚡ Team Captain
+                    </Badge>
+                  ) : (
+                    <Badge variant="default" className="font-semibold">
+                      Member
+                    </Badge>
+                  )}
+
+                  {/* Remove Member Action */}
+                  {canEdit && !isMemberOwner && !isSelf && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-rose-600 hover:bg-rose-50"
+                      icon={<UserX className="h-4 w-4" />}
+                      onClick={() => setMemberToRemove(member)}
+                    >
+                      Remove
+                    </Button>
                   )}
                 </div>
               </div>
@@ -1247,6 +1251,34 @@ export default function SettingsPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Confirm Member Removal Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(memberToRemove)}
+        title="Remove Team Member"
+        description={`Are you sure you want to remove ${memberToRemove?.displayName || memberToRemove?.name} from this workspace?`}
+        confirmLabel="Remove Member"
+        variant="danger"
+        isLoading={isRemovingMember}
+        onConfirm={handleConfirmRemoveMember}
+        onCancel={() => setMemberToRemove(null)}
+      />
+
+      {/* Transfer Ownership Modal */}
+      {org && (
+        <TransferOwnershipModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          onSuccess={(msg) => {
+            NotificationService.success(msg);
+            setIsTransferModalOpen(false);
+          }}
+          workspaceId={orgId}
+          workspaceName={org.name}
+          members={members}
+          currentOwnerUid={org.ownerId || org.ownerUid || user?.uid}
+        />
       )}
     </div>
   );

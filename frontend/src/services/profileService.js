@@ -33,6 +33,14 @@ export const profileService = {
       if (exists) {
         // Profile already exists; update role if email matches admin email
         const existingProfile = await profileService.getUserProfile(user.uid);
+        // Ensure firstSignedInAt exists and is immutable
+        if (!existingProfile?.firstSignedInAt) {
+          const authCreatedTime = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : null;
+          const fallbackSignedTime = existingProfile?.firstSignedInAt || existingProfile?.createdAt || existingProfile?.joinedAt || authCreatedTime || rtdbService.getTimestamp();
+          await rtdbService.updateData(`users/${user.uid}`, { firstSignedInAt: fallbackSignedTime });
+          existingProfile.firstSignedInAt = fallbackSignedTime;
+        }
+
         if (isAdminEmail && (!existingProfile?.isAdmin || existingProfile?.role !== 'superadmin')) {
           await rtdbService.updateData(`users/${user.uid}`, {
             role: 'superadmin',
@@ -44,12 +52,18 @@ export const profileService = {
         return existingProfile;
       }
 
+      const platformFirstSignIn = user.metadata?.creationTime
+        ? new Date(user.metadata.creationTime).getTime()
+        : rtdbService.getTimestamp();
+
       const profileData = {
         uid: user.uid,
         displayName: user.displayName || additionalData.displayName || (isAdminEmail ? 'Super Admin' : 'User'),
         email: user.email || '',
         photoURL: user.photoURL || null,
-        joinedAt: rtdbService.getTimestamp(),
+        firstSignedInAt: platformFirstSignIn,
+        joinedAt: platformFirstSignIn,
+        createdAt: rtdbService.getTimestamp(),
         updatedAt: rtdbService.getTimestamp(),
         organizationId: null,
         profileCompleted: true,
@@ -83,8 +97,10 @@ export const profileService = {
    */
   updateUserProfile: async (uid, data) => {
     try {
+      // Strip immutable timestamps so caller cannot overwrite them
+      const { firstSignedInAt, joinedAt, createdAt, ...safeData } = data || {};
       const updates = {
-        ...data,
+        ...safeData,
         updatedAt: rtdbService.getTimestamp(),
       };
       await rtdbService.updateData(`users/${uid}`, updates);
