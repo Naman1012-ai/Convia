@@ -36,12 +36,12 @@ async function runTests() {
   assert.ok(swContent.includes("appId: params.get('appId') || '1:470734580927:web:8b259b8ed89a158c972a0a'"), 'App ID must match authoritative web client');
   console.log('  ✅ Invariant 3 Passed: Authoritative Firebase configuration correctly reused with parameter override support');
 
-  // 4. Invariant: Deduplication in onBackgroundMessage
+  // 4. Invariant: Deduplication via notification tag in onBackgroundMessage
   assert.ok(
-    swContent.includes('if (payload && payload.notification) {') || swContent.includes('if (payload.notification) {'),
-    'onBackgroundMessage must prevent duplicate notifications when payload.notification exists'
+    swContent.includes('tag') && swContent.includes('showNotification'),
+    'onBackgroundMessage must use tag-based deduplication and explicitly call showNotification'
   );
-  console.log('  ✅ Invariant 4 Passed: Duplicate notification prevention implemented');
+  console.log('  ✅ Invariant 4 Passed: Tag-based duplicate notification prevention implemented');
 
   // 5. Invariant: notificationclick handler origin security check
   assert.ok(

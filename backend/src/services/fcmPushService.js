@@ -137,11 +137,16 @@ export const fcmPushService = {
    */
   sendPushToRecipients: async (recipientUids = [], notification = {}) => {
     const validUids = Array.from(new Set((recipientUids || []).filter(Boolean)));
+    const notifId = notification.notificationId || notification.id;
+    const notifType = notification.type || 'UNKNOWN';
+
+    console.log(`📨 [fcmPushService] Push request received: type=${notifType}, notifId=${notifId || 'NONE'}, recipientCount=${validUids.length}`);
+
     if (validUids.length === 0) {
+      console.log(`📨 [fcmPushService] No recipients for ${notifId}. Skipping.`);
       return { success: true, delivered: 0, reason: 'NO_RECIPIENTS' };
     }
 
-    const notifId = notification.notificationId || notification.id;
     if (!notifId) {
       console.warn('[fcmPushService] Notification missing ID. Skipping push.');
       return { success: false, delivered: 0, reason: 'MISSING_NOTIFICATION_ID' };
@@ -151,24 +156,27 @@ export const fcmPushService = {
     const ledgerPath = `fcm_delivery_ledger/${notifId}`;
     const existingLedger = await rtdbService.getData(ledgerPath);
     if (existingLedger && existingLedger.deliveredAt) {
-      console.log(`[fcmPushService] Push for notification ${notifId} already processed. Skipping duplicate.`);
+      console.log(`[fcmPushService] Push for ${notifId} already processed. Skipping duplicate.`);
       return { success: true, delivered: 0, skipped: true, reason: 'ALREADY_DELIVERED' };
     }
 
     // 2. Resolve active tokens for all recipients
     const tokenEntries = []; // Array of { token, tokenKey, uid }
+    const actorId = notification.actorId || notification.senderId;
     for (const uid of validUids) {
       // Exclude self-notifications if actorId matches recipient
-      const actorId = notification.actorId || notification.senderId;
       if (actorId && actorId === uid && !notification.allowSelfNotification) {
+        console.log(`📨 [fcmPushService] Excluding self-notification for actor ${uid.slice(0, 8)}...`);
         continue;
       }
 
       const userTokens = await fcmPushService.getUserTokens(uid);
+      console.log(`📨 [fcmPushService] Recipient ${uid.slice(0, 8)}... has ${userTokens.length} registered device(s)`);
       userTokens.forEach((t) => tokenEntries.push({ ...t, uid }));
     }
 
     if (tokenEntries.length === 0) {
+      console.log(`📨 [fcmPushService] No active tokens found for ${validUids.length} recipient(s). Push skipped.`);
       // Record ledger entry even if no tokens found so we don't re-query on retries
       await rtdbService.setData(ledgerPath, {
         deliveredAt: Date.now(),
@@ -205,31 +213,27 @@ export const fcmPushService = {
       return { success: false, delivered: 0, reason: 'MESSAGING_INIT_FAILED' };
     }
 
-    // 4. Construct Minimal, High-Contrast Notification Payload
+    // 4. Construct FCM Notification Payload
     const title = notification.title || 'Convia Notification';
-    const body = notification.message || notification.body || 'You have a new update in Convia.';
-    const targetUrl = notification.link || notification.url || '/';
+    const body = notification.body || notification.message || notification.previewText || 'You have a new update in Convia.';
+    // Canonical notification uses 'actionUrl', not 'link' or 'url'
+    const targetUrl = notification.actionUrl || notification.link || notification.url || '/';
 
     const messagePayload = {
       tokens: uniqueTokens,
-      notification: {
-        title,
-        body,
-      },
       data: {
         notificationId: String(notifId),
         type: String(notification.type || 'GENERAL'),
+        title: String(title),
+        body: String(body),
         url: String(targetUrl),
+        icon: '/convia-logo.png',
+        badge: '/favicon.png',
         timestamp: String(notification.createdAt || Date.now()),
       },
       webpush: {
         headers: {
           Urgency: 'high',
-        },
-        notification: {
-          icon: '/convia-logo.png',
-          badge: '/favicon.png',
-          requireInteraction: false,
         },
         fcmOptions: {
           link: targetUrl,

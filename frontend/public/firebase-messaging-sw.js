@@ -48,33 +48,34 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
-// 6. Handle Background Push Messages
+// 6. Handle Background Push Messages (data-only payloads)
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-  // If the payload already contains a `notification` property, the Firebase SDK /
-  // browser automatically displays it. Calling self.registration.showNotification
-  // here would cause a duplicate notification to appear.
-  if (payload && payload.notification) {
-    return;
-  }
-
-  // Handle data-only messages where no automatic notification is shown
   const data = (payload && payload.data) || {};
-  const notificationTitle = data.title || 'Convia Notification';
+  const notifPayload = (payload && payload.notification) || {};
+
+  // Use data fields (primary) with notification fields as fallback
+  const notificationTitle = data.title || notifPayload.title || 'Convia Notification';
+  const notificationBody = data.body || notifPayload.body || '';
+  const targetUrl = data.url || data.link || data.click_action || '/';
+  const notifId = data.notificationId || data.id || '';
+
+  // Deduplication: use notificationId as tag to prevent duplicate notifications
+  const tag = notifId ? `convia-${notifId}` : `convia-${Date.now()}`;
+
   const notificationOptions = {
-    body: data.body || '',
-    icon: data.icon || '/convia-logo.png',
-    badge: data.badge || '/favicon.png',
-    tag: data.tag || (data.id ? `convia-${data.id}` : 'convia-default'),
+    body: notificationBody,
+    icon: data.icon || notifPayload.icon || '/convia-logo.png',
+    badge: data.badge || notifPayload.badge || '/favicon.png',
+    tag: tag,
     data: {
-      url: data.url || data.link || data.click_action || '/',
-      id: data.id || null,
+      url: targetUrl,
+      id: notifId,
       type: data.type || null,
       timestamp: Date.now(),
-      ...data,
     },
-    requireInteraction: data.requireInteraction === 'true' || false,
+    requireInteraction: false,
     renotify: true,
   };
 

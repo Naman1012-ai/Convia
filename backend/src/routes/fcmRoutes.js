@@ -144,6 +144,7 @@ fcmRouter.post('/send-push', async (req, res) => {
     }
 
     const result = await fcmPushService.sendPushToRecipients(recipientUids, notification);
+    console.log(`📨 [fcmRoutes] /send-push result: type=${notification.type || 'UNKNOWN'}, delivered=${result.delivered || 0}, reason=${result.reason || 'OK'}`);
 
     return res.status(200).json({
       success: true,

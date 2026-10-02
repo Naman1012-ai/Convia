@@ -239,6 +239,7 @@ export const inAppNotificationService = {
       await set(notifRef, canonical);
 
       // Asynchronously trigger server-side FCM push delivery (non-blocking)
+      console.log(`📨 [inAppNotificationService] Triggering push: type=${canonical.type}, recipient=${recipientUid}, notifId=${notifId}`);
       apiClient.post('/api/notifications/fcm/send-push', {
         recipientUids: [recipientUid],
         notification: canonical,
@@ -301,6 +302,7 @@ export const inAppNotificationService = {
       // Asynchronously trigger server-side FCM push delivery for all recipients (non-blocking)
       if (createdList.length > 0) {
         const sampleCanonical = createdList[0];
+        console.log(`📨 [inAppNotificationService] Triggering bulk push: type=${sampleCanonical.type}, recipientCount=${validUids.length}, notifId=${sampleCanonical.notificationId}`);
         apiClient.post('/api/notifications/fcm/send-push', {
           recipientUids: validUids,
           notification: sampleCanonical,
