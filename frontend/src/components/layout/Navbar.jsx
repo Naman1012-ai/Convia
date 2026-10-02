@@ -23,7 +23,9 @@ import {
 import { ReportIssueModal } from '../../features/reports/ReportIssueModal';
 import { NotificationDropdown } from './NotificationDropdown';
 
-export function Navbar({ onMobileMenuToggle = () => {} }) {
+const NOOP_TOGGLE = () => {};
+
+export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE }) {
   const { user, signOut } = useAuth();
   const { userProfile } = useUser();
   const { toast } = useToast();
@@ -100,12 +102,13 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
     };
   }, [isMobileMenuOpen]);
 
+  // Track whether a parent layout provided an external mobile toggle handler
+  const hasExternalMobileToggle = onMobileMenuToggle !== NOOP_TOGGLE;
+
   const handleMobileMenuToggle = (e) => {
     if (e) e.stopPropagation();
-    // Check if a parent layout passed an explicit custom mobile toggle handler (e.g., OrgLayout)
-    if (typeof onMobileMenuToggle === 'function' && onMobileMenuToggle.length > 0) {
-      onMobileMenuToggle();
-    } else if (typeof onMobileMenuToggle === 'function' && onMobileMenuToggle.toString().includes('setIsMobileOpen')) {
+    // If a parent layout (AppLayout, OrgLayout) provided a sidebar toggle handler, use it
+    if (hasExternalMobileToggle) {
       onMobileMenuToggle();
     } else {
       setIsMobileMenuOpen((prev) => !prev);
@@ -300,8 +303,8 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
         onClose={() => setIsReportModalOpen(false)}
       />
 
-      {/* Mobile Navigation Drawer (AppLayout & General Mobile Navigation - Portaled to document.body) */}
-      {isMobileMenuOpen &&
+      {/* Mobile Navigation Drawer (only when no parent sidebar exists) */}
+      {!hasExternalMobileToggle && isMobileMenuOpen &&
         createPortal(
           <div className="fixed inset-0 z-[99999] flex sm:hidden">
             {/* Solid Backdrop overlay */}

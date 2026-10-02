@@ -1,12 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useParams, useLocation } from 'react-router-dom';
-import { Lightbulb, FileText, CheckSquare, Users, ArrowLeft, Settings, Home, LayoutDashboard, MessageSquare, Activity } from 'lucide-react';
+import {
+  Lightbulb,
+  FileText,
+  CheckSquare,
+  Users,
+  ArrowLeft,
+  Settings,
+  Home,
+  LayoutDashboard,
+  MessageSquare,
+  Activity,
+  Compass,
+  Globe,
+  Briefcase,
+} from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { chatService } from '../../services/chatService';
 
-export function Sidebar({ status = 'ideation', isMobileOpen = false, onCloseMobile = () => {} }) {
+/**
+ * Context-aware sidebar navigation for Convia.
+ *
+ * Two modes:
+ * 1. Global mode (mode="global") — Dashboard, Explore Ideas, Community Hub, Workspaces.
+ * 2. Workspace mode (mode="workspace", default) — Return to Home, Dashboard, Idea Board,
+ *    Activity, Chat, Members, Settings.
+ *
+ * When inside a specific idea, shows idea-specific navigation with "Back to Workspace".
+ */
+export function Sidebar({ mode = 'workspace', status: _status = 'ideation', isMobileOpen = false, onCloseMobile = () => {} }) {
   const { orgId, ideaId } = useParams();
   const location = useLocation();
   const { user } = useAuth();
@@ -19,11 +43,12 @@ export function Sidebar({ status = 'ideation', isMobileOpen = false, onCloseMobi
     }
   }, [location.pathname]);
 
-  const isIdeaActive = Boolean(ideaId);
+  const isIdeaActive = Boolean(ideaId) && Boolean(orgId);
+  const isWorkspaceMode = mode === 'workspace' && Boolean(orgId);
 
-  // Subscribe to channel unread state
+  // Subscribe to channel unread state (workspace mode only)
   useEffect(() => {
-    if (!orgId || !user?.uid) {
+    if (!isWorkspaceMode || !orgId || !user?.uid) {
       setHasUnreadChat(false);
       return;
     }
@@ -49,7 +74,7 @@ export function Sidebar({ status = 'ideation', isMobileOpen = false, onCloseMobi
       unsubMeta();
       unsubRead();
     };
-  }, [orgId, user?.uid]);
+  }, [isWorkspaceMode, orgId, user?.uid]);
 
   useEffect(() => {
     if (isMobileOpen) {
@@ -62,89 +87,143 @@ export function Sidebar({ status = 'ideation', isMobileOpen = false, onCloseMobi
     };
   }, [isMobileOpen]);
 
-  const navItems = isIdeaActive
-    ? [
-        {
-          to: `/workspaces/${orgId}/ideas/${ideaId}`,
-          label: 'Idea Overview',
-          icon: Home,
-        },
-        {
-          to: `/workspaces/${orgId}/ideas/${ideaId}/blueprint`,
-          label: 'Blueprint',
-          icon: FileText,
-        },
-        {
-          to: `/workspaces/${orgId}/ideas/${ideaId}/tasks`,
-          label: 'Tasks',
-          icon: CheckSquare,
-        },
-        {
-          to: `/workspaces/${orgId}/ideas/${ideaId}/dashboard`,
-          label: 'Progress',
-          icon: LayoutDashboard,
-        },
-        {
-          to: `/workspaces/${orgId}/chat`,
-          label: 'Team Chat',
-          icon: MessageSquare,
-          hasBadge: hasUnreadChat,
-        },
-        {
-          to: `/workspaces/${orgId}/activity`,
-          label: 'Activity',
-          icon: Activity,
-        },
-      ]
-    : [
-        {
-          to: `/workspaces/${orgId}`,
-          end: true,
-          label: 'Dashboard',
-          icon: LayoutDashboard,
-        },
-        {
-          to: `/workspaces/${orgId}/ideas`,
-          label: 'Idea Board',
-          icon: Lightbulb,
-        },
-        {
-          to: `/workspaces/${orgId}/chat`,
-          label: 'Team Chat',
-          icon: MessageSquare,
-          hasBadge: hasUnreadChat,
-        },
-        {
-          to: `/workspaces/${orgId}/activity`,
-          label: 'Activity',
-          icon: Activity,
-        },
-        {
-          to: `/workspaces/${orgId}/members`,
-          label: 'Members',
-          icon: Users,
-        },
-        {
-          to: `/workspaces/${orgId}/settings`,
-          label: 'Settings',
-          icon: Settings,
-        },
-      ];
+  // --- Navigation Items ---
+
+  let navItems = [];
+  let backLink = null;
+
+  if (!isWorkspaceMode) {
+    // Global navigation mode
+    navItems = [
+      {
+        to: '/dashboard',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        end: true,
+      },
+      {
+        to: '/explore',
+        label: 'Explore Ideas',
+        icon: Compass,
+      },
+      {
+        to: '/community',
+        label: 'Community Hub',
+        icon: Globe,
+      },
+      {
+        to: '/workspaces',
+        label: 'Workspaces',
+        icon: Briefcase,
+      },
+    ];
+  } else if (isIdeaActive) {
+    // Idea-specific navigation within a workspace
+    navItems = [
+      {
+        to: `/workspaces/${orgId}/ideas/${ideaId}`,
+        label: 'Idea Overview',
+        icon: Home,
+      },
+      {
+        to: `/workspaces/${orgId}/ideas/${ideaId}/blueprint`,
+        label: 'Blueprint',
+        icon: FileText,
+      },
+      {
+        to: `/workspaces/${orgId}/ideas/${ideaId}/tasks`,
+        label: 'Tasks',
+        icon: CheckSquare,
+      },
+      {
+        to: `/workspaces/${orgId}/ideas/${ideaId}/dashboard`,
+        label: 'Progress',
+        icon: LayoutDashboard,
+      },
+      {
+        to: `/workspaces/${orgId}/chat`,
+        label: 'Team Chat',
+        icon: MessageSquare,
+        hasBadge: hasUnreadChat,
+      },
+      {
+        to: `/workspaces/${orgId}/activity`,
+        label: 'Activity',
+        icon: Activity,
+      },
+    ];
+    backLink = {
+      to: `/workspaces/${orgId}`,
+      label: 'Back to Workspace',
+    };
+  } else {
+    // Workspace navigation mode
+    navItems = [
+      {
+        to: `/workspaces/${orgId}`,
+        end: true,
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+      },
+      {
+        to: `/workspaces/${orgId}/ideas`,
+        label: 'Idea Board',
+        icon: Lightbulb,
+      },
+      {
+        to: `/workspaces/${orgId}/activity`,
+        label: 'Activity',
+        icon: Activity,
+      },
+      {
+        to: `/workspaces/${orgId}/chat`,
+        label: 'Chat',
+        icon: MessageSquare,
+        hasBadge: hasUnreadChat,
+      },
+      {
+        to: `/workspaces/${orgId}/members`,
+        label: 'Members',
+        icon: Users,
+      },
+      {
+        to: `/workspaces/${orgId}/settings`,
+        label: 'Settings',
+        icon: Settings,
+      },
+    ];
+    backLink = {
+      to: '/dashboard',
+      label: 'Return to Home',
+    };
+  }
 
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between bg-slate-900 text-slate-300 p-4">
       <div className="space-y-6">
-        {/* Back to parent */}
-        <NavLink
-          to={isIdeaActive ? `/workspaces/${orgId}` : '/dashboard'}
-          onClick={onCloseMobile}
-          className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-slate-800"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>{isIdeaActive ? 'Back to Workspace' : 'Back to Dashboard'}</span>
-        </NavLink>
+        {/* Back / Return link (workspace and idea modes only) */}
+        {backLink && (
+          <>
+            <NavLink
+              to={backLink.to}
+              onClick={onCloseMobile}
+              className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-slate-800"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>{backLink.label}</span>
+            </NavLink>
+            <div className="h-px bg-slate-800 my-2" />
+          </>
+        )}
 
-        <div className="h-px bg-slate-800 my-2" />
+        {/* Global mode title */}
+        {!isWorkspaceMode && (
+          <>
+            <div className="px-3 py-1">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Navigation</span>
+            </div>
+          </>
+        )}
 
         {/* Nav Links */}
         <nav className="space-y-1">
