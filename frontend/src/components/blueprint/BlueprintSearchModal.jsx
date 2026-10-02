@@ -75,7 +75,7 @@ export function BlueprintSearchModal({
         description: safeText(f.description),
         priority: safeText(f.priority, 'Must Have'),
         status: safeText(f.status),
-        badgeColor: 'purple',
+        badgeColor: 'primary',
         icon: Workflow,
         raw: f,
       });
@@ -120,7 +120,7 @@ export function BlueprintSearchModal({
         description: safeText(q.recommendedNextAction || q.suggestedResolution),
         priority: q.isBlocking ? 'Blocking' : safeText(q.category, 'general'),
         status: safeText(q.status, 'open'),
-        badgeColor: q.isBlocking ? 'rose' : 'indigo',
+        badgeColor: q.isBlocking ? 'rose' : 'primary',
         icon: HelpCircle,
         raw: q,
       });
@@ -150,7 +150,7 @@ export function BlueprintSearchModal({
         description: safeText(cr.proposedChange || cr.reason),
         priority: safeText(cr.impactSeverity, 'Medium'),
         status: safeText(cr.status, 'proposed'),
-        badgeColor: 'purple',
+        badgeColor: 'primary',
         icon: RotateCcw,
         raw: cr,
       });
@@ -184,7 +184,7 @@ export function BlueprintSearchModal({
       <div className="w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
         {/* Search Header */}
         <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/60">
-          <Search className="h-5 w-5 text-purple-400 shrink-0" />
+          <Search className="h-5 w-5 text-primary-400 shrink-0" />
           <input
             type="text"
             placeholder="Search requirements, features, tasks, decisions, questions, risks... (Type ID or keyword)"
@@ -225,7 +225,7 @@ export function BlueprintSearchModal({
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1 rounded-lg text-[11px] font-bold font-mono transition-all whitespace-nowrap ${
                 selectedCategory === cat.id
-                  ? 'bg-purple-600 text-white shadow-sm'
+                  ? 'bg-primary-600 text-white shadow-sm'
                   : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
               }`}
             >
@@ -252,12 +252,12 @@ export function BlueprintSearchModal({
                   className="pt-2.5 first:pt-0 group flex items-start justify-between gap-3 p-3 rounded-xl hover:bg-slate-800/60 cursor-pointer transition-all border border-transparent hover:border-slate-700/80"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 border border-slate-800 text-purple-400 group-hover:text-purple-300 group-hover:border-purple-800 shrink-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 border border-slate-800 text-primary-400 group-hover:text-primary-300 group-hover:border-primary-800 shrink-0">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-black text-purple-300">
+                        <span className="font-mono text-xs font-black text-primary-300">
                           {item.id}
                         </span>
                         <span className="px-1.5 py-0.5 rounded bg-slate-950 text-slate-400 font-mono text-[10px] uppercase font-bold border border-slate-800">
@@ -278,7 +278,7 @@ export function BlueprintSearchModal({
                           </span>
                         )}
                       </div>
-                      <h4 className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">
+                      <h4 className="text-xs font-bold text-white group-hover:text-primary-200 transition-colors">
                         {item.title}
                       </h4>
                       {item.description && (
@@ -289,7 +289,7 @@ export function BlueprintSearchModal({
                     </div>
                   </div>
 
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-purple-400 text-xs font-mono font-bold shrink-0 self-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-primary-400 text-xs font-mono font-bold shrink-0 self-center">
                     <span>Inspect</span>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </div>

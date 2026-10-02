@@ -18,9 +18,9 @@ import {
 const CONTACT_CATEGORIES = [
   { title: 'Bug Report', icon: Bug, desc: 'Found an unexpected issue, console error, or broken component flow.', color: 'border-rose-500/30 text-rose-400 bg-rose-500/10' },
   { title: 'Feature Request', icon: Lightbulb, desc: 'Have an idea to improve hackathon consensus, upvoting, or AI blueprints.', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
-  { title: 'Security Issue', icon: ShieldAlert, desc: 'Found a vulnerability, auth leak, or permission bypass.', color: 'border-purple-500/40 text-purple-300 bg-purple-500/20' },
+  { title: 'Security Issue', icon: ShieldAlert, desc: 'Found a vulnerability, auth leak, or permission bypass.', color: 'border-primary-500/40 text-primary-300 bg-primary-500/20' },
   { title: 'Performance Problem', icon: Zap, desc: 'Encountered latency, slow RTDB sync, or UI lag during sprints.', color: 'border-sky-500/30 text-sky-400 bg-sky-500/10' },
-  { title: 'Deployment Issue', icon: Server, desc: 'Questions regarding environment build, hosting, or API endpoints.', color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10' },
+  { title: 'Deployment Issue', icon: Server, desc: 'Questions regarding environment build, hosting, or API endpoints.', color: 'border-primary-500/30 text-primary-400 bg-primary-500/10' },
   { title: 'Account Issue', icon: UserCheck, desc: 'Need help with reauthentication, password reset, or workspace transfer.', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' },
   { title: 'General Question', icon: HelpCircle, desc: 'General engineering inquiries or university hackathon partnerships.', color: 'border-slate-700 text-slate-300 bg-slate-800/50' },
 ];
@@ -55,9 +55,9 @@ export default function ContactEngineeringPage() {
         </section>
 
         {/* Support Email Card */}
-        <section className="p-8 rounded-3xl bg-gradient-to-r from-purple-950/90 via-slate-900 to-indigo-950/90 border border-purple-500/50 shadow-2xl space-y-6">
+        <section className="p-8 rounded-3xl bg-gradient-to-r from-primary-950/90 via-slate-900 to-primary-950/90 border border-primary-500/50 shadow-2xl space-y-6">
           <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/40">
               Primary Support Channel
             </span>
             <h3 className="text-2xl font-extrabold text-white">Send Us An Email</h3>
@@ -67,15 +67,15 @@ export default function ContactEngineeringPage() {
           </div>
 
           <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-sm sm:text-base font-mono text-purple-300 font-extrabold truncate w-full sm:w-auto">
-              <Mail className="h-5 w-5 text-purple-400 shrink-0" />
+            <div className="flex items-center gap-3 text-sm sm:text-base font-mono text-primary-300 font-extrabold truncate w-full sm:w-auto">
+              <Mail className="h-5 w-5 text-primary-400 shrink-0" />
               <span className="truncate">{supportEmail}</span>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
               <button
                 onClick={handleCopyEmail}
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                 <span>{copied ? 'Copied!' : 'Copy Email'}</span>
@@ -83,7 +83,7 @@ export default function ContactEngineeringPage() {
 
               <a
                 href={`mailto:${supportEmail}`}
-                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-extrabold text-xs shadow-lg shadow-primary-600/30 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <span>Open Mail Client</span>
               </a>
@@ -104,7 +104,7 @@ export default function ContactEngineeringPage() {
               return (
                 <div
                   key={cat.title}
-                  className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-purple-500/40 space-y-2.5 transition-all"
+                  className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 hover:border-primary-500/40 space-y-2.5 transition-all"
                 >
                   <div className={`p-2.5 rounded-xl border ${cat.color} w-fit`}>
                     <IconComp className="h-5 w-5" />
@@ -123,15 +123,15 @@ export default function ContactEngineeringPage() {
         <section className="p-7 rounded-3xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-1">
             <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-              <Clock className="h-4 w-4 text-purple-400" />
+              <Clock className="h-4 w-4 text-primary-400" />
               Expected Response Time
             </h3>
             <p className="text-xs text-slate-300 font-medium">
-              Typical response time: <strong className="text-purple-300 font-bold">1–3 business days</strong>. Critical security disclosures are prioritized immediately.
+              Typical response time: <strong className="text-primary-300 font-bold">1–3 business days</strong>. Critical security disclosures are prioritized immediately.
             </p>
           </div>
 
-          <span className="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold shrink-0">
+          <span className="px-3 py-1.5 rounded-xl bg-primary-500/20 text-primary-300 border border-primary-500/30 text-xs font-mono font-bold shrink-0">
             Priority SLA Enabled
           </span>
         </section>

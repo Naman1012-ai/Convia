@@ -5,19 +5,19 @@ export function AiBlueprintShowcase() {
   return (
     <section id="ai-blueprint" className="py-24 bg-slate-950 border-b border-slate-800/80 relative overflow-hidden">
       {/* Glow Effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[34rem] w-[34rem] rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[34rem] w-[34rem] rounded-full bg-primary-600/10 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Zap className="h-3.5 w-3.5" />
             <span>AI Technical Engine</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
             Your Project Plan— <br />
-            <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-indigo-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary-300 via-primary-200 to-primary-400 bg-clip-text text-transparent">
               Generated Instantly.
             </span>
           </h2>
@@ -28,15 +28,15 @@ export function AiBlueprintShowcase() {
         </div>
 
         {/* Blueprint Card Showcase */}
-        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-purple-500/50 shadow-2xl shadow-purple-950/50 space-y-8 max-w-5xl mx-auto">
+        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-primary-500/50 shadow-2xl shadow-primary-950/50 space-y-8 max-w-5xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-purple-600 text-white font-bold shadow-lg shadow-purple-500/30">
+              <div className="p-3 rounded-2xl bg-primary-600 text-white font-bold shadow-lg shadow-primary-500/30">
                 <Zap className="h-6 w-6 fill-current" />
               </div>
               <div>
                 <h3 className="text-xl font-extrabold text-white">System Architecture & Technical PRD</h3>
-                <p className="text-xs font-mono text-purple-300">Target MVP: Real-Time AI Code Synthesizer</p>
+                <p className="text-xs font-mono text-primary-300">Target MVP: Real-Time AI Code Synthesizer</p>
               </div>
             </div>
 
@@ -49,7 +49,7 @@ export function AiBlueprintShowcase() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-mono text-xs">
             {/* Tech Stack */}
             <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 text-purple-400 font-bold">
+              <div className="flex items-center gap-2 text-primary-400 font-bold">
                 <Code2 className="h-4 w-4" />
                 <span>Recommended Stack</span>
               </div>
@@ -62,12 +62,12 @@ export function AiBlueprintShowcase() {
 
             {/* Database Schema */}
             <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold">
+              <div className="flex items-center gap-2 text-primary-400 font-bold">
                 <Database className="h-4 w-4" />
                 <span>Database Schema</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-medium">
-                Normalized RTDB JSON tree: <code className="text-indigo-300">/workspaces</code>, <code className="text-purple-300">/ideas</code>, <code className="text-emerald-300">/votes</code>, <code className="text-amber-300">/tasks</code>.
+                Normalized RTDB JSON tree: <code className="text-primary-300">/workspaces</code>, <code className="text-primary-200">/ideas</code>, <code className="text-emerald-300">/votes</code>, <code className="text-amber-300">/tasks</code>.
               </p>
             </div>
 

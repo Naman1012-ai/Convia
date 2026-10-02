@@ -107,7 +107,7 @@ export function BlueprintRisksAndQualityTab({
                         raw: gate,
                       })
                     }
-                    className="text-[10px] font-mono font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer pt-1"
+                    className="text-[10px] font-mono font-bold text-primary-400 hover:text-primary-300 flex items-center gap-1 cursor-pointer pt-1"
                   >
                     <span>See details</span>
                     <ChevronRight className="h-3 w-3" />
@@ -136,7 +136,7 @@ export function BlueprintRisksAndQualityTab({
                 onClick={() => setRiskFilter(sev)}
                 className={`px-2 py-0.5 rounded-lg font-bold capitalize transition-all ${
                   riskFilter === sev
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
                 }`}
               >
@@ -166,7 +166,7 @@ export function BlueprintRisksAndQualityTab({
                     raw: rk,
                   })
                 }
-                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-2.5 group shadow-sm"
+                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-2.5 group shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -185,12 +185,12 @@ export function BlueprintRisksAndQualityTab({
                     </span>
                   </div>
 
-                  <span className="text-[11px] font-mono text-purple-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 font-bold">
+                  <span className="text-[11px] font-mono text-primary-400 group-hover:translate-x-0.5 transition-transform flex items-center gap-1 font-bold">
                     Details <ChevronRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
 
-                <h4 className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">
+                <h4 className="text-xs font-bold text-white group-hover:text-primary-200 transition-colors">
                   {title}
                 </h4>
 
@@ -265,7 +265,7 @@ export function BlueprintRisksAndQualityTab({
                         raw: tc,
                       })
                     }
-                    className="text-[10px] font-mono font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer pt-1"
+                    className="text-[10px] font-mono font-bold text-primary-400 hover:text-primary-300 flex items-center gap-1 cursor-pointer pt-1"
                   >
                     <span>See details</span>
                     <ChevronRight className="h-3 w-3" />

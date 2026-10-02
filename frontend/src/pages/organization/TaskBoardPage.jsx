@@ -125,7 +125,7 @@ function TaskBoardContent() {
       <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <span className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-indigo-600" /> Overall Sprint Build Completion
+            <Sparkles className="h-4 w-4 text-primary-600" /> Overall Sprint Build Completion
           </span>
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-slate-500">
@@ -134,10 +134,10 @@ function TaskBoardContent() {
             <Button
               variant="outline"
               size="sm"
-              icon={<Sparkles className="h-4 w-4 text-purple-600" />}
+              icon={<Sparkles className="h-4 w-4 text-primary-600" />}
               onClick={handleSyncBlueprintTasks}
               isLoading={isSyncing}
-              className="shrink-0 border-purple-200 hover:bg-purple-50 text-purple-700 font-bold"
+              className="shrink-0 border-primary-200 hover:bg-primary-50 text-primary-700 font-bold"
             >
               Sync Blueprint Tasks
             </Button>
@@ -209,7 +209,7 @@ function TaskBoardContent() {
         <LoadingSkeleton variant="card" count={3} />
       ) : tasks.length === 0 ? (
         <EmptyState
-          icon={<ListTodo className="h-8 w-8 text-indigo-500" />}
+          icon={<ListTodo className="h-8 w-8 text-primary-500" />}
           title="No Sprint Tasks Created Yet"
           description="Break down your Project Blueprint into actionable build items or sync planned technical tasks directly from the AI Blueprint."
           action={
@@ -219,10 +219,10 @@ function TaskBoardContent() {
               </Button>
               <Button
                 variant="outline"
-                icon={<Sparkles className="h-4 w-4 text-purple-600" />}
+                icon={<Sparkles className="h-4 w-4 text-primary-600" />}
                 onClick={handleSyncBlueprintTasks}
                 isLoading={isSyncing}
-                className="border-purple-300 hover:bg-purple-50 text-purple-700 font-bold"
+                className="border-primary-300 hover:bg-primary-50 text-primary-700 font-bold"
               >
                 Sync Blueprint Tasks
               </Button>
@@ -253,12 +253,12 @@ function TaskBoardContent() {
           </div>
 
           {/* Column 2: In Progress */}
-          <div className="space-y-3 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-200/60 min-h-[400px]">
-            <div className="flex items-center justify-between pb-2 border-b border-indigo-200">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-indigo-900 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-indigo-500 animate-pulse" /> In Progress
+          <div className="space-y-3 bg-primary-50/50 p-4 rounded-2xl border border-primary-200/60 min-h-[400px]">
+            <div className="flex items-center justify-between pb-2 border-b border-primary-200">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-primary-900 flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-primary-500 animate-pulse" /> In Progress
               </h3>
-              <span className="rounded-full bg-indigo-200 px-2 py-0.5 text-[11px] font-bold text-indigo-800">
+              <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[11px] font-bold text-primary-800">
                 {inProgressTasks.length}
               </span>
             </div>

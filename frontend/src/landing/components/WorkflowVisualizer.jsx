@@ -52,9 +52,9 @@ const STAGES = [
     title: 'Consensus Voting',
     icon: ThumbsUp,
     badge: 'Democratic',
-    color: 'from-indigo-500 to-purple-500',
-    borderColor: 'border-indigo-500/30',
-    bgGlow: 'shadow-indigo-500/20',
+    color: 'from-primary-600 to-primary-500',
+    borderColor: 'border-primary-500/30',
+    bgGlow: 'shadow-primary-500/20',
     description: 'Real-time upvoting surface elevates high-impact proposals with transparent community metrics.',
     cardContent: {
       title: 'Upvote Count',
@@ -86,9 +86,9 @@ const STAGES = [
     title: 'AI Blueprint',
     icon: Zap,
     badge: 'AI Engine',
-    color: 'from-purple-500 to-pink-500',
-    borderColor: 'border-purple-500/30',
-    bgGlow: 'shadow-purple-500/20',
+    color: 'from-primary-500 to-pink-500',
+    borderColor: 'border-primary-500/30',
+    bgGlow: 'shadow-primary-500/20',
     description: 'AI instantly generates architectural specs, database models, API endpoints, and PRD.',
     cardContent: {
       techStack: 'React 19 + Tailwind v4 + Firebase RTDB',
@@ -150,18 +150,18 @@ export function WorkflowVisualizer() {
 
   return (
     <div
-      className="relative rounded-3xl border border-slate-800 bg-slate-950/90 p-6 sm:p-8 shadow-2xl shadow-purple-950/40 backdrop-blur-xl overflow-hidden"
+      className="relative rounded-3xl border border-slate-800 bg-slate-950/90 p-6 sm:p-8 shadow-2xl shadow-primary-950/40 backdrop-blur-xl overflow-hidden"
       onMouseEnter={() => setIsAutoPlaying(false)}
       onMouseLeave={() => setIsAutoPlaying(true)}
     >
       {/* Background Glow */}
-      <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-purple-600/15 blur-3xl pointer-events-none" />
-      <div className="absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-indigo-600/15 blur-3xl pointer-events-none" />
+      <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary-600/15 blur-3xl pointer-events-none" />
+      <div className="absolute -left-20 -bottom-20 h-72 w-72 rounded-full bg-primary-700/15 blur-3xl pointer-events-none" />
 
       {/* Header & Stage Stepper */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono font-bold text-purple-400 uppercase tracking-widest mb-1">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-primary-400 uppercase tracking-widest mb-1">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Interactive Workflow Engine</span>
           </div>
@@ -184,7 +184,7 @@ export function WorkflowVisualizer() {
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-500/25 scale-105'
+                    ? 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-md shadow-primary-500/25 scale-105'
                     : 'bg-slate-900/90 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
                 }`}
               >
@@ -202,7 +202,7 @@ export function WorkflowVisualizer() {
         {/* Left: Stage Description */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold bg-slate-900 text-purple-400 border border-slate-800">
+            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-extrabold bg-slate-900 text-primary-400 border border-slate-800">
               STAGE {activeStage.step}
             </span>
             <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold uppercase bg-slate-900 border ${activeStage.borderColor} text-slate-200`}>
@@ -270,12 +270,12 @@ export function WorkflowVisualizer() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono text-slate-400">{activeStage.cardContent.topRank}</span>
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-primary-500/20 text-primary-300 border border-primary-500/30">
                     {activeStage.cardContent.votes}
                   </span>
                 </div>
                 <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
-                  <div className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full w-[85%] transition-all duration-500" />
+                  <div className="bg-gradient-to-r from-primary-600 to-primary-400 h-full rounded-full w-[85%] transition-all duration-500" />
                 </div>
               </div>
             )}
@@ -297,7 +297,7 @@ export function WorkflowVisualizer() {
               <div className="space-y-3 font-mono text-xs">
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                   <span className="text-slate-500 font-bold">TECH STACK:</span>
-                  <p className="text-purple-300 font-semibold">{activeStage.cardContent.techStack}</p>
+                  <p className="text-primary-300 font-semibold">{activeStage.cardContent.techStack}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                   <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-slate-300">

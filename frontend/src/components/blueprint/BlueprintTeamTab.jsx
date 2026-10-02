@@ -59,7 +59,7 @@ export function BlueprintTeamTab({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-400" /> Team Workload & Allocation Summary
+              <Users className="h-4 w-4 text-primary-400" /> Team Workload & Allocation Summary
             </h3>
             <p className="text-xs text-slate-400">Capacity breakdown and workload balancing across workspace members</p>
           </div>
@@ -73,7 +73,7 @@ export function BlueprintTeamTab({
                 {unestimatedCount} Unestimated Tasks
               </span>
             )}
-            <span className="px-2.5 py-1 rounded-lg bg-purple-950 text-purple-300 border border-purple-800 font-bold">
+            <span className="px-2.5 py-1 rounded-lg bg-primary-950 text-primary-300 border border-primary-800 font-bold">
               Unassigned: {unassignedCount} Tasks
             </span>
           </div>
@@ -210,12 +210,12 @@ export function BlueprintTeamTab({
         </div>
 
         {strategicAdviceList.length > 0 && (
-          <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-900/50 space-y-2">
-            <span className="text-xs font-mono font-bold uppercase text-purple-300">Strategic Allocation Advice:</span>
-            <ul className="space-y-1 text-xs text-purple-200">
+          <div className="p-4 rounded-xl bg-primary-950/30 border border-primary-900/50 space-y-2">
+            <span className="text-xs font-mono font-bold uppercase text-primary-300">Strategic Allocation Advice:</span>
+            <ul className="space-y-1 text-xs text-primary-200">
               {strategicAdviceList.map((adv, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-purple-400 font-bold">•</span>
+                  <span className="text-primary-400 font-bold">•</span>
                   <span>{safeText(adv)}</span>
                 </li>
               ))}
@@ -267,7 +267,7 @@ export function BlueprintTeamTab({
                 >
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-xs font-black text-purple-300">
+                      <span className="font-mono text-xs font-black text-primary-300">
                         {taskId}
                       </span>
                       <span className="font-mono text-xs font-bold text-white">{safeText(task.title)}</span>

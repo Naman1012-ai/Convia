@@ -85,7 +85,7 @@ export function LivePublicIdeasFeed() {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
               <Globe className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
               <span>Firebase Live Stream</span>
             </div>
@@ -116,7 +116,7 @@ export function LivePublicIdeasFeed() {
           </div>
         ) : ideas.length === 0 ? (
           <div className="p-12 text-center rounded-3xl bg-slate-900/60 border border-slate-800/80 space-y-3 max-w-xl mx-auto">
-            <Globe className="h-8 w-8 text-purple-400 mx-auto" />
+            <Globe className="h-8 w-8 text-primary-400 mx-auto" />
             <h3 className="text-lg font-bold text-white">No Public Proposals Shared Yet</h3>
             <p className="text-xs text-slate-400 font-medium">
               Be the first innovator to share a public proposal with the global community!
@@ -135,12 +135,12 @@ export function LivePublicIdeasFeed() {
                 <div
                   key={idea.ideaId || idx}
                   onClick={() => setSelectedIdea(idea)}
-                  className="p-7 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 shadow-xl space-y-5 flex flex-col justify-between cursor-pointer group transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                  className="p-7 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-primary-500/40 shadow-xl space-y-5 flex flex-col justify-between cursor-pointer group transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
                 >
                   <div className="space-y-4">
                     {/* Top Badges */}
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                      <span className="px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-primary-500/10 text-primary-300 border border-primary-500/20">
                         {idea.category || 'General'}
                       </span>
 
@@ -151,7 +151,7 @@ export function LivePublicIdeasFeed() {
                           </span>
                         )}
                         {isTrending && !isMostVoted && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30 flex items-center gap-1">
                             <TrendingUp className="h-3 w-3" /> Trending
                           </span>
                         )}
@@ -160,7 +160,7 @@ export function LivePublicIdeasFeed() {
 
                     {/* Title & Description */}
                     <div>
-                      <h3 className="text-xl font-extrabold text-white group-hover:text-purple-300 transition-colors line-clamp-2">
+                      <h3 className="text-xl font-extrabold text-white group-hover:text-primary-300 transition-colors line-clamp-2">
                         {idea.title}
                       </h3>
                       <p className="text-xs text-slate-300 font-medium leading-relaxed mt-2 line-clamp-3">
@@ -195,7 +195,7 @@ export function LivePublicIdeasFeed() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1 text-purple-300 font-bold">
+                      <span className="flex items-center gap-1 text-primary-300 font-bold">
                         <ThumbsUp className="h-3.5 w-3.5" /> +{voteCount}
                       </span>
                       <span className="flex items-center gap-1 text-slate-400">

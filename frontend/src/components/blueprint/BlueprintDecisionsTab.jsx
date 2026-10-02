@@ -60,7 +60,7 @@ export function BlueprintDecisionsTab({
         {/* Decisions */}
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
           <div className="flex items-center justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-950 text-purple-300 border border-purple-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-950 text-primary-300 border border-primary-800">
               <MessageSquare className="h-4 w-4" />
             </div>
             <span className="text-[10px] font-mono text-emerald-400 font-bold bg-emerald-950 px-2 py-0.5 rounded border border-emerald-900">
@@ -76,7 +76,7 @@ export function BlueprintDecisionsTab({
         {/* Open Questions */}
         <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
           <div className="flex items-center justify-between">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-950 text-indigo-300 border border-indigo-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-950 text-primary-300 border border-primary-800">
               <HelpCircle className="h-4 w-4" />
             </div>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
@@ -135,7 +135,7 @@ export function BlueprintDecisionsTab({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-purple-400" /> Traceable Project Decisions ({decisions.length})
+              <MessageSquare className="h-4 w-4 text-primary-400" /> Traceable Project Decisions ({decisions.length})
             </h3>
             <p className="text-xs text-slate-400">Formal technical and architectural decisions governing project requirements</p>
           </div>
@@ -147,7 +147,7 @@ export function BlueprintDecisionsTab({
                 onClick={() => setDecisionFilter(f)}
                 className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all whitespace-nowrap ${
                   decisionFilter === f
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
                 }`}
               >
@@ -225,7 +225,7 @@ export function BlueprintDecisionsTab({
                       {safeText(dec.title || dec.decision)}
                     </h4>
                     <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                      <strong className="text-purple-300 font-mono">Why: </strong>
+                      <strong className="text-primary-300 font-mono">Why: </strong>
                       {safeText(dec.rationale)}
                     </p>
                   </div>
@@ -264,7 +264,7 @@ export function BlueprintDecisionsTab({
       <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
         <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
           <span className="flex items-center gap-2">
-            <HelpCircle className="h-4 w-4 text-indigo-400" /> Open Questions & Execution Blockers ({questions.length})
+            <HelpCircle className="h-4 w-4 text-primary-400" /> Open Questions & Execution Blockers ({questions.length})
           </span>
         </h3>
 
@@ -279,7 +279,7 @@ export function BlueprintDecisionsTab({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 font-mono text-[10px] font-black border border-indigo-800">
+                    <span className="px-2 py-0.5 rounded bg-primary-950 text-primary-300 font-mono text-[10px] font-black border border-primary-800">
                       {qId}
                     </span>
                     <span className="font-mono text-[10px] text-slate-400 uppercase font-bold">{safeText(q.category || q.area, 'general')}</span>
@@ -308,7 +308,7 @@ export function BlueprintDecisionsTab({
         <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
           <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
             <span className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4 text-purple-400" /> Downstream Change Recommendations ({recommendations.length})
+              <RotateCcw className="h-4 w-4 text-primary-400" /> Downstream Change Recommendations ({recommendations.length})
             </span>
           </h3>
 
@@ -323,7 +323,7 @@ export function BlueprintDecisionsTab({
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 text-[10px] font-black border border-purple-800">
+                      <span className="px-2 py-0.5 rounded bg-primary-950 text-primary-300 text-[10px] font-black border border-primary-800">
                         {crId}
                       </span>
                       <span className="text-white font-bold uppercase">{safeText(cr.changeType)} {safeText(cr.targetType)} {safeText(cr.targetId)}</span>
@@ -345,7 +345,7 @@ export function BlueprintDecisionsTab({
                           size="sm"
                           onClick={() => onApproveRecommendation && onApproveRecommendation(crId)}
                           isLoading={processingRecommendationId === crId}
-                          className="bg-purple-600 hover:bg-purple-700 text-white text-xs py-1 px-3 h-6 shadow-sm"
+                          className="bg-primary-600 hover:bg-primary-700 text-white text-xs py-1 px-3 h-6 shadow-sm"
                         >
                           Approve Change
                         </Button>

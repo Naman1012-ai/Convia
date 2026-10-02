@@ -12,13 +12,13 @@ export function DemoModal({ isOpen, onClose }) {
         {/* Demo Video / Interactive Showcase Card */}
         <div className="relative rounded-2xl border border-slate-800 bg-slate-950 p-6 shadow-2xl overflow-hidden text-white">
           <div className="absolute top-0 right-0 p-3">
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
               Interactive Tour
             </span>
           </div>
 
           <div className="space-y-4 max-w-xl">
-            <div className="inline-flex p-3 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
+            <div className="inline-flex p-3 rounded-xl bg-primary-600/20 text-primary-400 border border-primary-500/30">
               <Zap className="h-6 w-6" />
             </div>
 
@@ -60,7 +60,7 @@ export function DemoModal({ isOpen, onClose }) {
           <Link
             to="/signup"
             onClick={onClose}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-xs shadow-lg hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-extrabold text-xs shadow-lg hover:scale-105 transition-all"
           >
             <span>Create Free Workspace</span>
           </Link>

@@ -176,7 +176,7 @@ export default function JoinWorkspacePage() {
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-100 mb-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md shadow-primary-500/25 mb-3">
             <Users className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Join a Workspace</h1>
@@ -237,7 +237,7 @@ export default function JoinWorkspacePage() {
 
               <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
                 Need to create a new workspace instead?{' '}
-                <Link to="/workspaces" className="font-semibold text-indigo-600 hover:text-indigo-700">
+                <Link to="/workspaces" className="font-semibold text-primary-600 hover:text-primary-700">
                   Go to Workspaces
                 </Link>
               </div>
@@ -247,7 +247,7 @@ export default function JoinWorkspacePage() {
             <div className="space-y-5">
               {/* Workspace Snapshot */}
               <div className="text-center pb-4 border-b border-slate-100">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 mb-2">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary-50 text-primary-700 border border-primary-200/60 mb-2">
                   <Building2 className="h-3.5 w-3.5" /> Team Invitation
                 </span>
                 <h2 className="text-xl font-bold text-slate-900">{lookupResult.workspaceName}</h2>
@@ -256,7 +256,7 @@ export default function JoinWorkspacePage() {
                   <Badge
                     variant={
                       lookupResult.isTeamCaptain || lookupResult.role === 'team_captain' || lookupResult.isSecondOwner || lookupResult.role === 'second_owner'
-                        ? 'purple'
+                        ? 'primary'
                         : 'blue'
                     }
                     className="px-3 py-1 text-xs"
@@ -293,7 +293,7 @@ export default function JoinWorkspacePage() {
                   ) : null}
 
                   {/* Highly Readable Invitation Code Chip */}
-                  <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full text-xs font-mono font-bold text-indigo-700">
+                  <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full text-xs font-mono font-bold text-primary-700">
                     <span className="text-slate-500 font-sans font-medium text-[11px]">Code:</span>
                     <span>{code}</span>
                     <button
@@ -303,7 +303,7 @@ export default function JoinWorkspacePage() {
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}
-                      className="text-slate-400 hover:text-indigo-600 focus:outline-hidden focus:text-indigo-600 p-0.5 rounded transition-colors"
+                      className="text-slate-400 hover:text-primary-600 focus:outline-hidden focus:text-primary-600 p-0.5 rounded transition-colors"
                       title="Copy code"
                       aria-label="Copy invitation code"
                     >
@@ -373,7 +373,7 @@ export default function JoinWorkspacePage() {
               {/* Unauthenticated User Flow (Privacy-Safe: Zero Leaked Email) */}
               {!user && !alreadyMemberOrgId && !isExpired && (
                 <div className="space-y-4">
-                  <div className="rounded-xl bg-indigo-50 border border-indigo-200 p-3.5 text-xs text-indigo-950 space-y-1">
+                  <div className="rounded-xl bg-primary-50/70 border border-primary-200/60 p-3.5 text-xs text-primary-950 space-y-1">
                     <p className="font-bold text-slate-900">Sign in to join this workspace</p>
                     <p className="text-[11px] text-slate-600 pt-0.5 leading-relaxed">
                       This invitation is bound to the Convia account that received the invitation code. Please sign in or create an account with your invited email address to continue.

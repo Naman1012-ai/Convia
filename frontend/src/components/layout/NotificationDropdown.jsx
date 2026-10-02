@@ -14,11 +14,18 @@ import {
   HelpCircle,
   Info,
   Smile,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { NOTIFICATION_TYPES } from '../../constants/notificationConstants';
 import { useUserProfiles } from '../../hooks/useUserProfile';
+import {
+  isFcmSupported,
+  getNotificationPermission,
+  enableWebPushNotifications,
+  isPushNotificationsEnabledLocally,
+} from '../../services/fcmService';
 
 /**
  * Convia Phase 7: Real-Time In-App Notification Center Dropdown.
@@ -52,6 +59,36 @@ export function NotificationDropdown() {
 
   const { resolveName, resolveAvatar } = useUserProfiles(senderIds);
   const dropdownRef = useRef(null);
+
+  // Web Push Notification Banner State
+  const [isPushSupported, setIsPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [dismissedPushBanner, setDismissedPushBanner] = useState(false);
+
+  useEffect(() => {
+    isFcmSupported().then((supported) => {
+      setIsPushSupported(supported);
+      if (supported) {
+        setPushEnabled(isPushNotificationsEnabledLocally());
+      }
+    });
+  }, []);
+
+  const handleEnablePushFromDropdown = async () => {
+    if (pushLoading) return;
+    setPushLoading(true);
+    try {
+      const res = await enableWebPushNotifications();
+      if (res.success) {
+        setPushEnabled(true);
+      }
+    } catch (err) {
+      console.warn('[NotificationDropdown] Push enable error:', err);
+    } finally {
+      setPushLoading(false);
+    }
+  };
 
   // Automatically close notification dropdown on route transition
   useEffect(() => {
@@ -129,7 +166,7 @@ export function NotificationDropdown() {
       case NOTIFICATION_TYPES.MESSAGE_REPLY:
         return {
           icon: <CornerDownRight className="h-2.5 w-2.5" />,
-          color: 'bg-indigo-600',
+          color: 'bg-primary-600',
         };
       case NOTIFICATION_TYPES.CHAT_MESSAGE:
         return {
@@ -223,7 +260,7 @@ export function NotificationDropdown() {
                 Notifications
               </h3>
               {!loading && unreadCount > 0 && (
-                <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
+                <span className="px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-[10px] font-bold">
                   {unreadCount} new
                 </span>
               )}
@@ -233,7 +270,7 @@ export function NotificationDropdown() {
               <button
                 type="button"
                 onClick={handleMarkAllAsRead}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:text-primary-800 transition-colors cursor-pointer"
                 title="Mark all as read"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
@@ -242,11 +279,41 @@ export function NotificationDropdown() {
             )}
           </div>
 
+          {/* Web Push Prompt Banner (Subtle & Non-Intrusive) */}
+          {isPushSupported && !pushEnabled && !dismissedPushBanner && (
+            <div className="bg-primary-50/70 border-b border-primary-100/60 px-3 py-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Bell className="h-3.5 w-3.5 text-primary-600 shrink-0" />
+                <span className="text-[11px] text-primary-950 font-medium truncate">
+                  Enable browser push for mentions & replies
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleEnablePushFromDropdown}
+                  disabled={pushLoading}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary-600 text-white hover:bg-primary-700 transition-colors cursor-pointer"
+                >
+                  {pushLoading ? '...' : 'Enable'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDismissedPushBanner(true)}
+                  className="p-0.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                  title="Dismiss"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Notification List */}
           <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50 p-1">
             {loading ? (
               <div className="py-12 text-center text-xs text-slate-400 space-y-3">
-                <div className="h-6 w-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto" />
                 <p className="font-medium text-slate-500">Loading notifications...</p>
               </div>
             ) : error ? (
@@ -258,7 +325,7 @@ export function NotificationDropdown() {
                   <button
                     type="button"
                     onClick={() => refresh()}
-                    className="mt-2 inline-flex items-center px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-xs font-semibold hover:bg-indigo-100 transition-colors cursor-pointer"
+                    className="mt-2 inline-flex items-center px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 text-xs font-semibold hover:bg-primary-100 transition-colors cursor-pointer"
                   >
                     Retry
                   </button>

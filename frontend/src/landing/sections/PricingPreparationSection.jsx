@@ -59,7 +59,7 @@ export function PricingPreparationSection() {
     <section id="pricing" className="py-24 bg-slate-950 border-b border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Transparent Pricing Structure
           </span>
 
@@ -78,7 +78,7 @@ export function PricingPreparationSection() {
               key={plan.name}
               className={`p-8 rounded-3xl border shadow-2xl flex flex-col justify-between space-y-6 relative ${
                 plan.isFree
-                  ? 'bg-gradient-to-b from-purple-950/80 via-slate-900 to-indigo-950/80 border-purple-500/60 shadow-purple-950/50 scale-105'
+                  ? 'bg-gradient-to-b from-primary-950/80 via-slate-900 to-primary-900/60 border-primary-500/60 shadow-primary-950/50 scale-105'
                   : 'bg-slate-900/60 border-slate-800/80 opacity-90'
               }`}
             >
@@ -88,7 +88,7 @@ export function PricingPreparationSection() {
                   <span
                     className={`px-2.5 py-0.5 rounded text-[10px] font-mono font-bold ${
                       plan.isFree
-                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                        ? 'bg-primary-500/20 text-primary-300 border border-primary-500/40'
                         : 'bg-slate-950 text-slate-400 border border-slate-800'
                     }`}
                   >
@@ -118,7 +118,7 @@ export function PricingPreparationSection() {
               {plan.isFree ? (
                 <Link
                   to={plan.ctaLink}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg transition-all"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-extrabold text-xs shadow-lg transition-all"
                 >
                   <span>{plan.ctaText}</span>
                   <ArrowRight className="h-4 w-4" />

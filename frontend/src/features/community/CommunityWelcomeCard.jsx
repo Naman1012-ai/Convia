@@ -27,7 +27,7 @@ export function CommunityWelcomeCard({
   // When 3 or more discussions exist, collapse into a sleek, compact 1-line strip
   if (totalDiscussions >= 3 || (hasExistingMessages && totalDiscussions >= 3)) {
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-indigo-50/40 px-3.5 py-2.5 border border-emerald-200/80 shadow-2xs flex items-center justify-between gap-3 text-xs">
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/70 to-primary-50/40 px-3.5 py-2.5 border border-emerald-200/80 shadow-2xs flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="h-4 w-4 text-emerald-600 shrink-0" />
           <p className="text-slate-700 truncate font-medium">
@@ -63,7 +63,7 @@ export function CommunityWelcomeCard({
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm text-center relative overflow-hidden">
       {/* Decorative gradient blur backdrop */}
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-tr from-emerald-100 via-teal-100 to-indigo-100 rounded-full blur-3xl opacity-60 -z-10 pointer-events-none" />
+      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-gradient-to-tr from-emerald-100 via-teal-100 to-primary-100 rounded-full blur-3xl opacity-60 -z-10 pointer-events-none" />
 
       <div className="max-w-xl mx-auto space-y-4">
         <div className="inline-flex p-3 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 shadow-xs mb-1">
@@ -112,7 +112,7 @@ export function CommunityWelcomeCard({
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-            <div className="p-2 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
+            <div className="p-2 rounded-lg bg-primary-100 text-primary-700 shrink-0">
               <Compass className="h-4 w-4" />
             </div>
             <div>

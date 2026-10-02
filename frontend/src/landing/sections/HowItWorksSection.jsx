@@ -16,14 +16,14 @@ const STEPS = [
     icon: Trophy,
     title: 'Democratic Voting',
     description: 'Upvote proposals transparently. The team leader locks the top-voted proposal as the official project MVP.',
-    color: 'from-indigo-500 to-purple-500',
+    color: 'from-primary-600 to-primary-500',
   },
   {
     step: '03',
     icon: Zap,
     title: 'AI Blueprint & Build',
     description: 'AI generates system architecture, database models, and API endpoints, automatically populating your sprint Kanban board.',
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-primary-500 to-pink-500',
   },
 ];
 
@@ -33,7 +33,7 @@ export function HowItWorksSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Title */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             3-Step Workflow
           </span>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
@@ -51,10 +51,10 @@ export function HowItWorksSection() {
             return (
               <div
                 key={s.step}
-                className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-5 relative group hover:border-purple-500/40 transition-all duration-300"
+                className="p-8 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl space-y-5 relative group hover:border-primary-500/40 transition-all duration-300"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono font-extrabold text-purple-400 px-3 py-1 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-xs font-mono font-extrabold text-primary-400 px-3 py-1 rounded-lg bg-slate-950 border border-slate-800">
                     STEP {s.step}
                   </span>
                   <div className={`p-3 rounded-2xl bg-gradient-to-r ${s.color} text-white shadow-lg`}>
@@ -73,7 +73,7 @@ export function HowItWorksSection() {
         </div>
 
         {/* CTA Card */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-800/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+        <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-primary-950/80 via-slate-900 to-primary-900/60 border border-primary-800/80 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
           <div className="space-y-2">
             <h3 className="text-2xl font-extrabold text-white">Ready to streamline your next project?</h3>
             <p className="text-sm text-slate-300 font-medium">

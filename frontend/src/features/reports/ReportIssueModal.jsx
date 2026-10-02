@@ -154,9 +154,9 @@ export function ReportIssueModal({ isOpen, onClose }) {
             </p>
           </div>
 
-          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 inline-block max-w-sm w-full mx-auto">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-700">Report Reference ID</span>
-            <div className="text-2xl font-mono font-black text-purple-900 tracking-wider mt-1">
+          <div className="bg-primary-50 border border-primary-200 rounded-2xl p-4 inline-block max-w-sm w-full mx-auto">
+            <span className="text-xs font-bold uppercase tracking-wider text-primary-700">Report Reference ID</span>
+            <div className="text-2xl font-mono font-black text-primary-900 tracking-wider mt-1">
               {submittedReport.reportId}
             </div>
           </div>
@@ -165,7 +165,7 @@ export function ReportIssueModal({ isOpen, onClose }) {
             <Button
               variant="primary"
               onClick={handleResetAndClose}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8"
+              className="bg-primary-600 hover:bg-primary-700 text-white font-bold px-8"
             >
               Done
             </Button>
@@ -174,13 +174,13 @@ export function ReportIssueModal({ isOpen, onClose }) {
       ) : (
         /* Submission Form */
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white p-4 rounded-xl shadow-sm flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-purple-800/60 shrink-0 text-purple-200">
+          <div className="bg-gradient-to-r from-slate-900 to-primary-950 text-white p-4 rounded-xl shadow-sm flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-primary-800/60 shrink-0 text-primary-200">
               <ShieldAlert className="h-5 w-5" />
             </div>
             <div>
               <h4 className="text-sm font-extrabold text-white">Platform Issue & Support Dispatch</h4>
-              <p className="text-xs text-purple-200">
+              <p className="text-xs text-primary-200">
                 Report bugs, UI glitches, abuse, or security issues directly to platform administrators.
               </p>
             </div>
@@ -248,7 +248,7 @@ export function ReportIssueModal({ isOpen, onClose }) {
             </label>
             <div className="flex items-center gap-3">
               <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 transition-colors">
-                <Paperclip className="h-4 w-4 text-purple-600" />
+                <Paperclip className="h-4 w-4 text-primary-600" />
                 <span>{file ? 'Change File' : 'Attach File (PNG, JPG, PDF)'}</span>
                 <input
                   type="file"
@@ -260,13 +260,13 @@ export function ReportIssueModal({ isOpen, onClose }) {
               </label>
 
               {file && (
-                <div className="flex items-center gap-2 bg-purple-50 text-purple-800 border border-purple-200 px-3 py-1.5 rounded-lg text-xs font-medium">
-                  <FileText className="h-3.5 w-3.5 text-purple-600" />
+                <div className="flex items-center gap-2 bg-primary-50 text-primary-800 border border-primary-200 px-3 py-1.5 rounded-lg text-xs font-medium">
+                  <FileText className="h-3.5 w-3.5 text-primary-600" />
                   <span className="truncate max-w-[200px]">{file.name}</span>
                   <button
                     type="button"
                     onClick={() => setFile(null)}
-                    className="hover:text-purple-950 p-0.5"
+                    className="hover:text-primary-950 p-0.5"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -284,7 +284,7 @@ export function ReportIssueModal({ isOpen, onClose }) {
               type="submit"
               isLoading={isSubmitting}
               icon={<Flag className="h-4 w-4" />}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
+              className="bg-primary-600 hover:bg-primary-700 text-white font-bold"
             >
               Submit Report
             </Button>

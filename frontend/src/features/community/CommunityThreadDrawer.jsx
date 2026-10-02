@@ -383,11 +383,11 @@ function ThreadReplyItem({ reply, isOwn = false }) {
       {isOwn ? (
         <div className="flex flex-col items-end max-w-[85%]">
           <div className="flex items-center justify-end gap-1.5 mb-1 px-1 text-[10px] text-slate-400 font-mono">
-            <span className="font-bold text-indigo-700">You</span>
+            <span className="font-bold text-primary-700">You</span>
             <span>•</span>
             <span>{displayTime}</span>
           </div>
-          <div className="rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs p-3 space-y-1 min-w-0">
+          <div className="rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs p-3 space-y-1 min-w-0">
             <p className="text-xs text-white leading-relaxed font-normal whitespace-pre-wrap break-words">
               {reply.content}
             </p>

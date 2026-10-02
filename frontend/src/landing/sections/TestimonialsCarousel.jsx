@@ -50,7 +50,7 @@ export function TestimonialsCarousel() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary-500/10 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Community Wall of Fame</span>
             <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -68,14 +68,14 @@ export function TestimonialsCarousel() {
         </div>
 
         {/* Carousel Container */}
-        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-purple-500/40 shadow-2xl max-w-4xl mx-auto relative space-y-8">
+        <div className="p-8 sm:p-12 rounded-3xl bg-slate-900/90 border border-primary-500/40 shadow-2xl max-w-4xl mx-auto relative space-y-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-purple-600/20 text-purple-400 border border-purple-500/30">
+              <div className="p-3 rounded-2xl bg-primary-600/20 text-primary-400 border border-primary-500/30">
                 <Quote className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs font-mono font-extrabold text-purple-400">
+                <span className="text-xs font-mono font-extrabold text-primary-400">
                   {item.hackathon}
                 </span>
                 <h4 className="text-lg font-extrabold text-white">{item.name}</h4>
@@ -83,7 +83,7 @@ export function TestimonialsCarousel() {
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <GraduationCap className="h-4 w-4 text-indigo-400" />
+              <GraduationCap className="h-4 w-4 text-primary-400" />
               <span>{item.university}</span>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function TestimonialsCarousel() {
             <div className="flex items-center gap-3">
               <button
                 onClick={prevSlide}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-purple-500/40 transition-colors"
+                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-primary-500/40 transition-colors"
                 aria-label="Previous Testimonial"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -117,7 +117,7 @@ export function TestimonialsCarousel() {
 
               <button
                 onClick={nextSlide}
-                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-purple-500/40 transition-colors"
+                className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-primary-500/40 transition-colors"
                 aria-label="Next Testimonial"
               >
                 <ChevronRight className="h-4 w-4" />

@@ -17,6 +17,13 @@ import { DeleteAccountModal } from '../../features/profile/DeleteAccountModal';
 import { UserReportsList } from '../../features/reports/UserReportsList';
 import { formatTimestamp, formatPlatformJoinDate } from '../../utils/formatting';
 import {
+  isFcmSupported,
+  getNotificationPermission,
+  enableWebPushNotifications,
+  disableWebPushNotifications,
+  isPushNotificationsEnabledLocally,
+} from '../../services/fcmService';
+import {
   Pencil,
   UserCheck,
   Calendar,
@@ -158,6 +165,50 @@ export default function ProfilePage() {
     }
   }, [userProfile]);
 
+  // Web Push Notification State
+  const [isPushSupported, setIsPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState('default');
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  useEffect(() => {
+    isFcmSupported().then((supported) => {
+      setIsPushSupported(supported);
+      if (supported) {
+        setPushPermission(getNotificationPermission());
+        setPushEnabled(isPushNotificationsEnabledLocally());
+      }
+    });
+  }, []);
+
+  const handleTogglePushNotifications = async () => {
+    if (pushLoading) return;
+    setPushLoading(true);
+
+    try {
+      if (pushEnabled) {
+        await disableWebPushNotifications();
+        setPushEnabled(false);
+        toast.info('Browser push notifications disabled for this device.');
+      } else {
+        const result = await enableWebPushNotifications();
+        setPushPermission(result.permission);
+        if (result.success) {
+          setPushEnabled(true);
+          toast.success('🎉 Push notifications enabled! You will now receive real-time alerts.');
+        } else if (result.permission === 'denied') {
+          toast.error('Notifications blocked by browser. Please allow notifications in site settings.');
+        } else {
+          toast.error(result.error || 'Failed to enable push notifications.');
+        }
+      }
+    } catch (err) {
+      toast.error('Error toggling push notifications: ' + err.message);
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -292,8 +343,8 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto px-4 py-8">
       {/* 1. Profile Header Hero */}
-      <Card className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 h-48 w-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <Card className="bg-gradient-to-r from-slate-900 via-primary-950 to-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 h-48 w-48 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
@@ -301,7 +352,7 @@ export default function ProfilePage() {
               <Avatar
                 name={userProfile.displayName}
                 size="lg"
-                className="h-24 w-24 text-2xl border-4 border-indigo-500/50 shadow-xl ring-4 ring-indigo-500/20"
+                className="h-24 w-24 text-2xl border-4 border-primary-500/50 shadow-xl ring-4 ring-primary-500/20"
               />
               <span
                 className={`absolute bottom-1 right-1 h-5 w-5 rounded-full border-2 border-slate-900 ${
@@ -317,12 +368,12 @@ export default function ProfilePage() {
                   {userProfile.displayName}
                 </h1>
                 {userProfile.username && (
-                  <span className="text-sm font-semibold text-indigo-300">
+                  <span className="text-sm font-semibold text-primary-300">
                     @{userProfile.username}
                   </span>
                 )}
                 {userProfile.profileCompleted && (
-                  <Badge variant="info" className="bg-indigo-500/30 text-indigo-200 border-indigo-400/40">
+                  <Badge variant="info" className="bg-primary-500/30 text-primary-200 border-primary-400/40">
                     <UserCheck className="h-3 w-3" /> Verified Member
                   </Badge>
                 )}
@@ -336,7 +387,7 @@ export default function ProfilePage() {
                 </span>
                 <span>&bull;</span>
                 <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5 text-indigo-400" /> {formatPlatformJoinDate(userProfile.firstSignedInAt || userProfile.joinedAt || userProfile.createdAt)}
+                  <Calendar className="h-3.5 w-3.5 text-primary-400" /> {formatPlatformJoinDate(userProfile.firstSignedInAt || userProfile.joinedAt || userProfile.createdAt)}
                 </span>
               </div>
             </div>
@@ -353,8 +404,8 @@ export default function ProfilePage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  icon={<ShieldCheck className="h-4 w-4 text-purple-600" />}
-                  className="bg-purple-50 hover:bg-purple-100 text-purple-900 border-purple-200 font-extrabold text-xs"
+                  icon={<ShieldCheck className="h-4 w-4 text-primary-600" />}
+                  className="bg-primary-50 hover:bg-primary-100 text-primary-900 border-primary-200 font-extrabold text-xs"
                 >
                   Admin Portal
                 </Button>
@@ -366,7 +417,7 @@ export default function ProfilePage() {
               size="sm"
               icon={<Pencil className="h-4 w-4" />}
               onClick={() => setIsEditModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-600/30 border-none"
+              className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-lg shadow-primary-600/30 border-none"
             >
               Edit Profile
             </Button>
@@ -377,7 +428,7 @@ export default function ProfilePage() {
       {/* 2. Quick Statistics Dashboard */}
       <div className="space-y-4">
         <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-indigo-600" /> Contribution Statistics
+          <TrendingUp className="h-5 w-5 text-primary-600" /> Contribution Statistics
         </h2>
 
         {loadingDashboard ? (
@@ -388,10 +439,10 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            <Card className="p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+            <Card className="p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-primary-300 transition-colors">
               <div className="flex items-center justify-between text-slate-400">
                 <span className="text-xs font-bold uppercase tracking-wider">Workspaces</span>
-                <Briefcase className="h-4 w-4 text-indigo-500" />
+                <Briefcase className="h-4 w-4 text-primary-500" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 mt-2">{stats.totalWorkspaces}</h3>
             </Card>
@@ -412,10 +463,10 @@ export default function ProfilePage() {
               <h3 className="text-2xl font-black text-slate-900 mt-2">{stats.ideasVoted}</h3>
             </Card>
 
-            <Card className="p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+            <Card className="p-4 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-primary-300 transition-colors">
               <div className="flex items-center justify-between text-slate-400">
                 <span className="text-xs font-bold uppercase tracking-wider">Tasks Assigned</span>
-                <CheckSquare className="h-4 w-4 text-indigo-500" />
+                <CheckSquare className="h-4 w-4 text-primary-500" />
               </div>
               <h3 className="text-2xl font-black text-slate-900 mt-2">{stats.assignedTasks}</h3>
             </Card>
@@ -438,14 +489,14 @@ export default function ProfilePage() {
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-600" /> About & Bio
+                <Sparkles className="h-4 w-4 text-primary-600" /> About & Bio
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
                 icon={<Pencil className="h-3.5 w-3.5" />}
                 onClick={() => setIsEditModalOpen(true)}
-                className="text-xs text-indigo-600 hover:text-indigo-700"
+                className="text-xs text-primary-600 hover:text-primary-700"
               >
                 Edit
               </Button>
@@ -468,7 +519,7 @@ export default function ProfilePage() {
             {/* College / Organization */}
             {userProfile.college && (
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <GraduationCap className="h-4 w-4 text-indigo-500" />
+                <GraduationCap className="h-4 w-4 text-primary-500" />
                 <span>{userProfile.college}</span>
               </div>
             )}
@@ -484,7 +535,7 @@ export default function ProfilePage() {
                     {skillsList.map((skill, i) => (
                       <span
                         key={i}
-                        className="rounded-md bg-indigo-50 border border-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700"
+                        className="rounded-md bg-primary-50 border border-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700"
                       >
                         {skill}
                       </span>
@@ -534,9 +585,9 @@ export default function ProfilePage() {
                     href={userProfile.linkedin}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
                   >
-                    <Linkedin className="h-3.5 w-3.5 text-indigo-600" /> LinkedIn <ExternalLink className="h-3 w-3 text-indigo-400" />
+                    <Linkedin className="h-3.5 w-3.5 text-primary-600" /> LinkedIn <ExternalLink className="h-3 w-3 text-primary-400" />
                   </a>
                 )}
                 {userProfile.portfolio && (
@@ -556,7 +607,7 @@ export default function ProfilePage() {
           {/* 4. Workspace Activity */}
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Briefcase className="h-4 w-4 text-indigo-600" /> Current Workspaces & Activity
+              <Briefcase className="h-4 w-4 text-primary-600" /> Current Workspaces & Activity
             </h3>
 
             {dashboardData?.organizations?.length === 0 ? (
@@ -583,7 +634,7 @@ export default function ProfilePage() {
                     </div>
 
                     <Link to={`/workspaces/${ws.orgId}/ideas`}>
-                      <Button variant="secondary" size="sm" icon={<ArrowRight className="h-3.5 w-3.5 text-indigo-600" />}>
+                      <Button variant="secondary" size="sm" icon={<ArrowRight className="h-3.5 w-3.5 text-primary-600" />}>
                         View Workspace
                       </Button>
                     </Link>
@@ -635,7 +686,7 @@ export default function ProfilePage() {
           {/* 7. Account Information */}
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-              <ShieldCheck className="h-4 w-4 text-indigo-600" /> Account Specs
+              <ShieldCheck className="h-4 w-4 text-primary-600" /> Account Specs
             </h3>
 
             <div className="space-y-3 text-xs">
@@ -670,7 +721,7 @@ export default function ProfilePage() {
           {/* 8. Notification Preferences */}
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 pb-3">
-              <Bell className="h-4 w-4 text-indigo-600" /> Notifications
+              <Bell className="h-4 w-4 text-primary-600" /> Notifications
             </h3>
 
             <div className="space-y-3 text-xs font-medium text-slate-700">
@@ -680,7 +731,7 @@ export default function ProfilePage() {
                   type="checkbox"
                   checked={notifPrefs.emailNotifs}
                   onChange={(e) => setNotifPrefs({ ...notifPrefs, emailNotifs: e.target.checked })}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
                 />
               </label>
 
@@ -690,7 +741,7 @@ export default function ProfilePage() {
                   type="checkbox"
                   checked={notifPrefs.invitations}
                   onChange={(e) => setNotifPrefs({ ...notifPrefs, invitations: e.target.checked })}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
                 />
               </label>
 
@@ -700,9 +751,46 @@ export default function ProfilePage() {
                   type="checkbox"
                   checked={notifPrefs.taskUpdates}
                   onChange={(e) => setNotifPrefs({ ...notifPrefs, taskUpdates: e.target.checked })}
-                  className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  className="rounded text-primary-600 focus:ring-primary-500 h-4 w-4"
                 />
               </label>
+
+              {/* Web Push Notifications */}
+              <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800">Browser Push Alerts</span>
+                  {pushEnabled ? (
+                    <Badge variant="success" className="text-[10px]">Active</Badge>
+                  ) : pushPermission === 'denied' ? (
+                    <Badge variant="danger" className="text-[10px]">Blocked</Badge>
+                  ) : !isPushSupported ? (
+                    <Badge variant="secondary" className="text-[10px]">Unsupported</Badge>
+                  ) : (
+                    <Badge variant="warning" className="text-[10px]">Disabled</Badge>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 leading-normal">
+                  Receive instant alerts for mentions, chat replies, and blueprint approvals on this device.
+                </p>
+                {isPushSupported && (
+                  <Button
+                    variant={pushEnabled ? 'outline' : 'primary'}
+                    size="sm"
+                    fullWidth
+                    isLoading={pushLoading}
+                    disabled={pushPermission === 'denied'}
+                    onClick={handleTogglePushNotifications}
+                    className="text-xs font-bold mt-1"
+                  >
+                    {pushEnabled ? 'Disable Push on This Device' : 'Enable Browser Push Notifications'}
+                  </Button>
+                )}
+                {pushPermission === 'denied' && (
+                  <p className="text-[10px] text-amber-800 bg-amber-50 p-2 rounded border border-amber-200">
+                    Notifications are blocked in your browser. Click the site settings icon in your URL bar to allow notifications.
+                  </p>
+                )}
+              </div>
             </div>
 
             <Button
@@ -721,7 +809,7 @@ export default function ProfilePage() {
           <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <Lock className="h-4 w-4 text-indigo-600" /> Security & Authentication
+                <Lock className="h-4 w-4 text-primary-600" /> Security & Authentication
               </h3>
               <div className="flex items-center gap-1 text-amber-500" title="Security Score: 5 Stars">
                 {[...Array(user?.emailVerified ? 5 : 4)].map((_, i) => (
@@ -759,7 +847,7 @@ export default function ProfilePage() {
                     isLoading={isSendingVerification}
                     onClick={handleSendVerificationEmail}
                     icon={<Mail className="h-3.5 w-3.5" />}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                    className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs"
                   >
                     Verify Email
                   </Button>
@@ -789,7 +877,7 @@ export default function ProfilePage() {
                 variant="secondary"
                 size="sm"
                 isLoading={isSendingReset}
-                icon={<Key className="h-3.5 w-3.5 text-indigo-600" />}
+                icon={<Key className="h-3.5 w-3.5 text-primary-600" />}
                 onClick={handleResetPassword}
                 className="text-xs font-bold"
               >

@@ -33,8 +33,8 @@ export function LivePlatformOverview() {
   }, []);
 
   const METRICS = [
-    { label: 'Registered Builders', value: stats.users.toLocaleString(), icon: Users, color: 'text-indigo-400' },
-    { label: 'Public Ideas', value: stats.publicIdeas.toLocaleString(), icon: Globe, color: 'text-purple-400' },
+    { label: 'Registered Builders', value: stats.users.toLocaleString(), icon: Users, color: 'text-primary-400' },
+    { label: 'Public Ideas', value: stats.publicIdeas.toLocaleString(), icon: Globe, color: 'text-primary-300' },
     { label: 'Active Workspaces', value: stats.workspaces.toLocaleString(), icon: Briefcase, color: 'text-sky-400' },
     { label: 'Selected MVPs', value: stats.mvps.toLocaleString(), icon: Trophy, color: 'text-amber-400' },
     { label: 'Sprint Tasks Created', value: stats.tasks.toLocaleString(), icon: CheckSquare, color: 'text-rose-400' },
@@ -45,7 +45,7 @@ export function LivePlatformOverview() {
     <section className="py-24 bg-slate-950 border-b border-slate-800/80 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Activity className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
             <span>Real-Time Telemetry</span>
           </div>
@@ -66,7 +66,7 @@ export function LivePlatformOverview() {
             return (
               <div
                 key={m.label}
-                className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 text-center space-y-2 hover:border-purple-500/40 transition-all duration-300 group"
+                className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800/80 text-center space-y-2 hover:border-primary-500/40 transition-all duration-300 group"
               >
                 <div className={`p-2.5 rounded-xl bg-slate-950 border border-slate-800 w-fit mx-auto ${m.color}`}>
                   <IconComp className="h-5 w-5" />

@@ -9,7 +9,7 @@ import { safeText, safeArray } from '../../utils/safeRender';
  */
 export function BlueprintSummaryCard({
   tag,
-  tagColor = 'text-purple-400',
+  tagColor = 'text-primary-400',
   title,
   content,
   footer,
@@ -76,7 +76,7 @@ export function BlueprintSummaryCard({
           <button
             type="button"
             onClick={handleOpenDetails}
-            className="text-[11px] font-mono font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 mt-1 cursor-pointer transition-colors group focus:outline-none focus:ring-1 focus:ring-purple-500 rounded py-0.5"
+            className="text-[11px] font-mono font-bold text-primary-400 hover:text-primary-300 flex items-center gap-1 mt-1 cursor-pointer transition-colors group focus:outline-none focus:ring-1 focus:ring-primary-500 rounded py-0.5"
             aria-label={`See details for ${title || tag}`}
           >
             <span>See details</span>

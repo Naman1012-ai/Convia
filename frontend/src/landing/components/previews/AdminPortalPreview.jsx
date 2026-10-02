@@ -7,7 +7,7 @@ export function AdminPortalPreview() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-xl bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/20">
+          <div className="p-2.5 rounded-xl bg-primary-600 text-white font-bold shadow-md shadow-primary-500/20">
             <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
@@ -29,11 +29,11 @@ export function AdminPortalPreview() {
         </div>
         <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-500 uppercase">Workspaces</span>
-          <p className="text-lg font-extrabold text-purple-400">380</p>
+          <p className="text-lg font-extrabold text-primary-400">380</p>
         </div>
         <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-500 uppercase">Ideas</span>
-          <p className="text-lg font-extrabold text-indigo-400">2,850</p>
+          <p className="text-lg font-extrabold text-primary-300">2,850</p>
         </div>
         <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-500 uppercase">System Uptime</span>
@@ -45,7 +45,7 @@ export function AdminPortalPreview() {
       <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2.5 text-xs font-mono">
         <div className="flex items-center justify-between text-slate-400">
           <span>Real-Time Audit Log Stream</span>
-          <span className="text-purple-400">100% Immutable</span>
+          <span className="text-primary-400">100% Immutable</span>
         </div>
         <div className="space-y-1.5 text-[11px] text-slate-300">
           <div className="p-2 rounded bg-slate-900 border border-slate-800 flex items-center justify-between">

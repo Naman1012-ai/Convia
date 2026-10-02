@@ -7,7 +7,7 @@ export function ToolComparisonSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Factual Tool Comparison</span>
           </div>
@@ -27,7 +27,7 @@ export function ToolComparisonSection() {
           <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 shadow-xl space-y-6 flex flex-col justify-between transition-all duration-300">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div className="p-3 rounded-2xl bg-primary-500/10 text-primary-400 border border-primary-500/20">
                   <MessageSquare className="h-6 w-6" />
                 </div>
                 <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-slate-950 text-slate-400 border border-slate-800">
@@ -36,7 +36,7 @@ export function ToolComparisonSection() {
               </div>
 
               <h3 className="text-2xl font-extrabold text-white">Discord</h3>
-              <p className="text-xs font-mono text-indigo-400 font-bold">Best at real-time audio & team chat</p>
+              <p className="text-xs font-mono text-primary-400 font-bold">Best at real-time audio & team chat</p>
 
               <p className="text-xs text-slate-300 leading-relaxed font-medium">
                 Great for hanging out, but unstructured chat threads make ideation painful during hackathons.
@@ -96,26 +96,26 @@ export function ToolComparisonSection() {
           </div>
 
           {/* Convia Card */}
-          <div className="p-8 rounded-3xl bg-gradient-to-b from-purple-950/80 via-slate-900 to-indigo-950/80 border border-purple-500/50 shadow-2xl shadow-purple-950/40 space-y-6 flex flex-col justify-between transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+          <div className="p-8 rounded-3xl bg-gradient-to-b from-primary-950/80 via-slate-900 to-primary-900/60 border border-primary-500/50 shadow-2xl shadow-primary-950/40 space-y-6 flex flex-col justify-between transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-3">
-              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/40">
                 Purpose-Built
               </span>
             </div>
 
             <div className="space-y-4">
-              <div className="p-3 rounded-2xl bg-purple-600 text-white shadow-lg shadow-purple-500/30 w-fit">
+              <div className="p-3 rounded-2xl bg-primary-600 text-white shadow-lg shadow-primary-500/30 w-fit">
                 <Zap className="h-6 w-6 fill-current" />
               </div>
 
               <h3 className="text-2xl font-extrabold text-white">Convia</h3>
-              <p className="text-xs font-mono text-purple-300 font-bold">Purpose-built for hackathon decision speed</p>
+              <p className="text-xs font-mono text-primary-300 font-bold">Purpose-built for hackathon decision speed</p>
 
               <p className="text-xs text-slate-200 leading-relaxed font-medium">
                 Structured ideation, peer refinement, upvoting, AI blueprints, and Kanban task breakdown—in one seamless flow.
               </p>
 
-              <div className="space-y-2.5 pt-2 border-t border-purple-800/60 text-xs font-semibold text-slate-100">
+              <div className="space-y-2.5 pt-2 border-t border-primary-800/60 text-xs font-semibold text-slate-100">
                 <div className="flex items-start gap-2 text-emerald-400">
                   <Check className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>Structured proposal submission & upvoting</span>

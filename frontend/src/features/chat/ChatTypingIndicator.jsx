@@ -23,9 +23,9 @@ export function ChatTypingIndicator({
     >
       {/* Animated 3-dot wave */}
       <div className="flex items-center gap-0.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-bounce" />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-bounce [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-bounce [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-primary-500 animate-bounce" />
       </div>
 
       <span className="truncate italic text-slate-600 font-semibold">{text}</span>

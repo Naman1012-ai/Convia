@@ -7,13 +7,13 @@ export function WorkspacePreview() {
       {/* Workspace Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-600 text-white font-bold shadow-md shadow-purple-500/20">
+          <div className="p-2.5 rounded-xl bg-primary-600 text-white font-bold shadow-md shadow-primary-500/20">
             <Briefcase className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h4 className="text-base font-extrabold text-white">Hackathon Alpha Workspace</h4>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
                 Code: HACK26
               </span>
             </div>
@@ -23,7 +23,7 @@ export function WorkspacePreview() {
 
         <div className="flex items-center gap-2 text-xs font-mono">
           <span className="px-3 py-1 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-indigo-400" /> 4 Active Members
+            <Users className="h-3.5 w-3.5 text-primary-400" /> 4 Active Members
           </span>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function WorkspacePreview() {
         </div>
         <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-500 font-bold uppercase">Progress</span>
-          <p className="text-lg font-extrabold text-purple-400">75% Sprint</p>
+          <p className="text-lg font-extrabold text-primary-400">75% Sprint</p>
         </div>
       </div>
 

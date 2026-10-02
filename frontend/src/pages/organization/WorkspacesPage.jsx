@@ -126,7 +126,7 @@ export default function WorkspacesPage() {
           <>
             {activeWorkspaces.length === 0 ? (
               <EmptyState
-                icon={<Users className="h-8 w-8 text-indigo-500" />}
+                icon={<Users className="h-8 w-8 text-primary-500" />}
                 title="No Active Workspaces Found"
                 description="Create a new private workspace for your team, or join an existing one using an 8-character invite code."
                 action={

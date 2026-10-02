@@ -6,7 +6,7 @@ export function SocialProofPlaceholder() {
     <div className="rounded-2xl border border-slate-800/80 bg-slate-950/60 p-6 backdrop-blur-md">
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 text-left">
-          <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
+          <div className="p-2.5 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20 shrink-0">
             <Award className="h-5 w-5" />
           </div>
           <div>
@@ -25,10 +25,10 @@ export function SocialProofPlaceholder() {
         {/* Categories Badges */}
         <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono text-slate-400">
           <span className="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-1.5">
-            <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> Universities
+            <GraduationCap className="h-3.5 w-3.5 text-primary-400" /> Universities
           </span>
           <span className="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-1.5">
-            <Users className="h-3.5 w-3.5 text-purple-400" /> Hackathons
+            <Users className="h-3.5 w-3.5 text-primary-300" /> Hackathons
           </span>
           <span className="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-1.5">
             <Shield className="h-3.5 w-3.5 text-emerald-400" /> Partners

@@ -95,7 +95,7 @@ export function OrgCard({ org, currentUid, onJoinClick = null }) {
             icon={<Lightbulb className="h-4 w-4" />}
             onClick={handleEnterIdeaBoard}
             isLoading={isOpening}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] w-full"
+            className="bg-primary-600 hover:bg-primary-700 text-white font-bold py-2.5 rounded-xl shadow-lg shadow-primary-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] w-full"
           >
             {isOpening ? loadingText : '🚀 Enter Idea Board'}
           </Button>

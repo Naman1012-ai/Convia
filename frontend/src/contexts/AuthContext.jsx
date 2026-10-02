@@ -2,6 +2,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { authService } from '../services/authService';
 import { dashboardService } from '../services/dashboardService';
+import { cleanupFcmOnLogout } from '../services/fcmService';
 
 export const AuthContext = createContext({
   user: null,
@@ -54,6 +55,11 @@ export function AuthProvider({ children }) {
       }
     } catch (e) {
       console.warn('[AuthContext] Error clearing dashboard cache on signOut:', e);
+    }
+    try {
+      await cleanupFcmOnLogout();
+    } catch (fcmErr) {
+      console.warn('[AuthContext] Error cleaning up FCM on signOut:', fcmErr);
     }
     await authService.signOut();
     setUser(null);

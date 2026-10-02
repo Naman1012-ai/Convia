@@ -199,7 +199,7 @@ export function ChatMessageItem({
     return (
       <div className="flex items-center justify-center my-3 px-4" role="status">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-xs font-medium text-slate-600 shadow-2xs">
-          <Info className="h-3.5 w-3.5 text-indigo-500 shrink-0" aria-hidden="true" />
+          <Info className="h-3.5 w-3.5 text-primary-500 shrink-0" aria-hidden="true" />
           <span className="font-normal text-slate-700">{message.content}</span>
           <span className="text-[11px] text-slate-400 font-mono" title={displayFullDate}>
             • {displayTime}
@@ -250,8 +250,8 @@ export function ChatMessageItem({
             e.stopPropagation();
             setIsMenuOpen(!isMenuOpen);
           }}
-          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
-            isMenuOpen ? 'ring-2 ring-indigo-500 text-indigo-600 bg-white shadow-sm' : ''
+          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer ${
+            isMenuOpen ? 'ring-2 ring-primary-500 text-primary-600 bg-white shadow-sm' : ''
           }`}
           title="More options"
           aria-label="More message options"
@@ -299,7 +299,7 @@ export function ChatMessageItem({
                   setIsMenuOpen(false);
                   setIsEditing(true);
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors cursor-pointer"
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-primary-600 transition-colors cursor-pointer"
                 role="menuitem"
               >
                 <Pencil className="h-3.5 w-3.5 text-slate-500" />
@@ -349,7 +349,7 @@ export function ChatMessageItem({
               onClick={() => setInspectReactionEmoji(emoji)}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
                 hasReacted
-                  ? 'bg-indigo-100 border border-indigo-300 text-indigo-800 font-bold shadow-2xs hover:bg-indigo-200/70'
+                  ? 'bg-primary-100 border border-primary-300 text-primary-800 font-bold shadow-2xs hover:bg-primary-200/70'
                   : 'bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 text-slate-700 font-medium'
               }`}
               title={`View who reacted with ${emoji} (${reactionData.count})`}
@@ -367,7 +367,7 @@ export function ChatMessageItem({
             <button
               type="button"
               onClick={() => setReactionPickerAnchor((prev) => (prev === 'chips' ? null : 'chips'))}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
               title="Add reaction"
               aria-label="Add emoji reaction"
             >
@@ -395,8 +395,8 @@ export function ChatMessageItem({
             onClick={() => onOpenThread(message)}
             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
               replyCount > 0
-                ? 'bg-indigo-50 text-indigo-700 font-bold border border-indigo-200/80 shadow-2xs hover:bg-indigo-100 hover:text-indigo-800'
-                : 'bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200/60 text-slate-600'
+                ? 'bg-primary-50 text-primary-700 font-bold border border-primary-200/80 shadow-2xs hover:bg-primary-100 hover:text-primary-800'
+                : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 border border-slate-200/60 text-slate-600'
             }`}
             title={replyCount > 0 ? `${formatReplyCountLabel(replyCount)} - Click to open discussion thread` : 'Reply in thread'}
             aria-label={`Reply in thread, ${formatReplyCountLabel(replyCount)}`}
@@ -422,7 +422,7 @@ export function ChatMessageItem({
       }}
       className={`group relative flex w-full my-1 px-2 sm:px-4 transition-all duration-200 ${
         isOwnMessage ? 'justify-end' : 'justify-start'
-      } ${isTargetHighlighted ? 'bg-indigo-50/70 ring-2 ring-indigo-500 rounded-2xl py-1' : ''}`}
+      } ${isTargetHighlighted ? 'bg-primary-50/70 ring-2 ring-primary-500 rounded-2xl py-1' : ''}`}
     >
       {isOwnMessage ? (
         /* OWN MESSAGE (RIGHT-ALIGNED) */
@@ -433,8 +433,8 @@ export function ChatMessageItem({
 
             {/* Main Bubble */}
             <div
-              className={`relative rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
-                isTargetHighlighted ? 'ring-2 ring-indigo-300' : ''
+              className={`relative rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
+                isTargetHighlighted ? 'ring-2 ring-primary-300' : ''
               }`}
             >
               {isEditing ? (
@@ -451,7 +451,7 @@ export function ChatMessageItem({
                       onKeyDown={handleEditKeyDown}
                       rows={2}
                       disabled={isSavingEdit}
-                      className="w-full rounded-xl border border-indigo-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 shadow-inner resize-none leading-relaxed"
+                      className="w-full rounded-xl border border-primary-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-300 shadow-inner resize-none leading-relaxed"
                       aria-label="Edit message content"
                     />
                     <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-slate-400">
@@ -463,7 +463,7 @@ export function ChatMessageItem({
                     <button
                       type="submit"
                       disabled={isSavingEdit || !editContent.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 disabled:bg-indigo-300 text-white font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-primary-700 hover:bg-primary-50 disabled:bg-primary-300 text-white font-bold text-xs transition-colors shadow-2xs"
                     >
                       {isSavingEdit ? (
                         <>
@@ -482,11 +482,11 @@ export function ChatMessageItem({
                         setEditContent(message.content || '');
                       }}
                       disabled={isSavingEdit}
-                      className="px-2.5 py-1.5 rounded-lg bg-indigo-700/60 hover:bg-indigo-700 text-indigo-100 font-medium text-xs transition-colors"
+                      className="px-2.5 py-1.5 rounded-lg bg-primary-700/60 hover:bg-primary-700 text-primary-100 font-medium text-xs transition-colors"
                     >
                       Cancel
                     </button>
-                    <span className="text-[10px] text-indigo-200/80 font-mono hidden sm:inline">
+                    <span className="text-[10px] text-primary-200/80 font-mono hidden sm:inline">
                       Enter to save, Esc to cancel
                     </span>
                   </div>
@@ -505,7 +505,7 @@ export function ChatMessageItem({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-indigo-200/90 font-mono select-none pt-0.5">
+                  <div className="flex items-center justify-end gap-1 text-[10px] text-primary-200/90 font-mono select-none pt-0.5">
                     <span title={displayFullDate}>{displayTime}</span>
                     {message.editedAt && (
                       <span

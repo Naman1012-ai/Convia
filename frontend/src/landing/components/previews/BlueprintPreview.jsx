@@ -7,7 +7,7 @@ export function BlueprintPreview() {
       {/* Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-2.5 rounded-xl bg-purple-600 text-white font-bold shadow-md shadow-purple-500/20">
+          <div className="p-2.5 rounded-xl bg-primary-600 text-white font-bold shadow-md shadow-primary-500/20">
             <Zap className="h-5 w-5" />
           </div>
           <div>
@@ -16,7 +16,7 @@ export function BlueprintPreview() {
           </div>
         </div>
 
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
           Architecture Locked
         </span>
       </div>
@@ -25,8 +25,8 @@ export function BlueprintPreview() {
       <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
         <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">Recommended Tech Stack:</span>
         <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
-          <span className="px-2.5 py-1 rounded bg-purple-950/80 text-purple-300 border border-purple-800">React 19</span>
-          <span className="px-2.5 py-1 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800">Tailwind v4</span>
+          <span className="px-2.5 py-1 rounded bg-primary-950/80 text-primary-300 border border-primary-800">React 19</span>
+          <span className="px-2.5 py-1 rounded bg-primary-900/60 text-primary-200 border border-primary-700">Tailwind v4</span>
           <span className="px-2.5 py-1 rounded bg-sky-950/80 text-sky-300 border border-sky-800">Firebase RTDB</span>
           <span className="px-2.5 py-1 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800">Vite Code Split</span>
         </div>
@@ -35,7 +35,7 @@ export function BlueprintPreview() {
       {/* Database Schema & Endpoints Snippet */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
         <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-purple-400 font-bold">
+          <div className="flex items-center gap-1.5 text-primary-400 font-bold">
             <Database className="h-3.5 w-3.5" />
             <span>RTDB Nodes (/ideas, /votes)</span>
           </div>
@@ -45,7 +45,7 @@ export function BlueprintPreview() {
         </div>
 
         <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-indigo-400 font-bold">
+          <div className="flex items-center gap-1.5 text-primary-300 font-bold">
             <Code2 className="h-3.5 w-3.5" />
             <span>6 Core Endpoints Defined</span>
           </div>

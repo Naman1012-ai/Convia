@@ -57,7 +57,7 @@ export function OrgMemberList({ onToast = () => {} }) {
                     👑 Owner
                   </Badge>
                 ) : isCaptain ? (
-                  <Badge variant="purple" className="font-bold flex items-center gap-1">
+                  <Badge variant="primary" className="font-bold flex items-center gap-1">
                     ⚡ Team Captain
                   </Badge>
                 ) : (

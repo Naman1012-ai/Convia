@@ -38,7 +38,7 @@ export function ChatMentionAutocomplete({
       aria-label="Member mention suggestions"
     >
       <div className="px-2 py-1 border-b border-slate-100 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-        <AtSign className="h-3 w-3 text-indigo-500" />
+        <AtSign className="h-3 w-3 text-primary-500" />
         <span>Mention Member</span>
       </div>
 
@@ -57,7 +57,7 @@ export function ChatMentionAutocomplete({
               onSelect(member);
             }}
             className={`w-full flex items-center justify-between p-2 rounded-xl text-left transition-colors cursor-pointer ${
-              isSelected ? 'bg-indigo-50 text-indigo-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
+              isSelected ? 'bg-primary-50 text-primary-900 font-semibold' : 'hover:bg-slate-50 text-slate-700'
             }`}
             role="option"
             aria-selected={isSelected}
@@ -70,7 +70,7 @@ export function ChatMentionAutocomplete({
                   className="h-6 w-6 rounded-full object-cover border border-slate-200 shrink-0"
                 />
               ) : (
-                <div className="h-6 w-6 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
+                <div className="h-6 w-6 rounded-full bg-primary-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -83,7 +83,7 @@ export function ChatMentionAutocomplete({
               </div>
             </div>
 
-            <span className="text-[10px] font-mono text-indigo-600 font-semibold shrink-0">
+            <span className="text-[10px] font-mono text-primary-600 font-semibold shrink-0">
               Tab ↵
             </span>
           </button>

@@ -67,9 +67,9 @@ export function ChatThreadDrawer({
       const el = document.getElementById(`reply_${targetReplyId}`);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2', 'rounded-2xl');
+        el.classList.add('ring-2', 'ring-primary-500', 'ring-offset-2', 'rounded-2xl');
         setTimeout(() => {
-          el.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2', 'rounded-2xl');
+          el.classList.remove('ring-2', 'ring-primary-500', 'ring-offset-2', 'rounded-2xl');
         }, 3500);
       }
     }, 250);
@@ -439,7 +439,7 @@ export function ChatThreadDrawer({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-200 bg-slate-50/80 backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-indigo-600" />
+          <MessageSquare className="h-5 w-5 text-primary-600" />
           <div>
             <h2 className="text-sm font-black text-slate-900">Thread Discussion</h2>
             <p className="text-[11px] text-slate-500 font-medium">
@@ -450,7 +450,7 @@ export function ChatThreadDrawer({
 
         <button
           onClick={onClose}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
           aria-label="Close thread"
         >
           <X className="h-4 w-4" />
@@ -463,7 +463,7 @@ export function ChatThreadDrawer({
         <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+              <div className="h-6 w-6 rounded-full bg-primary-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
                 {(parentDisplayName || 'M').charAt(0).toUpperCase()}
               </div>
               <span className="text-xs font-bold text-slate-900 truncate">
@@ -523,7 +523,7 @@ export function ChatThreadDrawer({
         {/* Loading Spinner */}
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 text-indigo-600 animate-spin" />
+            <Loader2 className="h-5 w-5 text-primary-600 animate-spin" />
           </div>
         ) : replies.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-400 space-y-1">
@@ -580,9 +580,9 @@ export function ChatThreadDrawer({
                                 e.stopPropagation();
                                 setActiveMenuReplyId(activeMenuReplyId === reply.replyId ? null : reply.replyId);
                               }}
-                              className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
+                              className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer ${
                                 activeMenuReplyId === reply.replyId
-                                  ? 'flex ring-2 ring-indigo-500 text-indigo-600 bg-white shadow-sm'
+                                  ? 'flex ring-2 ring-primary-500 text-primary-600 bg-white shadow-sm'
                                   : 'hidden sm:group-hover:flex sm:group-focus-within:flex max-sm:flex'
                               }`}
                               title="More options"
@@ -627,7 +627,7 @@ export function ChatThreadDrawer({
                                       setEditingReplyId(reply.replyId);
                                       setEditContent(reply.content);
                                     }}
-                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors cursor-pointer"
+                                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-primary-600 transition-colors cursor-pointer"
                                     role="menuitem"
                                   >
                                     <Pencil className="h-3.5 w-3.5 text-slate-500" />
@@ -658,20 +658,20 @@ export function ChatThreadDrawer({
                         )}
 
                         {/* Main Bubble */}
-                        <div className="rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs p-3 space-y-1 min-w-0">
+                        <div className="rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs p-3 space-y-1 min-w-0">
                         {editingReplyId === reply.replyId ? (
                           <div className="space-y-2 min-w-[220px]">
                             <textarea
                               value={editContent}
                               onChange={(e) => setEditContent(e.target.value.substring(0, 2000))}
                               rows={2}
-                              className="w-full rounded-lg border border-indigo-300 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
+                              className="w-full rounded-lg border border-primary-300 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
                             />
                             <div className="flex items-center gap-1.5 text-xs">
                               <button
                                 onClick={() => handleSaveEdit(reply.replyId)}
                                 disabled={isSavingEdit || !editContent.trim()}
-                                className="px-2.5 py-1 rounded bg-white text-indigo-700 text-[11px] font-bold hover:bg-indigo-50 disabled:opacity-50"
+                                className="px-2.5 py-1 rounded bg-white text-primary-700 text-[11px] font-bold hover:bg-primary-50 disabled:opacity-50"
                               >
                                 {isSavingEdit ? 'Saving...' : 'Save'}
                               </button>
@@ -680,7 +680,7 @@ export function ChatThreadDrawer({
                                   setEditingReplyId(null);
                                   setEditContent('');
                                 }}
-                                className="px-2.5 py-1 rounded bg-indigo-700 text-white text-[11px] font-semibold hover:bg-indigo-800"
+                                className="px-2.5 py-1 rounded bg-primary-700 text-white text-[11px] font-semibold hover:bg-primary-800"
                               >
                                 Cancel
                               </button>
@@ -691,7 +691,7 @@ export function ChatThreadDrawer({
                             <div className="text-xs text-white leading-relaxed font-normal whitespace-pre-wrap break-words">
                               {renderFormattedContent(reply.content, members, currentUserId, true)}
                             </div>
-                            <div className="flex items-center justify-end gap-1 text-[10px] text-indigo-200/90 font-mono select-none pt-0.5">
+                            <div className="flex items-center justify-end gap-1 text-[10px] text-primary-200/90 font-mono select-none pt-0.5">
                               <span>{formatMessageTime(reply.createdAt)}</span>
                               {reply.editedAt && (
                                 <span className="italic">(edited)</span>
@@ -732,9 +732,9 @@ export function ChatThreadDrawer({
                                   e.stopPropagation();
                                   setActiveMenuReplyId(activeMenuReplyId === reply.replyId ? null : reply.replyId);
                                 }}
-                                className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer ${
+                                className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer ${
                                   activeMenuReplyId === reply.replyId
-                                    ? 'flex ring-2 ring-indigo-500 text-indigo-600 bg-white shadow-sm'
+                                    ? 'flex ring-2 ring-primary-500 text-primary-600 bg-white shadow-sm'
                                     : 'hidden sm:group-hover:flex sm:group-focus-within:flex max-sm:flex'
                                 }`}
                                 title="More options"
@@ -779,7 +779,7 @@ export function ChatThreadDrawer({
                                         setEditingReplyId(reply.replyId);
                                         setEditContent(reply.content);
                                       }}
-                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-indigo-600 transition-colors cursor-pointer"
+                                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-primary-600 transition-colors cursor-pointer"
                                       role="menuitem"
                                     >
                                       <Pencil className="h-3.5 w-3.5 text-slate-500" />
@@ -816,13 +816,13 @@ export function ChatThreadDrawer({
                                   value={editContent}
                                   onChange={(e) => setEditContent(e.target.value.substring(0, 2000))}
                                   rows={2}
-                                  className="w-full rounded-lg border-2 border-indigo-500 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
+                                  className="w-full rounded-lg border-2 border-primary-500 bg-white p-2 text-xs text-slate-900 focus:outline-none resize-none"
                                 />
                                 <div className="flex items-center gap-1.5 text-xs">
                                   <button
                                     onClick={() => handleSaveEdit(reply.replyId)}
                                     disabled={isSavingEdit || !editContent.trim()}
-                                    className="px-2.5 py-1 rounded bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-700 disabled:opacity-50"
+                                    className="px-2.5 py-1 rounded bg-primary-600 text-white text-[11px] font-bold hover:bg-primary-700 disabled:opacity-50"
                                   >
                                     {isSavingEdit ? 'Saving...' : 'Save'}
                                   </button>
@@ -921,14 +921,14 @@ export function ChatThreadDrawer({
               placeholder={`Reply to ${parentDisplayName || 'thread'}... (Type @ to mention)`}
               rows={1}
               disabled={isSending}
-              className="w-full rounded-xl border border-slate-300 bg-slate-50/80 p-2.5 pr-10 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none transition-all"
+              className="w-full rounded-xl border border-slate-300 bg-slate-50/80 p-2.5 pr-10 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 resize-none transition-all"
               aria-label="Reply to thread"
             />
 
             <button
               type="submit"
               disabled={isSending || !replyText.trim()}
-              className="absolute right-2 top-2 p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 text-white disabled:text-slate-400 transition-colors shadow-2xs"
+              className="absolute right-2 top-2 p-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 text-white disabled:text-slate-400 transition-colors shadow-2xs"
               aria-label="Send reply"
             >
               {isSending ? (

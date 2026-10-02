@@ -177,7 +177,7 @@ export function Sidebar({ status = 'ideation', isMobileOpen = false, onCloseMobi
                   cn(
                     'flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-sm font-semibold'
+                      ? 'bg-primary-600 text-white shadow-sm font-semibold'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   )
                 }

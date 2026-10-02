@@ -114,7 +114,7 @@ export function ChatReactionParticipantsModal({
         {/* Modal Header */}
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
           <div className="flex items-center gap-2">
-            <Smile className="h-4 w-4 text-indigo-600" />
+            <Smile className="h-4 w-4 text-primary-600" />
             <h3 id="reaction-modal-title" className="text-sm font-bold text-slate-800">
               Reactions ({totalCount})
             </h3>
@@ -122,7 +122,7 @@ export function ChatReactionParticipantsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label="Close reactions view"
           >
             <X className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function ChatReactionParticipantsModal({
               onClick={() => setSelectedTab('all')}
               className={`px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all ${
                 selectedTab === 'all'
-                  ? 'bg-indigo-600 text-white shadow-xs'
+                  ? 'bg-primary-600 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
               }`}
             >
@@ -151,7 +151,7 @@ export function ChatReactionParticipantsModal({
                 onClick={() => setSelectedTab(tab.emoji)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 transition-all ${
                   selectedTab === tab.emoji
-                    ? 'bg-indigo-600 text-white shadow-xs'
+                    ? 'bg-primary-600 text-white shadow-xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200/70'
                 }`}
               >
@@ -194,7 +194,7 @@ export function ChatReactionParticipantsModal({
                         className="h-7 w-7 rounded-full object-cover border border-slate-200 shrink-0"
                       />
                     ) : (
-                      <div className="h-7 w-7 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xs font-bold shrink-0">
+                      <div className="h-7 w-7 rounded-full bg-primary-50 text-primary-600 border border-primary-100 flex items-center justify-center text-xs font-bold shrink-0">
                         {participant.name.charAt(0).toUpperCase() || <User className="h-3.5 w-3.5" />}
                       </div>
                     )}
@@ -204,7 +204,7 @@ export function ChatReactionParticipantsModal({
                       <div className="flex items-center gap-1.5">
                         <span
                           className={`text-xs truncate ${
-                            isSelf ? 'font-bold text-indigo-700' : 'font-medium text-slate-800'
+                            isSelf ? 'font-bold text-primary-700' : 'font-medium text-slate-800'
                           }`}
                         >
                           {participant.name}

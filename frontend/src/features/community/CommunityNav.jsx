@@ -54,7 +54,7 @@ export function CommunityNav({
       icon: MessageCircle,
       count: discussionCounts[COMMUNITY_POST_TYPES.DISCUSSION] ?? 0,
       description: 'General conversations & thoughts',
-      color: 'text-indigo-500',
+      color: 'text-primary-500',
     },
     {
       id: COMMUNITY_POST_TYPES.COLLABORATION,

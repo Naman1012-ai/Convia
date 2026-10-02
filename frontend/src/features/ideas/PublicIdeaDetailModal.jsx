@@ -118,8 +118,8 @@ export function PublicIdeaDetailModal({
               <div className="flex items-center gap-2.5">
                 <Avatar name={isAuthor ? user.displayName || user.email : authorDisplayName} size="sm" />
                 {isAuthor ? (
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <UserCheck className="h-3 w-3 text-indigo-600" /> Created by You
+                  <span className="text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <UserCheck className="h-3 w-3 text-primary-600" /> Created by You
                   </span>
                 ) : (
                   <span className="text-sm font-semibold text-slate-800">{authorDisplayName}</span>
@@ -133,7 +133,7 @@ export function PublicIdeaDetailModal({
               <Button
                 variant="secondary"
                 size="md"
-                icon={<FolderPlus className="h-4 w-4 text-indigo-600" />}
+                icon={<FolderPlus className="h-4 w-4 text-primary-600" />}
                 onClick={() => setIsImportModalOpen(true)}
                 disabled={userWorkspaces.length === 0}
                 title={

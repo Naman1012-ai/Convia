@@ -132,8 +132,8 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
       return {
         icon: Bot,
         label: 'System AI',
-        color: 'bg-purple-950/80 text-purple-300 border border-purple-800',
-        iconColor: 'text-purple-400',
+        color: 'bg-primary-950/80 text-primary-300 border border-primary-800',
+        iconColor: 'text-primary-400',
       };
     }
 
@@ -149,8 +149,8 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
         return {
           icon: Sparkles,
           label: 'Blueprint',
-          color: 'bg-indigo-950/70 text-indigo-300 border border-indigo-800',
-          iconColor: 'text-indigo-400',
+          color: 'bg-primary-950/70 text-primary-300 border border-primary-800',
+          iconColor: 'text-primary-400',
         };
       case ACTIVITY_CATEGORIES.SUGGESTION:
         return {
@@ -210,7 +210,7 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
             onClick={() => setFilterCategory('ALL')}
             className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
               filterCategory === 'ALL'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-primary-600 text-white shadow-sm'
                 : 'bg-slate-800/80 text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
@@ -236,7 +236,7 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
             onClick={() => setFilterCategory('BLUEPRINTS')}
             className={`px-3 py-1 rounded-xl text-xs font-bold transition-all ${
               filterCategory === 'BLUEPRINTS'
-                ? 'bg-purple-600 text-white shadow-sm'
+                ? 'bg-primary-600 text-white shadow-sm'
                 : 'bg-slate-800/80 text-slate-400 hover:bg-slate-800 hover:text-white'
             }`}
           >
@@ -307,7 +307,7 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
                         {isSystem ? 'Convia AI Engine' : act.actorName}
                       </span>
                       {isSystem && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-purple-950 text-purple-300 border border-purple-800">
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-primary-950 text-primary-300 border border-primary-800">
                           AI System
                         </span>
                       )}
@@ -331,7 +331,7 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
                     <div className="pt-1">
                       <Link
                         to={act.actionUrl}
-                        className="inline-flex items-center gap-1 text-[11px] font-mono text-indigo-400 hover:text-indigo-300 transition-colors font-bold"
+                        className="inline-flex items-center gap-1 text-[11px] font-mono text-primary-400 hover:text-primary-300 transition-colors font-bold"
                       >
                         <span>View {act.resourceType || 'Resource'}</span>
                         <ExternalLink className="h-3 w-3" />

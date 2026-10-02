@@ -103,7 +103,7 @@ export function ChannelSettingsModal({
         {/* Channel Details Overview */}
         <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-100 text-indigo-700">
+            <div className="p-2 rounded-lg bg-primary-100 text-primary-700">
               {isGeneral ? <Hash className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
             </div>
             <div>
@@ -141,13 +141,13 @@ export function ChannelSettingsModal({
               onChange={(e) => setTopic(e.target.value)}
               placeholder="What is this channel about?"
               maxLength={150}
-              className="flex-1 px-3.5 py-2 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:opacity-60 transition-all shadow-2xs"
+              className="flex-1 px-3.5 py-2 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-60 transition-all shadow-2xs"
             />
             {isLeader && (
               <button
                 type="submit"
                 disabled={isSavingTopic}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 rounded-xl transition-all"
               >
                 {isSavingTopic ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />

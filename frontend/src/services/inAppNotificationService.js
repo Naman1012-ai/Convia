@@ -1,6 +1,7 @@
 import { ref, push, set, query, orderByKey, limitToLast } from 'firebase/database';
 import { rtdb } from '../config/firebase';
 import { rtdbService } from './rtdbService';
+import { apiClient } from './apiClient';
 import {
   getUserNotificationsRootPath,
   getUserNotificationsPath,
@@ -236,6 +237,15 @@ export const inAppNotificationService = {
 
       const notifRef = ref(rtdb, getUserNotificationsPath(recipientUid, notifId));
       await set(notifRef, canonical);
+
+      // Asynchronously trigger server-side FCM push delivery (non-blocking)
+      apiClient.post('/api/notifications/fcm/send-push', {
+        recipientUids: [recipientUid],
+        notification: canonical,
+      }).catch((pushErr) => {
+        console.warn(`[inAppNotificationService] FCM push delivery skipped or failed for ${recipientUid}:`, pushErr.message);
+      });
+
       return canonical;
     } catch (err) {
       console.warn(`[inAppNotificationService] createNotification to ${recipientUid} failed:`, err.message);
@@ -286,6 +296,17 @@ export const inAppNotificationService = {
         } else if (res.status === 'rejected') {
           console.warn('[inAppNotificationService] Single recipient write error:', res.reason?.message);
         }
+      }
+
+      // Asynchronously trigger server-side FCM push delivery for all recipients (non-blocking)
+      if (createdList.length > 0) {
+        const sampleCanonical = createdList[0];
+        apiClient.post('/api/notifications/fcm/send-push', {
+          recipientUids: validUids,
+          notification: sampleCanonical,
+        }).catch((pushErr) => {
+          console.warn('[inAppNotificationService] Bulk FCM push delivery skipped or failed:', pushErr.message);
+        });
       }
 
       return createdList;

@@ -138,18 +138,18 @@ export function BlueprintGenerationProgress({
     const Icon = currentStage.icon;
 
     return (
-      <Card className="p-8 bg-slate-900 border border-purple-800 shadow-2xl space-y-6 animate-fadeIn">
+      <Card className="p-8 bg-slate-900 border border-primary-800 shadow-2xl space-y-6 animate-fadeIn">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-950 border border-purple-700 text-purple-300 animate-pulse">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-950 border border-primary-700 text-primary-300 animate-pulse">
               <Icon className="h-6 w-6" />
             </div>
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase text-purple-400">
+                <span className="text-[10px] font-mono font-bold uppercase text-primary-400">
                   Stage {activeIndex + 1} of {BLUEPRINT_GENERATION_STAGES.length}
                 </span>
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-ping" />
+                <span className="h-1.5 w-1.5 rounded-full bg-primary-400 animate-ping" />
               </div>
               <h3 className="text-base font-black text-white">
                 {currentStage.label}
@@ -157,7 +157,7 @@ export function BlueprintGenerationProgress({
             </div>
           </div>
 
-          <div className="text-right font-mono text-xs text-purple-300">
+          <div className="text-right font-mono text-xs text-primary-300">
             <span>Executing Generation Stage...</span>
           </div>
         </div>
@@ -166,7 +166,7 @@ export function BlueprintGenerationProgress({
         <div className="space-y-2">
           <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5">
             <div
-              className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+              className="h-full bg-gradient-to-r from-primary-600 to-primary-500 rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${Math.min(100, Math.max(15, ((activeIndex + 1) / BLUEPRINT_GENERATION_STAGES.length) * 100))}%`,
               }}
@@ -181,14 +181,14 @@ export function BlueprintGenerationProgress({
                   idx < activeIndex
                     ? 'bg-emerald-950/30 text-emerald-300 border-emerald-800/60 font-bold'
                     : idx === activeIndex
-                    ? 'bg-purple-950 text-purple-200 border-purple-700 font-bold shadow-md'
+                    ? 'bg-primary-950 text-primary-200 border-primary-700 font-bold shadow-md'
                     : 'bg-slate-950/40 text-slate-500 border-slate-900'
                 }`}
               >
                 {idx < activeIndex ? (
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 ) : idx === activeIndex ? (
-                  <span className="h-2 w-2 rounded-full bg-purple-400 animate-ping shrink-0" />
+                  <span className="h-2 w-2 rounded-full bg-primary-400 animate-ping shrink-0" />
                 ) : (
                   <span className="h-2 w-2 rounded-full bg-slate-700 shrink-0" />
                 )}

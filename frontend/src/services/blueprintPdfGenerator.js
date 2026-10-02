@@ -73,8 +73,8 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
   // Colors
   const primaryDark = [15, 23, 42]; // #0F172A (Slate 900)
   const secondaryDark = [30, 41, 59]; // #1E293B (Slate 800)
-  const indigoPrimary = [79, 70, 229]; // #4F46E5 (Indigo 600)
-  const purpleDark = [30, 27, 75]; // #1E1B4B (Indigo 950)
+  const indigoPrimary = [124, 58, 237]; // #7C3AED (Primary Lavender 600)
+  const purpleDark = [46, 16, 101]; // #2E1065 (Primary Lavender 950)
   const textDark = [30, 41, 59]; // #1E293B (Slate 800)
   const textMuted = [100, 116, 139]; // #64748B (Slate 500)
   const emeraldDark = [6, 78, 59]; // #064E3B (Emerald 900)

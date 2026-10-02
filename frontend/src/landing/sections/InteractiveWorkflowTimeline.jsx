@@ -90,7 +90,7 @@ export function InteractiveWorkflowTimeline() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Interactive Process Navigator</span>
           </div>
@@ -109,7 +109,7 @@ export function InteractiveWorkflowTimeline() {
           {/* Connecting Line */}
           <div className="absolute top-1/2 left-4 right-4 h-1 bg-slate-800 -translate-y-1/2 -z-10 rounded-full" />
           <div
-            className="absolute top-1/2 left-4 h-1 bg-gradient-to-r from-purple-500 to-indigo-500 -translate-y-1/2 -z-10 rounded-full transition-all duration-300"
+            className="absolute top-1/2 left-4 h-1 bg-gradient-to-r from-primary-600 to-primary-400 -translate-y-1/2 -z-10 rounded-full transition-all duration-300"
             style={{ width: `${(activeIdx / (TIMELINE_STEPS.length - 1)) * 95}%` }}
           />
 
@@ -128,9 +128,9 @@ export function InteractiveWorkflowTimeline() {
                   <div
                     className={`h-11 w-11 rounded-2xl flex items-center justify-center border font-bold text-xs shadow-lg transition-all duration-200 ${
                       isActive
-                        ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 border-purple-400 text-white shadow-purple-500/40 ring-4 ring-purple-500/20'
+                        ? 'bg-gradient-to-tr from-primary-600 to-primary-500 border-primary-400 text-white shadow-primary-500/40 ring-4 ring-primary-500/20'
                         : idx < activeIdx
-                        ? 'bg-slate-900 border-purple-500/40 text-purple-400'
+                        ? 'bg-slate-900 border-primary-500/40 text-primary-400'
                         : 'bg-slate-950 border-slate-800 text-slate-500 group-hover:border-slate-700 group-hover:text-slate-300'
                     }`}
                   >
@@ -160,7 +160,7 @@ export function InteractiveWorkflowTimeline() {
                 onClick={() => setActiveIdx(idx)}
                 className={`p-3 rounded-2xl border text-center flex flex-col items-center gap-1.5 transition-all ${
                   isActive
-                    ? 'bg-purple-600/20 border-purple-500/50 text-white font-bold'
+                    ? 'bg-primary-600/20 border-primary-500/50 text-white font-bold'
                     : 'bg-slate-900/60 border-slate-800/80 text-slate-400'
                 }`}
               >
@@ -172,14 +172,14 @@ export function InteractiveWorkflowTimeline() {
         </div>
 
         {/* Selected Step Detail Card */}
-        <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-purple-500/40 shadow-2xl shadow-purple-950/40 max-w-3xl mx-auto space-y-4">
+        <div className="p-8 sm:p-10 rounded-3xl bg-slate-900/90 border border-primary-500/40 shadow-2xl shadow-primary-950/40 max-w-3xl mx-auto space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg">
+              <div className="p-3 rounded-2xl bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-lg">
                 <ActiveIcon className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-xs font-mono font-extrabold text-purple-400">
+                <span className="text-xs font-mono font-extrabold text-primary-400">
                   STEP 0{activeStep.num} OF 09
                 </span>
                 <h3 className="text-2xl font-extrabold text-white">{activeStep.title}</h3>
@@ -206,7 +206,7 @@ export function InteractiveWorkflowTimeline() {
             <button
               disabled={activeIdx === TIMELINE_STEPS.length - 1}
               onClick={() => setActiveIdx((prev) => Math.min(TIMELINE_STEPS.length - 1, prev + 1))}
-              className="text-purple-400 font-bold hover:text-purple-300 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              className="text-primary-400 font-bold hover:text-primary-300 disabled:opacity-30 disabled:pointer-events-none transition-colors"
             >
               Next Step &rarr;
             </button>

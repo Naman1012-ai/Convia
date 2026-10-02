@@ -50,7 +50,7 @@ export function PublicIdeasPreview() {
       {/* Mock Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <div className="p-2 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20">
             <Globe className="h-4 w-4" />
           </div>
           <div>
@@ -69,12 +69,12 @@ export function PublicIdeasPreview() {
         {ideas.map((idea) => (
           <div
             key={idea.id}
-            className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-purple-500/40 transition-all duration-200 space-y-3"
+            className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-primary-500/40 transition-all duration-200 space-y-3"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold text-purple-400 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
+                  <span className="text-[10px] font-mono font-bold text-primary-400 px-2 py-0.5 rounded bg-primary-500/10 border border-primary-500/20">
                     {idea.category}
                   </span>
                   {idea.trending && (
@@ -91,8 +91,8 @@ export function PublicIdeasPreview() {
                 onClick={() => handleVote(idea.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all ${
                   idea.hasVoted
-                    ? 'bg-purple-600 text-white border-purple-500 shadow-md shadow-purple-500/30'
-                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-purple-500/40 hover:text-white'
+                    ? 'bg-primary-600 text-white border-primary-500 shadow-md shadow-primary-500/30'
+                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-primary-500/40 hover:text-white'
                 }`}
               >
                 <ThumbsUp className="h-3.5 w-3.5" />

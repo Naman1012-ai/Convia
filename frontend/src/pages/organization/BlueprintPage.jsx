@@ -863,7 +863,7 @@ export default function BlueprintPage() {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center space-y-6">
         <EmptyState
-          icon={<Sparkles className="h-8 w-8 text-purple-400" />}
+          icon={<Sparkles className="h-8 w-8 text-primary-500" />}
           title="No MVP Idea Selected Yet"
           description="A project proposal must be voted on and marked as the Workspace MVP before generating an AI Blueprint."
           action={
@@ -982,9 +982,9 @@ export default function BlueprintPage() {
 
       {/* 3. NOT GENERATED YET PLACEHOLDER CARD */}
       {!isBlueprintCompleted && !isGenerating && !isBlueprintFailed && !isBlueprintStale && (
-        <Card className="p-8 bg-slate-900 border border-purple-900/60 shadow-xl space-y-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-950 text-purple-400 border border-purple-800 shadow-inner">
-            <Wand2 className="h-8 w-8 text-purple-400" />
+        <Card className="p-8 bg-slate-900 border border-primary-900/60 shadow-xl space-y-6 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-950 text-primary-400 border border-primary-800 shadow-inner">
+            <Wand2 className="h-8 w-8 text-primary-400" />
           </div>
 
           <div className="space-y-2 max-w-lg mx-auto">
@@ -997,9 +997,9 @@ export default function BlueprintPage() {
           <Button
             variant="primary"
             size="lg"
-            icon={<Sparkles className="h-5 w-5 text-purple-200" />}
+            icon={<Sparkles className="h-5 w-5 text-primary-200" />}
             onClick={handleGenerateBlueprint}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-sm shadow-lg px-8 mx-auto"
+            className="bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm shadow-lg px-8 mx-auto"
           >
             Generate AI Blueprint
           </Button>

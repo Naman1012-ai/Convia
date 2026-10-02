@@ -35,7 +35,7 @@ export function FaqSection() {
     <section id="faq" className="py-24 bg-slate-950/90 border-t border-slate-800/80 relative">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <HelpCircle className="h-3.5 w-3.5" />
             <span>Got Questions?</span>
           </div>
@@ -63,7 +63,7 @@ export function FaqSection() {
                   <h3 className="text-base sm:text-lg font-bold text-white leading-snug">
                     {faq.q}
                   </h3>
-                  <div className={`p-1.5 rounded-lg bg-slate-800 text-slate-300 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 bg-purple-600/20 text-purple-300' : ''}`}>
+                  <div className={`p-1.5 rounded-lg bg-slate-800 text-slate-300 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 bg-primary-600/20 text-primary-300' : ''}`}>
                     <ChevronDown className="h-4 w-4" />
                   </div>
                 </button>

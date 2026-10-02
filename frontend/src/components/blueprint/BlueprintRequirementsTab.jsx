@@ -60,7 +60,7 @@ export function BlueprintRequirementsTab({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <FileText className="h-4 w-4 text-purple-400" /> Canonical Project Requirements ({reqsList.length})
+              <FileText className="h-4 w-4 text-primary-400" /> Canonical Project Requirements ({reqsList.length})
             </h3>
             <p className="text-xs text-slate-400">Functional, technical, security, and performance specifications with full traceability</p>
           </div>
@@ -72,7 +72,7 @@ export function BlueprintRequirementsTab({
               placeholder="Filter requirements..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-medium"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary-500 font-medium"
             />
           </div>
         </div>
@@ -87,7 +87,7 @@ export function BlueprintRequirementsTab({
                 onClick={() => setPriorityFilter(p)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono transition-all whitespace-nowrap ${
                   priorityFilter === p
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
                 }`}
               >
@@ -104,7 +104,7 @@ export function BlueprintRequirementsTab({
                 onClick={() => setTypeFilter(t)}
                 className={`px-2.5 py-1 rounded-lg text-[11px] font-bold font-mono transition-all whitespace-nowrap uppercase ${
                   typeFilter === t
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
                 }`}
               >
@@ -133,7 +133,7 @@ export function BlueprintRequirementsTab({
             return (
               <Card
                 key={reqId}
-                className="p-5 bg-slate-900 border border-slate-800 hover:border-purple-600/60 transition-all space-y-3.5 shadow-md group"
+                className="p-5 bg-slate-900 border border-slate-800 hover:border-primary-600/60 transition-all space-y-3.5 shadow-md group"
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -175,7 +175,7 @@ export function BlueprintRequirementsTab({
                         },
                       })
                     }
-                    className="flex items-center gap-1 text-purple-400 hover:text-purple-300 text-xs font-mono font-bold transition-colors opacity-90 group-hover:opacity-100"
+                    className="flex items-center gap-1 text-primary-400 hover:text-primary-300 text-xs font-mono font-bold transition-colors opacity-90 group-hover:opacity-100"
                   >
                     <span>Inspect Traceability</span>
                     <ArrowRight className="h-3.5 w-3.5" />
@@ -183,7 +183,7 @@ export function BlueprintRequirementsTab({
                 </div>
 
                 <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-white group-hover:text-purple-200 transition-colors">
+                  <h4 className="text-sm font-bold text-white group-hover:text-primary-200 transition-colors">
                     {safeText(req.title)}
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed font-medium">
@@ -199,7 +199,7 @@ export function BlueprintRequirementsTab({
                     <span
                       key={f.id}
                       onClick={() => onInspectEntity({ id: f.id, type: 'feature', title: safeText(f.name || f.title), description: safeText(f.description), priority: safeText(f.priority), raw: f })}
-                      className="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800 font-bold hover:bg-purple-900 cursor-pointer flex items-center gap-1"
+                      className="px-2 py-0.5 rounded bg-primary-950/80 text-primary-300 border border-primary-800 font-bold hover:bg-primary-900 cursor-pointer flex items-center gap-1"
                     >
                       <Workflow className="h-3 w-3" />
                       <span>{f.id}</span>

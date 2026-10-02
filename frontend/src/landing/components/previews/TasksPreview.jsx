@@ -23,7 +23,7 @@ export function TasksPreview() {
           </div>
         </div>
 
-        <span className="px-3 py-1 rounded-full text-xs font-mono font-extrabold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+        <span className="px-3 py-1 rounded-full text-xs font-mono font-extrabold bg-primary-500/20 text-primary-300 border border-primary-500/30">
           Sprint Velocity: High
         </span>
       </div>
@@ -41,7 +41,7 @@ export function TasksPreview() {
 
               {colTasks.map((t) => (
                 <div key={t.id} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1.5 text-xs">
-                  <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-primary-500/10 text-primary-300 border border-primary-500/20">
                     {t.tag}
                   </span>
                   <p className="font-bold text-white text-[11px] leading-tight">{t.title}</p>

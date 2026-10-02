@@ -122,7 +122,7 @@ export function ChatSearchModal({
       >
         {/* Search Input Bar */}
         <div className="p-3 border-b border-slate-100 flex items-center gap-2.5 bg-slate-50/80">
-          <Search className="h-5 w-5 text-indigo-600 shrink-0" />
+          <Search className="h-5 w-5 text-primary-600 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -154,7 +154,7 @@ export function ChatSearchModal({
         <div className="flex-1 overflow-y-auto p-2 space-y-1 divide-y divide-slate-50">
           {isSearching ? (
             <div className="py-12 flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
-              <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+              <Loader2 className="h-6 w-6 text-primary-600 animate-spin" />
               <span>Searching messages...</span>
             </div>
           ) : queryText.trim() && results.length === 0 ? (
@@ -182,9 +182,9 @@ export function ChatSearchModal({
                     onSelectResult(result);
                     onClose();
                   }}
-                  className="w-full text-left p-3 rounded-xl hover:bg-indigo-50/50 transition-colors flex items-start gap-3 group cursor-pointer"
+                  className="w-full text-left p-3 rounded-xl hover:bg-primary-50/50 transition-colors flex items-start gap-3 group cursor-pointer"
                 >
-                  <div className="h-7 w-7 rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
+                  <div className="h-7 w-7 rounded-full bg-primary-50 text-primary-600 border border-primary-100 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
                     {(displayName || 'M').charAt(0).toUpperCase()}
                   </div>
 
@@ -203,7 +203,7 @@ export function ChatSearchModal({
                     </p>
                   </div>
 
-                  <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-600 transition-colors shrink-0 self-center" />
+                  <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary-600 transition-colors shrink-0 self-center" />
                 </button>
               );
             })

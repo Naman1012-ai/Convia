@@ -8,7 +8,7 @@ const SUCCESS_STORIES = [
     project: 'AI Autonomous Code Synthesizer',
     award: '1st Place Grand Champion',
     highlight: 'Went from 5 raw ideas to shipped MVP in 14 hours.',
-    gradient: 'from-purple-950/80 via-slate-900 to-indigo-950/80 border-purple-500/40',
+    gradient: 'from-primary-950/80 via-slate-900 to-primary-900/60 border-primary-500/40',
   },
   {
     team: 'Quantum Builders',
@@ -16,7 +16,7 @@ const SUCCESS_STORIES = [
     project: 'Zero-Knowledge Credential Vault',
     award: 'Best Privacy Hack',
     highlight: 'Generated database schema & 8 endpoints in 1.4 seconds.',
-    gradient: 'from-indigo-950/80 via-slate-900 to-slate-950 border-indigo-500/40',
+    gradient: 'from-primary-950/80 via-slate-900 to-slate-950 border-primary-500/40',
   },
   {
     team: 'DevLabs Open Source',
@@ -24,7 +24,7 @@ const SUCCESS_STORIES = [
     project: 'Distributed Multi-Party Ledger',
     award: 'Best Developer Tool',
     highlight: 'Achieved 100% team upvote consensus in 10 minutes.',
-    gradient: 'from-slate-950 via-slate-900 to-purple-950/80 border-slate-700',
+    gradient: 'from-slate-950 via-slate-900 to-primary-950/80 border-slate-700',
   },
 ];
 
@@ -33,7 +33,7 @@ export function SuccessStoriesSection() {
     <section className="py-24 bg-slate-950 border-b border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Hackathon Track Record
           </span>
 
@@ -62,7 +62,7 @@ export function SuccessStoriesSection() {
               </div>
 
               <div>
-                <span className="text-xs font-mono font-bold text-purple-300 uppercase tracking-wide">
+                <span className="text-xs font-mono font-bold text-primary-300 uppercase tracking-wide">
                   {story.team}
                 </span>
                 <h3 className="text-xl font-extrabold text-white mt-1 leading-snug">

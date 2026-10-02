@@ -18,7 +18,7 @@ export function LandingFooter() {
               <img
                 src="/convia-logo.png"
                 alt="Convia Logo"
-                className="h-9 w-9 rounded-xl object-contain shadow-md shadow-purple-500/20"
+                className="h-9 w-9 rounded-xl object-contain shadow-md shadow-primary-500/20"
               />
               <span className="text-xl font-extrabold tracking-tight text-white">
                 Convia
@@ -35,7 +35,7 @@ export function LandingFooter() {
                 href="https://github.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-purple-500/40 transition-all"
+                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
                 aria-label="GitHub Repository"
               >
                 <Github className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function LandingFooter() {
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-purple-500/40 transition-all"
+                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
                 aria-label="Twitter Profile"
               >
                 <Twitter className="h-4 w-4" />
@@ -53,7 +53,7 @@ export function LandingFooter() {
                 href="https://linkedin.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-purple-500/40 transition-all"
+                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
                 aria-label="LinkedIn Profile"
               >
                 <Linkedin className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function LandingFooter() {
           </div>
 
           <div className="flex items-center gap-4 font-mono text-[11px]">
-            <span className="px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-purple-300">
+            <span className="px-2.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-primary-300">
               Version v1.0.0
             </span>
             <span className="flex items-center gap-1">

@@ -62,11 +62,11 @@ export function AdminLayout() {
               <img
                 src="/convia-logo.png"
                 alt="Convia Logo"
-                className="h-9 w-9 rounded-xl object-contain shadow-lg shadow-purple-900/50"
+                className="h-9 w-9 rounded-xl object-contain shadow-lg shadow-primary-950/60"
               />
               <div>
                 <span className="text-base font-black tracking-tight text-white flex items-center gap-2">
-                  Convia <span className="text-purple-400 text-xs px-2 py-0.5 rounded-full bg-purple-950 border border-purple-800 font-mono uppercase">Admin Portal</span>
+                  Convia <span className="text-primary-300 text-xs px-2 py-0.5 rounded-full bg-primary-950/80 border border-primary-800/60 font-mono uppercase">Admin Portal</span>
                 </span>
               </div>
             </Link>
@@ -82,7 +82,7 @@ export function AdminLayout() {
               <span>⚡ LIVE RTDB SYNC</span>
             </div>
 
-            <Badge variant="success" className="bg-purple-900/80 text-purple-200 border border-purple-700/60 font-mono text-[10px] uppercase font-bold flex items-center gap-1">
+            <Badge variant="primary" className="bg-primary-900/80 text-primary-200 border border-primary-700/60 font-mono text-[10px] uppercase font-bold flex items-center gap-1">
               <ShieldCheck className="h-3 w-3" /> SUPER ADMIN
             </Badge>
 
@@ -90,10 +90,10 @@ export function AdminLayout() {
               <Avatar name={userProfile?.displayName || user?.displayName || user?.email} size="sm" />
               <button
                 onClick={() => navigate('/dashboard')}
-                className="inline-flex items-center gap-1.5 text-xs font-extrabold text-indigo-200 hover:text-white transition-all bg-indigo-950/80 hover:bg-indigo-900 px-3.5 py-1.5 rounded-xl border border-indigo-700/60 shadow-sm"
+                className="inline-flex items-center gap-1.5 text-xs font-extrabold text-primary-200 hover:text-white transition-all bg-primary-950/80 hover:bg-primary-900 px-3.5 py-1.5 rounded-xl border border-primary-700/60 shadow-sm"
                 title="Transfer to normal user platform dashboard"
               >
-                <LayoutDashboard className="h-3.5 w-3.5 text-indigo-400" />
+                <LayoutDashboard className="h-3.5 w-3.5 text-primary-400" />
                 <span>User Dashboard</span>
               </button>
             </div>
@@ -138,7 +138,7 @@ export function AdminLayout() {
                       onClick={() => setIsMobileSidebarOpen(false)}
                       className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                         item.current
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40'
+                          ? 'bg-primary-600 text-white shadow-md shadow-primary-900/40'
                           : 'text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
                       }`}
                     >
@@ -155,7 +155,7 @@ export function AdminLayout() {
 
             <div className="border-t border-slate-800 pt-4 space-y-2">
               <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400 space-y-1 font-mono">
-                <div className="text-purple-400 font-bold flex items-center gap-1">
+                <div className="text-primary-400 font-bold flex items-center gap-1">
                   <Radio className="h-3 w-3 animate-pulse" /> RTDB Realtime Node
                 </div>
                 <p>Status: Healthy</p>
@@ -169,7 +169,7 @@ export function AdminLayout() {
         <main className="flex-1 overflow-y-auto p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6">
           {/* Admin Breadcrumb Bar */}
           <nav className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
-            <Link to="/admin/dashboard" className="hover:text-purple-400 transition-colors">Admin Portal</Link>
+            <Link to="/admin/dashboard" className="hover:text-primary-400 transition-colors">Admin Portal</Link>
             <ChevronRight className="h-3.5 w-3.5 text-slate-700" />
             <span className="text-slate-200 font-bold">{currentPage}</span>
           </nav>

@@ -128,14 +128,14 @@ export function BlueprintHeader({
                   className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono text-xs font-black border transition-all ${
                     isReadOnlyVersion
                       ? 'bg-amber-950/80 border-amber-700 text-amber-300 hover:bg-amber-900'
-                      : 'bg-purple-950/90 border-purple-800 text-purple-300 hover:bg-purple-900 hover:border-purple-600'
+                      : 'bg-primary-950/90 border-primary-800 text-primary-300 hover:bg-primary-900 hover:border-primary-600'
                   } shadow-sm cursor-pointer`}
                   title={versionsList.length > 1 ? 'Click to switch between saved Blueprint versions' : `Blueprint Version ${safeVersionStr}`}
                 >
-                  <History className="h-3.5 w-3.5 text-purple-400" />
+                  <History className="h-3.5 w-3.5 text-primary-400" />
                   <span>Blueprint v{safeVersionStr}</span>
                   {versionsList.length > 1 && (
-                    <ChevronDown className={`h-3 w-3 text-purple-400 transition-transform ${showVersionMenu ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-3 w-3 text-primary-400 transition-transform ${showVersionMenu ? 'rotate-180' : ''}`} />
                   )}
                 </button>
 
@@ -166,13 +166,13 @@ export function BlueprintHeader({
                               }
                             }}
                             className={`w-full px-3.5 py-2.5 text-left text-xs font-mono flex items-center justify-between hover:bg-slate-900 transition-colors ${
-                              isViewingThis ? 'bg-purple-950/60 text-purple-200 font-bold' : 'text-slate-300'
+                              isViewingThis ? 'bg-primary-950/60 text-primary-200 font-bold' : 'text-slate-300'
                             }`}
                           >
                             <div className="flex items-center gap-2">
                               <span className={`h-2 w-2 rounded-full ${
                                 isViewingThis
-                                  ? 'bg-purple-400 ring-2 ring-purple-500/50'
+                                  ? 'bg-primary-400 ring-2 ring-primary-500/50'
                                   : isCurrentActive
                                   ? 'bg-emerald-400'
                                   : 'bg-slate-600'
@@ -198,7 +198,7 @@ export function BlueprintHeader({
 
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-mono font-bold uppercase ${
                 safeStatusStr === 'generating'
-                  ? 'bg-purple-950 text-purple-300 border border-purple-800 animate-pulse'
+                  ? 'bg-primary-950 text-primary-300 border border-primary-800 animate-pulse'
                   : isReadOnlyVersion
                   ? 'bg-slate-900 text-slate-400 border border-slate-700'
                   : approvalStatus === 'approved'
@@ -244,7 +244,7 @@ export function BlueprintHeader({
             <Button
               variant="outline"
               size="sm"
-              icon={<Search className="h-4 w-4 text-purple-400" />}
+              icon={<Search className="h-4 w-4 text-primary-400" />}
               onClick={onOpenSearch}
               className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm"
             >
@@ -277,7 +277,7 @@ export function BlueprintHeader({
                     disabled={isExportingPdf}
                     className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-200 hover:bg-slate-800 flex items-center gap-2 transition-colors"
                   >
-                    <FileType className="h-4 w-4 text-purple-400" />
+                    <FileType className="h-4 w-4 text-primary-400" />
                     <span>{isExportingPdf ? 'Exporting PDF...' : 'Export PDF Document'}</span>
                   </button>
                   <button
@@ -341,10 +341,10 @@ export function BlueprintHeader({
               <Button
                 variant="primary"
                 size="sm"
-                icon={<Sparkles className="h-4 w-4 text-purple-200" />}
+                icon={<Sparkles className="h-4 w-4 text-primary-200" />}
                 onClick={onRegenerateClick}
                 disabled={isGenerating || isEditing}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-black text-xs py-2 px-4 shadow-lg shadow-purple-600/20"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-black text-xs py-2 px-4 shadow-lg shadow-primary-600/20"
               >
                 Regenerate AI
               </Button>
@@ -364,7 +364,7 @@ export function BlueprintHeader({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    ? 'bg-primary-600 text-white shadow-md shadow-primary-600/30'
                     : 'bg-slate-950 text-slate-400 border border-slate-800/80 hover:text-white hover:bg-slate-800'
                 }`}
               >
@@ -372,7 +372,7 @@ export function BlueprintHeader({
                 <span>{tab.label}</span>
                 {tab.count !== undefined && tab.count > 0 && (
                   <span className={`px-1.5 py-0.2 rounded font-mono text-[10px] ${
-                    isActive ? 'bg-purple-800 text-purple-100' : 'bg-slate-800 text-slate-400'
+                    isActive ? 'bg-primary-800 text-primary-100' : 'bg-slate-800 text-slate-400'
                   }`}>
                     {tab.count}
                   </span>

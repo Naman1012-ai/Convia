@@ -113,13 +113,13 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-lavender-border bg-white/95 backdrop-blur-md">
       <div className="flex h-16 items-center justify-between px-4 sm:px-8 max-w-7xl mx-auto">
         {/* Brand Logo & Mobile Toggle */}
         <div className="flex items-center gap-4">
           <button
             onClick={handleMobileMenuToggle}
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 sm:hidden focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="rounded-lg p-1.5 text-slate-600 hover:bg-primary-50/70 hover:text-primary-700 sm:hidden focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label="Toggle Navigation Menu"
           >
             <Menu className="h-6 w-6" />
@@ -140,8 +140,8 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               to="/dashboard"
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                 isCurrentPath('/dashboard')
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
+                  : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
               <LayoutDashboard className="h-4 w-4" />
@@ -152,11 +152,11 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               to="/explore"
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                 isCurrentPath('/explore')
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
+                  : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
-              <Globe className="h-4 w-4 text-indigo-500" />
+              <Globe className="h-4 w-4 text-primary-600" />
               <span>Explore Ideas</span>
             </Link>
 
@@ -164,7 +164,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               to="/community"
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                 isCurrentPath('/community')
-                  ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                  ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/60'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
@@ -176,8 +176,8 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               to="/workspaces"
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                 isCurrentPath('/workspaces')
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
+                  : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
               <Briefcase className="h-4 w-4 text-slate-500" />
@@ -194,9 +194,9 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               {isAdmin && (
                 <Link
                   to="/admin/dashboard"
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-all shadow-sm hover:shadow"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-primary-800 bg-primary-50 hover:bg-primary-100 border border-primary-200/80 transition-all shadow-sm hover:shadow"
                 >
-                  <ShieldCheck className="h-4 w-4 text-purple-600" />
+                  <ShieldCheck className="h-4 w-4 text-primary-600" />
                   <span>Admin Portal</span>
                 </Link>
               )}
@@ -207,7 +207,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-2.5 rounded-full p-1 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                  className="flex items-center gap-2.5 rounded-full p-1 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   aria-label="User profile menu"
                 >
                   <Avatar name={userProfile?.displayName || user?.displayName || user?.email} size="sm" />
@@ -218,14 +218,14 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
 
                 {/* User Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50">
+                  <div className="absolute right-0 mt-2 w-52 rounded-xl border border-lavender-border bg-white p-1.5 shadow-xl shadow-primary-950/10 z-50">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-slate-900 truncate">
                           {userProfile?.displayName || user?.displayName || 'User'}
                         </p>
                         {isAdmin && (
-                          <span className="text-[9px] font-mono font-bold uppercase bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-mono font-bold uppercase bg-primary-100 text-primary-800 px-1.5 py-0.5 rounded">
                             ADMIN
                           </span>
                         )}
@@ -237,9 +237,9 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                       <Link
                         to="/admin/dashboard"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-extrabold text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors my-1 border border-purple-100"
+                        className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-extrabold text-primary-800 bg-primary-50 hover:bg-primary-100 transition-colors my-1 border border-primary-200/60"
                       >
-                        <ShieldCheck className="h-4 w-4 text-purple-600" />
+                        <ShieldCheck className="h-4 w-4 text-primary-600" />
                         <span>Switch to Admin Portal</span>
                       </Link>
                     )}
@@ -247,7 +247,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                     <Link
                       to="/profile"
                       onClick={() => setIsUserMenuOpen(false)}
-                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-primary-50/60 hover:text-primary-900 transition-colors"
                     >
                       <User className="h-4 w-4 text-slate-400" />
                       <span>My Profile</span>
@@ -258,9 +258,9 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                         setIsUserMenuOpen(false);
                         setIsReportModalOpen(true);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-primary-800 hover:bg-primary-50/80 hover:text-primary-900 transition-colors"
                     >
-                      <Flag className="h-4 w-4 text-purple-600" />
+                      <Flag className="h-4 w-4 text-primary-600" />
                       <span>Report Issue</span>
                     </button>
 
@@ -337,11 +337,11 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isCurrentPath('/dashboard')
-                      ? 'bg-indigo-600 text-white font-extrabold shadow-md'
+                      ? 'bg-primary-600 text-white font-extrabold shadow-md'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
-                  <LayoutDashboard className="h-5 w-5 text-indigo-400" />
+                  <LayoutDashboard className="h-5 w-5 text-primary-300" />
                   <span>Dashboard</span>
                 </Link>
 
@@ -350,11 +350,11 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isCurrentPath('/explore')
-                      ? 'bg-indigo-600 text-white font-extrabold shadow-md'
+                      ? 'bg-primary-600 text-white font-extrabold shadow-md'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
-                  <Globe className="h-5 w-5 text-purple-400" />
+                  <Globe className="h-5 w-5 text-primary-300" />
                   <span>Explore Ideas</span>
                 </Link>
 
@@ -376,7 +376,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isCurrentPath('/workspaces')
-                      ? 'bg-indigo-600 text-white font-extrabold shadow-md'
+                      ? 'bg-primary-600 text-white font-extrabold shadow-md'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
@@ -388,9 +388,9 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                   <Link
                     to="/admin/dashboard"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-purple-300 bg-purple-950/60 font-bold border border-purple-800/50 hover:bg-purple-900/60 transition-all"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-primary-200 bg-primary-950/70 font-bold border border-primary-800/60 hover:bg-primary-900/60 transition-all"
                   >
-                    <ShieldCheck className="h-5 w-5 text-purple-400" />
+                    <ShieldCheck className="h-5 w-5 text-primary-400" />
                     <span>Admin Portal</span>
                   </Link>
                 )}
@@ -400,7 +400,7 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                     isCurrentPath('/profile')
-                      ? 'bg-indigo-600 text-white font-extrabold shadow-md'
+                      ? 'bg-primary-600 text-white font-extrabold shadow-md'
                       : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
@@ -413,9 +413,9 @@ export function Navbar({ onMobileMenuToggle = () => {} }) {
                     setIsMobileMenuOpen(false);
                     setIsReportModalOpen(true);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-purple-300 hover:bg-purple-950/40 font-semibold transition-colors"
+                  className="flex w-full items-center gap-3 px-4 py-3 rounded-xl text-primary-300 hover:bg-primary-950/40 font-semibold transition-colors"
                 >
-                  <Flag className="h-5 w-5 text-purple-400" />
+                  <Flag className="h-5 w-5 text-primary-400" />
                   <span>Report Issue</span>
                 </button>
               </nav>

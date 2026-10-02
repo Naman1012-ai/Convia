@@ -149,7 +149,7 @@ export default function DashboardPage() {
           <div className="space-y-1">
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
               Welcome back,{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-indigo-100 to-indigo-300">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-primary-100 to-primary-300">
                 {userProfile?.displayName || user?.displayName || user?.email?.split('@')[0]}
               </span>
             </h1>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5">
                 <span>{activeOrgMembers} Members</span>
                 {activeOrg.status === 'project' && (
-                  <span className="text-indigo-400 font-bold">{activeOrgProgress}% Progress</span>
+                  <span className="text-primary-300 font-bold">{activeOrgProgress}% Progress</span>
                 )}
               </div>
             </div>
@@ -202,7 +202,7 @@ export default function DashboardPage() {
             size="md"
             onClick={() => setIsCreateOrgOpen(true)}
             icon={<Plus className="h-4 w-4" />}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold border-none shadow-lg shadow-indigo-600/30 text-xs w-full sm:flex-1 lg:flex-none lg:w-48 transition-all hover:scale-[1.02]"
+            className="bg-primary-600 hover:bg-primary-700 text-white font-bold border-none shadow-lg shadow-primary-500/25 text-xs w-full sm:flex-1 lg:flex-none lg:w-48 transition-all hover:scale-[1.02]"
           >
             Create Workspace
           </Button>
@@ -239,10 +239,10 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <Card className="p-5 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+          <Card className="p-5 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-primary-300 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Workspaces</span>
-              <Briefcase className="h-4 w-4 text-indigo-500" />
+              <Briefcase className="h-4 w-4 text-primary-500" />
             </div>
             <div>
               <h3 className="text-3xl font-black text-slate-950">{stats.totalWorkspaces}</h3>
@@ -272,10 +272,10 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="p-5 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-300 transition-colors">
+          <Card className="p-5 bg-white border border-slate-200 shadow-sm flex flex-col justify-between hover:border-primary-300 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Assigned Tasks</span>
-              <CheckSquare className="h-4 w-4 text-indigo-500" />
+              <CheckSquare className="h-4 w-4 text-primary-500" />
             </div>
             <div>
               <h3 className="text-3xl font-black text-slate-950">{stats.assignedTasks}</h3>
@@ -317,7 +317,7 @@ export default function DashboardPage() {
             <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-primary-700 bg-primary-50 border border-primary-200/60 px-2.5 py-1 rounded-full">
                     Primary Workspace
                   </span>
                   <h2 className="text-xl font-black text-slate-900 mt-2">
@@ -326,7 +326,7 @@ export default function DashboardPage() {
                 </div>
                 {activeOrg && (
                   <Link to={`/workspaces/${activeOrg.orgId}/ideas`}>
-                    <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700">
+                    <Button variant="ghost" size="sm" className="text-primary-600 hover:text-primary-700">
                       Enter Workspace <ArrowRight className="h-4 w-4 ml-1" />
                     </Button>
                   </Link>
@@ -350,7 +350,7 @@ export default function DashboardPage() {
 
                     <div>
                       <span>Active MVP Project:</span>
-                      <p className="font-bold text-indigo-700 mt-0.5 truncate">
+                      <p className="font-bold text-primary-700 mt-0.5 truncate">
                         {activeOrgBlueprint ? activeOrgBlueprint.ideaTitle : 'Not selected yet'}
                       </p>
                     </div>
@@ -360,7 +360,7 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs font-bold">
                         <span className="text-slate-700">Sprint Tasks Board Completion</span>
-                        <span className="text-indigo-600">{activeOrgProgress}%</span>
+                        <span className="text-primary-600">{activeOrgProgress}%</span>
                       </div>
                       <ProgressBar percentage={activeOrgProgress} size="md" />
                     </div>
@@ -386,7 +386,7 @@ export default function DashboardPage() {
             {/* Recent Activity Log */}
             <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-indigo-600" /> Recent Activity Log
+                <TrendingUp className="h-4 w-4 text-primary-600" /> Recent Activity Log
               </h3>
 
               {recentActivity.length === 0 ? (
@@ -451,12 +451,12 @@ export default function DashboardPage() {
             </Card>
 
             {/* Quick Link Card */}
-            <Card className="p-6 bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200/50 shadow-inner space-y-4">
+            <Card className="p-6 bg-gradient-to-br from-primary-50/70 to-primary-100/60 border border-primary-200/60 shadow-sm space-y-4">
               <div className="space-y-2">
-                <h3 className="text-sm font-extrabold text-indigo-950 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" /> Explore Open Ideas
+                <h3 className="text-sm font-extrabold text-primary-950 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary-600 animate-spin" /> Explore Open Ideas
                 </h3>
-                <p className="text-xs text-indigo-900/80 leading-relaxed">
+                <p className="text-xs text-primary-900/80 leading-relaxed">
                   Check out what other hackathon participants are drafting. Share technical iterations or ask questions!
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
                   variant="primary"
                   fullWidth
                   size="sm"
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+                  className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-sm shadow-primary-500/20"
                 >
                   Explore Public Brainstorms <ArrowRight className="h-4 w-4 ml-1.5" />
                 </Button>

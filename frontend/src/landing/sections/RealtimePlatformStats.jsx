@@ -38,14 +38,14 @@ export function RealtimePlatformStats() {
   }, []);
 
   const ALL_ITEMS = [
-    { label: 'Active Users', val: counts.users, icon: Users, color: 'text-indigo-400' },
-    { label: 'Workspaces', val: counts.workspaces, icon: Briefcase, color: 'text-purple-400' },
+    { label: 'Active Users', val: counts.users, icon: Users, color: 'text-primary-400' },
+    { label: 'Workspaces', val: counts.workspaces, icon: Briefcase, color: 'text-primary-300' },
     { label: 'Proposals', val: counts.proposals, icon: Globe, color: 'text-sky-400' },
     { label: 'Upvotes Cast', val: counts.votes, icon: ThumbsUp, color: 'text-emerald-400' },
     { label: 'Comments', val: counts.comments, icon: MessageSquare, color: 'text-amber-400' },
     { label: 'Tasks Created', val: counts.tasks, icon: CheckSquare, color: 'text-rose-400' },
-    { label: 'AI Blueprints', val: counts.blueprints, icon: Zap, color: 'text-purple-300' },
-    { label: 'Announcements', val: counts.announcements, icon: Megaphone, color: 'text-indigo-300' },
+    { label: 'AI Blueprints', val: counts.blueprints, icon: Zap, color: 'text-primary-400' },
+    { label: 'Announcements', val: counts.announcements, icon: Megaphone, color: 'text-primary-300' },
   ];
 
   // Display ONLY items with REAL active data (> 0)
@@ -60,7 +60,7 @@ export function RealtimePlatformStats() {
     <section id="stats" className="py-20 bg-slate-950 border-b border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center space-y-3 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Live Platform Telemetry
           </span>
 
@@ -79,7 +79,7 @@ export function RealtimePlatformStats() {
             return (
               <div
                 key={item.label}
-                className="w-36 sm:w-44 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col items-center justify-center text-center space-y-3 shadow-xl hover:border-purple-500/40 transition-all"
+                className="w-36 sm:w-44 p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col items-center justify-center text-center space-y-3 shadow-xl hover:border-primary-500/40 transition-all"
               >
                 <div className={`p-2.5 rounded-xl bg-slate-950 border border-slate-800 ${item.color}`}>
                   <IconComp className="h-5 w-5" />

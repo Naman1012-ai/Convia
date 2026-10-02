@@ -67,7 +67,7 @@ export function FilePreviewModal({ isOpen, onClose, attachment }) {
 
             <button
               onClick={handleDownload}
-              className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-colors"
+              className="px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-colors"
             >
               <Download className="h-4 w-4" />
               <span>Download</span>
@@ -104,7 +104,7 @@ export function FilePreviewModal({ isOpen, onClose, attachment }) {
               <p className="text-sm font-bold text-slate-300">Direct preview not available for .{extension} files.</p>
               <button
                 onClick={handleDownload}
-                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-bold text-xs"
               >
                 Download File to View
               </button>

@@ -7,14 +7,14 @@ const ROADMAP_ITEMS = [
     title: 'AI Agent Code Generator',
     status: 'In Development',
     description: 'Auto-generate starter code boilerplate directly from your approved AI Blueprint specs.',
-    color: 'border-purple-500/30 text-purple-300 bg-purple-500/10',
+    color: 'border-primary-500/30 text-primary-300 bg-primary-500/10',
   },
   {
     icon: GitBranch,
     title: 'GitHub & GitLab Sync',
     status: 'Q3 2026',
     description: 'Sync Kanban tasks automatically with GitHub Issues and Pull Requests.',
-    color: 'border-indigo-500/30 text-indigo-300 bg-indigo-500/10',
+    color: 'border-primary-500/30 text-primary-400 bg-primary-500/10',
   },
   {
     icon: MessageSquare,
@@ -37,7 +37,7 @@ export function RoadmapSection() {
     <section id="roadmap" className="py-24 bg-slate-950 border-t border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Clock className="h-3.5 w-3.5" />
             <span>Future Vision</span>
           </div>
@@ -55,14 +55,14 @@ export function RoadmapSection() {
             return (
               <div
                 key={item.title}
-                className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 shadow-xl space-y-4 flex flex-col justify-between group transition-all duration-300"
+                className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-primary-500/40 shadow-xl space-y-4 flex flex-col justify-between group transition-all duration-300"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className={`p-3 rounded-2xl border ${item.color}`}>
                       <IconComp className="h-5 w-5" />
                     </div>
-                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-primary-500/10 text-primary-300 border border-primary-500/20">
                       {item.status}
                     </span>
                   </div>
@@ -74,7 +74,7 @@ export function RoadmapSection() {
                   </p>
                 </div>
 
-                <div className="pt-2 text-[10px] font-mono text-purple-400 font-bold flex items-center gap-1">
+                <div className="pt-2 text-[10px] font-mono text-primary-400 font-bold flex items-center gap-1">
                   <Sparkles className="h-3 w-3" /> Coming Soon
                 </div>
               </div>

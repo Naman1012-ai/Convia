@@ -21,12 +21,12 @@ export function InteractiveProductPreview() {
   return (
     <section id="how-it-works" className="py-24 bg-slate-950 border-b border-slate-800/80 relative overflow-hidden">
       {/* Background Glow */}
-      <div className="absolute top-1/3 right-1/4 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 h-96 w-96 rounded-full bg-primary-600/10 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5" />
             <span>Interactive Product Tour</span>
           </div>
@@ -53,14 +53,14 @@ export function InteractiveProductPreview() {
                   onClick={() => setActiveTabId(tab.id)}
                   className={`w-full flex items-center gap-3 p-4 rounded-2xl border text-left text-sm font-bold transition-all duration-200 shrink-0 lg:shrink ${
                     isActive
-                      ? 'bg-gradient-to-r from-purple-600/20 to-indigo-600/20 border-purple-500 text-white shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30'
+                      ? 'bg-gradient-to-r from-primary-600/20 to-primary-700/20 border-primary-500 text-white shadow-lg shadow-primary-950/40 ring-1 ring-primary-500/30'
                       : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-900 hover:border-slate-700'
                   }`}
                 >
                   <div
                     className={`p-2 rounded-xl border ${
                       isActive
-                        ? 'bg-purple-600 text-white border-purple-500'
+                        ? 'bg-primary-600 text-white border-primary-500'
                         : 'bg-slate-950 text-slate-400 border-slate-800'
                     }`}
                   >

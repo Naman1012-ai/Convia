@@ -215,7 +215,7 @@ export default function ExploreIdeasPage() {
         </div>
 
         <div className="text-xs font-semibold text-slate-400 flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-          <Globe className="h-3.5 w-3.5 text-indigo-500 animate-pulse" />
+          <Globe className="h-3.5 w-3.5 text-primary-500 animate-pulse" />
           <span>Global Live Feed</span>
         </div>
       </div>
@@ -225,7 +225,7 @@ export default function ExploreIdeasPage() {
         <LoadingSkeleton variant="card" count={3} />
       ) : filteredPublicIdeas.length === 0 ? (
         <EmptyState
-          icon={<Globe className="h-8 w-8 text-indigo-500" />}
+          icon={<Globe className="h-8 w-8 text-primary-500" />}
           title="No Public Proposals Found"
           description="Be the first innovator to share an open proposal with the global community!"
           action={
@@ -247,7 +247,7 @@ export default function ExploreIdeasPage() {
                 onClick={() => setSelectedPublicIdea(idea)}
                 className={`cursor-pointer transition-all duration-500 rounded-2xl ${
                   isNewlyCreated
-                    ? 'ring-4 ring-indigo-500 shadow-xl shadow-indigo-100 scale-[1.02]'
+                    ? 'ring-4 ring-primary-500 shadow-xl shadow-primary-100 scale-[1.02]'
                     : ''
                 }`}
               >
@@ -274,10 +274,10 @@ export default function ExploreIdeasPage() {
                               e.stopPropagation();
                               handleOpenImportModal(idea);
                             }}
-                            className="flex items-center gap-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg transition-colors border border-indigo-100"
+                            className="flex items-center gap-1 text-[11px] font-bold text-primary-700 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-lg transition-colors border border-primary-200/60"
                             title="Import this idea into a workspace"
                           >
-                            <FolderPlus className="h-3.5 w-3.5 text-indigo-600" />
+                            <FolderPlus className="h-3.5 w-3.5 text-primary-600" />
                             <span>Import</span>
                           </button>
                         )}
@@ -297,7 +297,7 @@ export default function ExploreIdeasPage() {
                       </div>
                     </div>
 
-                    <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 hover:text-indigo-600 transition-colors">
+                    <h3 className="text-lg font-bold text-slate-900 mb-2 line-clamp-2 hover:text-primary-600 transition-colors">
                       {idea.title}
                     </h3>
                     <p className="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed">
@@ -327,8 +327,8 @@ export default function ExploreIdeasPage() {
                     <div className="flex items-center gap-2">
                       <Avatar name={isAuthor ? user?.displayName || user?.email : resolveName(idea.authorId, idea.authorName)} size="sm" />
                       {isAuthor ? (
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <UserCheck className="h-3 w-3 text-indigo-600" /> Created by You
+                        <span className="text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <UserCheck className="h-3 w-3 text-primary-600" /> Created by You
                         </span>
                       ) : (
                         <span className="text-xs font-semibold text-slate-800 truncate max-w-[120px]">
@@ -338,11 +338,11 @@ export default function ExploreIdeasPage() {
                     </div>
 
                     <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
-                      <span className="flex items-center gap-1 font-semibold text-indigo-600">
+                      <span className="flex items-center gap-1 font-semibold text-primary-600">
                         <ThumbsUp className="h-3.5 w-3.5" /> {idea.voteCount || 0}
                       </span>
-                      <span className="flex items-center gap-1 font-bold text-indigo-600 hover:underline">
-                        <MessageCircle className="h-3.5 w-3.5 text-indigo-500" /> Suggest
+                      <span className="flex items-center gap-1 font-bold text-primary-600 hover:underline">
+                        <MessageCircle className="h-3.5 w-3.5 text-primary-500" /> Suggest
                         <ArrowRight className="h-3 w-3 ml-0.5" />
                       </span>
                     </div>

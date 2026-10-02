@@ -55,7 +55,7 @@ export function LandingNavbar() {
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         isScrolled
-          ? 'bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-2xl shadow-purple-950/20 py-3.5'
+          ? 'bg-slate-950/85 backdrop-blur-xl border-b border-slate-800/80 shadow-2xl shadow-primary-950/20 py-3.5'
           : 'bg-transparent py-5'
       }`}
     >
@@ -65,13 +65,13 @@ export function LandingNavbar() {
           <Link
             to="/"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="flex items-center gap-2.5 group focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-xl p-1"
+            className="flex items-center gap-2.5 group focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-xl p-1"
             aria-label="Convia Home"
           >
             <img
               src="/convia-logo.png"
               alt="Convia Logo"
-              className="h-9 w-9 rounded-xl object-contain shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition-transform duration-200"
+              className="h-9 w-9 rounded-xl object-contain shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform duration-200"
             />
             <span className="text-xl font-extrabold tracking-tight text-white">
               Convia
@@ -84,13 +84,13 @@ export function LandingNavbar() {
               <button
                 key={sec.id}
                 onClick={() => scrollToSection(sec.id)}
-                className={`py-1 transition-colors duration-150 relative focus:outline-none focus:ring-2 focus:ring-purple-500 rounded px-1.5 ${
+                className={`py-1 transition-colors duration-150 relative focus:outline-none focus:ring-2 focus:ring-primary-500 rounded px-1.5 ${
                   activeSection === sec.id ? 'text-white font-extrabold' : 'hover:text-white'
                 }`}
               >
                 {sec.label}
                 {activeSection === sec.id && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary-500 to-primary-400 rounded-full" />
                 )}
               </button>
             ))}
@@ -101,7 +101,7 @@ export function LandingNavbar() {
             {user ? (
               <Link
                 to="/dashboard"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-600 hover:bg-primary-500 text-white font-extrabold text-xs shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span>Go to Dashboard</span>
@@ -110,13 +110,13 @@ export function LandingNavbar() {
               <>
                 <Link
                   to="/signin"
-                  className="text-xs font-bold text-slate-300 hover:text-white transition-colors duration-150 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+                  className="text-xs font-bold text-slate-300 hover:text-white transition-colors duration-150 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded"
                 >
                   Login
                 </Link>
                 <Link
                   to="/signup"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-extrabold text-xs shadow-lg shadow-primary-600/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <span>Create Workspace</span>
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -128,7 +128,7 @@ export function LandingNavbar() {
           {/* Mobile Hamburger Toggle Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="md:hidden p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
             aria-label={mobileMenuOpen ? 'Close Navigation Menu' : 'Open Navigation Menu'}
             aria-expanded={mobileMenuOpen}
           >
@@ -157,7 +157,7 @@ export function LandingNavbar() {
               <Link
                 to="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-purple-600 text-white font-extrabold text-xs shadow-lg"
+                className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-primary-600 text-white font-extrabold text-xs shadow-lg shadow-primary-600/20"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span>Go to Dashboard</span>
@@ -167,7 +167,7 @@ export function LandingNavbar() {
                 <Link
                   to="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-xs shadow-lg"
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-extrabold text-xs shadow-lg shadow-primary-600/20"
                 >
                   <span>Create Workspace</span>
                   <ArrowRight className="h-3.5 w-3.5" />

@@ -89,7 +89,7 @@ export function ResetPasswordForm() {
       )}
 
       <p className="text-center text-sm text-slate-600 mt-6">
-        <Link to="/signin" className="font-semibold text-indigo-600 hover:text-indigo-700">
+        <Link to="/signin" className="font-semibold text-primary-600 hover:text-primary-700">
           ← Back to Sign In
         </Link>
       </p>

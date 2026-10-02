@@ -64,9 +64,9 @@ export function ChatChannelSidebar({
         key={ch.channelId}
         className={`group relative flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none ${
           isActive
-            ? 'bg-indigo-600 text-white shadow-xs'
+            ? 'bg-primary-600 text-white shadow-xs'
             : isUnread
-            ? 'text-slate-900 font-bold bg-indigo-50/60 hover:bg-indigo-100/60'
+            ? 'text-slate-900 font-bold bg-primary-50/60 hover:bg-primary-100/60'
             : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
         }`}
         onClick={() => onSelectChannel(ch.channelId)}
@@ -89,14 +89,14 @@ export function ChatChannelSidebar({
           {/* Archived indicator */}
           {ch.archived && (
             <Archive
-              className={`h-3 w-3 shrink-0 ${isActive ? 'text-indigo-200' : 'text-amber-500'}`}
+              className={`h-3 w-3 shrink-0 ${isActive ? 'text-primary-200' : 'text-amber-500'}`}
               title="Archived"
             />
           )}
 
           {/* Live Unread Indicator Dot */}
           {isUnread && !isActive && (
-            <span className="h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white shrink-0 ml-auto mr-1" />
+            <span className="h-2 w-2 rounded-full bg-primary-600 ring-2 ring-white shrink-0 ml-auto mr-1" />
           )}
         </div>
 
@@ -111,7 +111,7 @@ export function ChatChannelSidebar({
             }}
             className={`opacity-0 group-hover:opacity-100 p-1 rounded-md transition-all shrink-0 ml-1 ${
               isActive
-                ? 'hover:bg-indigo-700 text-white/90'
+                ? 'hover:bg-primary-700 text-white/90'
                 : 'hover:bg-slate-200 text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -134,7 +134,7 @@ export function ChatChannelSidebar({
             type="button"
             onClick={onOpenCreateChannel}
             title="Create New Channel"
-            className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            className="p-1 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
           >
             <Plus className="h-4 w-4" />
           </button>

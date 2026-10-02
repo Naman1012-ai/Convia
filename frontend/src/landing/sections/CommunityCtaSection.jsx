@@ -6,12 +6,12 @@ export function CommunityCtaSection() {
   return (
     <section className="py-24 bg-slate-950 relative overflow-hidden">
       {/* Glow Effect */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[34rem] w-[34rem] rounded-full bg-gradient-to-tr from-purple-600/20 via-indigo-600/20 to-emerald-600/10 blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[34rem] w-[34rem] rounded-full bg-gradient-to-tr from-primary-600/20 via-primary-700/20 to-emerald-600/10 blur-3xl pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="p-10 sm:p-16 rounded-3xl bg-gradient-to-r from-purple-950/90 via-slate-900 to-indigo-950/90 border border-purple-500/50 shadow-2xl shadow-purple-950/60 text-center space-y-8 relative overflow-hidden">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/80 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
-            <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+        <div className="p-10 sm:p-16 rounded-3xl bg-gradient-to-r from-primary-950/90 via-slate-900 to-primary-900/70 border border-primary-500/50 shadow-2xl shadow-primary-950/60 text-center space-y-8 relative overflow-hidden">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/80 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
+            <Sparkles className="h-3.5 w-3.5 text-primary-400" />
             <span>Join the Convia Community</span>
           </div>
 
@@ -28,7 +28,7 @@ export function CommunityCtaSection() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
             <Link
               to="/signup"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-indigo-500 hover:from-purple-500 hover:to-indigo-400 text-white font-extrabold text-sm shadow-xl shadow-purple-500/30 transition-all duration-200 hover:scale-105 active:scale-95"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl bg-gradient-to-r from-primary-600 via-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 text-white font-extrabold text-sm shadow-xl shadow-primary-500/30 transition-all duration-200 hover:scale-105 active:scale-95"
             >
               <span>Create Free Workspace</span>
               <ArrowRight className="h-4 w-4" />
@@ -38,7 +38,7 @@ export function CommunityCtaSection() {
               to="/explore"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-4 rounded-2xl bg-slate-950/90 hover:bg-slate-900 border border-slate-800 text-slate-200 font-bold text-sm transition-all duration-200 hover:scale-105 active:scale-95"
             >
-              <Globe className="h-4 w-4 text-purple-400" />
+              <Globe className="h-4 w-4 text-primary-400" />
               <span>Browse Public Ideas</span>
             </Link>
           </div>

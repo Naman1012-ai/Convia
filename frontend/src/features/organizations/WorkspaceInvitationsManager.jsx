@@ -324,7 +324,7 @@ export function WorkspaceInvitationsManager({
       {/* 1. Generate Invitation Code Card */}
       <Card>
         <div className="flex items-center gap-3 mb-5 pb-4 border-b border-slate-100">
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600 shadow-xs shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-primary-50 border border-primary-200/80 flex items-center justify-center text-primary-600 shadow-xs shrink-0">
             <UserPlus className="h-5 w-5" />
           </div>
           <div>
@@ -498,7 +498,7 @@ export function WorkspaceInvitationsManager({
               </p>
               <p className="text-base font-bold text-slate-900 mt-1">{createdInvite.invitedEmail}</p>
               <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
-                <Badge variant={createdInvite.isTeamCaptain || createdInvite.role === 'team_captain' || createdInvite.isSecondOwner || createdInvite.role === 'second_owner' ? 'purple' : 'blue'}>
+                <Badge variant={createdInvite.isTeamCaptain || createdInvite.role === 'team_captain' || createdInvite.isSecondOwner || createdInvite.role === 'second_owner' ? 'primary' : 'blue'}>
                   {createdInvite.isTeamCaptain || createdInvite.role === 'team_captain' || createdInvite.isSecondOwner || createdInvite.role === 'second_owner'
                     ? '⚡ Team Captain'
                     : 'Member'}
@@ -510,12 +510,12 @@ export function WorkspaceInvitationsManager({
             </div>
 
             {/* Prominent Code Box */}
-            <div className="bg-slate-50 border-2 border-dashed border-indigo-200 rounded-xl p-4">
+            <div className="bg-slate-50 border-2 border-dashed border-primary-200 rounded-xl p-4">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Invitation Code
               </p>
               <div className="flex items-center justify-center gap-3">
-                <span className="text-2xl sm:text-3xl font-mono font-bold tracking-wider text-indigo-700 select-all">
+                <span className="text-2xl sm:text-3xl font-mono font-bold tracking-wider text-primary-700 select-all">
                   {createdInvite.codeDisplay || createdInvite.code}
                 </span>
                 <Button
@@ -691,7 +691,7 @@ export function WorkspaceInvitationsManager({
                           {inv.invitedEmail}
                         </td>
                         <td className="py-3 px-3">
-                          <Badge variant={inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner' ? 'purple' : 'blue'}>
+                          <Badge variant={inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner' ? 'primary' : 'blue'}>
                             {inv.isTeamCaptain || inv.role === 'team_captain' || inv.isSecondOwner || inv.role === 'second_owner'
                               ? '⚡ Team Captain'
                               : 'Member'}
@@ -714,7 +714,7 @@ export function WorkspaceInvitationsManager({
                         </td>
                         <td className="py-3 px-3 font-mono font-semibold text-slate-700">
                           {isPending && inv.codeDisplay ? (
-                            <span className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded text-indigo-700">
+                            <span className="inline-flex items-center gap-1.5 bg-slate-100 px-2 py-0.5 rounded text-primary-700">
                               {inv.codeDisplay}
                               <button
                                 type="button"
@@ -780,7 +780,7 @@ export function WorkspaceInvitationsManager({
                                 size="sm"
                                 onClick={() => handleRegenerate(inv.invitationId)}
                                 title="Regenerate new 5-minute code"
-                                className="h-7 px-2 text-[11px] font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                                className="h-7 px-2 text-[11px] font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
                               >
                                 <RotateCcw className="h-3 w-3" />
                                 <span>Regenerate</span>
@@ -826,7 +826,7 @@ export function WorkspaceInvitationsManager({
 
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center gap-1.5">
-                        <Badge variant={inv.role === 'admin' ? 'purple' : 'blue'}>
+                        <Badge variant={inv.role === 'admin' ? 'primary' : 'blue'}>
                           {inv.role === 'admin' ? 'Admin' : 'Member'}
                         </Badge>
                         <span className="text-[11px]">
@@ -853,7 +853,7 @@ export function WorkspaceInvitationsManager({
 
                     {isPending && inv.codeDisplay && (
                       <div className="flex items-center justify-between bg-slate-50 p-2 rounded border border-slate-100">
-                        <span className="font-mono text-xs font-bold text-indigo-700">
+                        <span className="font-mono text-xs font-bold text-primary-700">
                           {inv.codeDisplay}
                         </span>
                         <div className="flex items-center gap-1">
@@ -898,7 +898,7 @@ export function WorkspaceInvitationsManager({
                           variant="outline"
                           size="sm"
                           onClick={() => handleRegenerate(inv.invitationId)}
-                          className="h-6 px-2 text-[10px] text-indigo-600"
+                          className="h-6 px-2 text-[10px] text-primary-600"
                           title="Regenerate new code"
                         >
                           <RotateCcw className="h-2.5 w-2.5 mr-1" /> Regenerate

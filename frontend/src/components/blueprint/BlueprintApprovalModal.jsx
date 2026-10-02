@@ -40,13 +40,13 @@ export function BlueprintApprovalModal({
         {/* MODAL HEADER */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-950 border border-purple-700/80 text-purple-400">
-              <ShieldCheck className="h-6 w-6 text-purple-400" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-950 border border-primary-700/80 text-primary-400">
+              <ShieldCheck className="h-6 w-6 text-primary-400" />
             </div>
             <div>
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
                 Blueprint Approval Gate
-                <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-mono text-xs border border-purple-800">
+                <span className="px-2.5 py-0.5 rounded-lg bg-primary-950 text-primary-300 font-mono text-xs border border-primary-800">
                   v{safeText(version, '1.0')}
                 </span>
               </h3>

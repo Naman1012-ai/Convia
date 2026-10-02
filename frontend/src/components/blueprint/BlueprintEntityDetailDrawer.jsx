@@ -53,7 +53,7 @@ export function BlueprintEntityDetailDrawer({
         <div className="p-5 border-b border-slate-800 bg-slate-950/80 flex items-start justify-between gap-3">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-mono text-xs font-black border border-purple-800">
+              <span className="px-2.5 py-0.5 rounded-lg bg-primary-950 text-primary-300 font-mono text-xs font-black border border-primary-800">
                 {safeId}
               </span>
               <span className="px-2.5 py-0.5 rounded bg-slate-900 text-slate-300 font-mono text-[10px] uppercase font-bold border border-slate-800">
@@ -113,8 +113,8 @@ export function BlueprintEntityDetailDrawer({
           {(type === 'Project Direction' || type === 'summary_card') && raw && (
             <div className="space-y-4">
               {raw.context && (
-                <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-900/60 text-xs text-purple-200 font-medium">
-                  <span className="font-bold font-mono text-purple-300">Context: </span>
+                <div className="p-3.5 rounded-xl bg-primary-950/40 border border-primary-900/60 text-xs text-primary-200 font-medium">
+                  <span className="font-bold font-mono text-primary-300">Context: </span>
                   {safeText(raw.context)}
                 </div>
               )}
@@ -175,7 +175,7 @@ export function BlueprintEntityDetailDrawer({
 
               {(raw.criteria || raw.evidenceRequirements) && (
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Verification Evidence Criteria</span>
+                  <span className="text-[10px] font-mono font-bold uppercase text-primary-400">Verification Evidence Criteria</span>
                   <p className="text-xs text-slate-200 leading-relaxed font-medium">
                     {safeText(raw.criteria || raw.evidenceRequirements)}
                   </p>
@@ -234,7 +234,7 @@ export function BlueprintEntityDetailDrawer({
                       <button
                         key={fId}
                         onClick={() => onSelectEntityById && onSelectEntityById(fId, 'feature')}
-                        className="px-2.5 py-1 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-800 font-mono text-xs font-bold hover:bg-purple-900 transition-colors flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-lg bg-primary-950/80 text-primary-300 border border-primary-800 font-mono text-xs font-bold hover:bg-primary-900 transition-colors flex items-center gap-1.5"
                       >
                         <Workflow className="h-3 w-3" />
                         <span>{safeText(fId)}</span>
@@ -295,7 +295,7 @@ export function BlueprintEntityDetailDrawer({
 
                 <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
                   <span className="text-slate-400 block text-[10px] font-bold uppercase">Source Version</span>
-                  <span className="text-purple-300 font-bold">
+                  <span className="text-primary-300 font-bold">
                     v{safeText(raw.sourceBlueprintVersionId || raw.blueprintVersion, '1.0')}
                   </span>
                 </div>
@@ -346,7 +346,7 @@ export function BlueprintEntityDetailDrawer({
                       <button
                         key={depId}
                         onClick={() => onSelectEntityById && onSelectEntityById(depId, 'task')}
-                        className="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 font-mono text-xs font-bold hover:text-white hover:border-purple-600 transition-colors flex items-center gap-1.5"
+                        className="px-2.5 py-1 rounded-lg bg-slate-950 text-slate-300 border border-slate-800 font-mono text-xs font-bold hover:text-white hover:border-primary-600 transition-colors flex items-center gap-1.5"
                       >
                         <Clock className="h-3 w-3 text-amber-400" />
                         <span>{safeText(depId)}</span>
@@ -376,7 +376,7 @@ export function BlueprintEntityDetailDrawer({
           {type === 'decision' && raw && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Technical Rationale (Why)</span>
+                <span className="text-[10px] font-mono font-bold uppercase text-primary-400">Technical Rationale (Why)</span>
                 <p className="text-xs text-slate-200 leading-relaxed font-medium">
                   {safeText(raw.rationale, 'Derived from architecture constraints and requirements.')}
                 </p>
@@ -465,7 +465,7 @@ export function BlueprintEntityDetailDrawer({
           {type === 'question' && raw && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Recommended Next Action</span>
+                <span className="text-[10px] font-mono font-bold uppercase text-primary-400">Recommended Next Action</span>
                 <p className="text-xs text-slate-200 leading-relaxed font-medium">
                   {safeText(raw.recommendedNextAction || raw.suggestedResolution, 'Clarify during sprint planning.')}
                 </p>

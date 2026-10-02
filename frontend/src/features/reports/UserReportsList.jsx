@@ -54,7 +54,7 @@ export function UserReportsList() {
 
   const statusVariants = {
     OPEN: { bg: 'bg-amber-50 text-amber-800 border-amber-200', label: 'OPEN' },
-    IN_REVIEW: { bg: 'bg-purple-50 text-purple-800 border-purple-200', label: 'IN REVIEW' },
+    IN_REVIEW: { bg: 'bg-primary-50 text-primary-800 border-primary-200', label: 'IN REVIEW' },
     RESOLVED: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-200', label: 'RESOLVED' },
     CLOSED: { bg: 'bg-slate-100 text-slate-700 border-slate-200', label: 'CLOSED' },
   };
@@ -78,7 +78,7 @@ export function UserReportsList() {
     <Card className="p-6 space-y-6 bg-white border border-slate-200 shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 pb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-purple-50 text-purple-600">
+          <div className="p-2 rounded-xl bg-primary-50 text-primary-600">
             <Flag className="h-5 w-5" />
           </div>
           <div>
@@ -89,7 +89,7 @@ export function UserReportsList() {
           </div>
         </div>
 
-        <Badge variant="default" className="bg-purple-100 text-purple-800 font-bold border-none">
+        <Badge variant="default" className="bg-primary-100 text-primary-800 font-bold border-none">
           {reports.length} Total Reports
         </Badge>
       </div>
@@ -122,7 +122,7 @@ export function UserReportsList() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono font-bold text-xs text-purple-900 bg-purple-100 px-2 py-0.5 rounded-md">
+                      <span className="font-mono font-bold text-xs text-primary-900 bg-primary-100 px-2 py-0.5 rounded-md">
                         {report.reportId}
                       </span>
                       <span className={`text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full border ${statusConfig.bg}`}>

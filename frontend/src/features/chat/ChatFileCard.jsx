@@ -55,14 +55,14 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
         {/* UploadThing Badge & Hover Overlay */}
         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between p-3 text-white">
           <div className="flex items-center gap-1.5 text-xs font-mono truncate max-w-[200px]">
-            <Eye className="h-4 w-4 text-purple-400 shrink-0" />
+            <Eye className="h-4 w-4 text-primary-400 shrink-0" />
             <span className="truncate">{filename}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
-              className="p-2 rounded-xl bg-slate-900/80 hover:bg-purple-600 text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-900/80 hover:bg-primary-600 text-white transition-colors"
               title="Download Image"
               aria-label="Download Image"
             >
@@ -70,7 +70,7 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
             </button>
             <button
               onClick={() => onOpenPreview(attachment)}
-              className="p-2 rounded-xl bg-slate-900/80 hover:bg-purple-600 text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-900/80 hover:bg-primary-600 text-white transition-colors"
               title="Preview Image"
               aria-label="Preview Image"
             >
@@ -90,14 +90,14 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
     iconBg = 'bg-rose-50 text-rose-600 border-rose-200';
   } else if (type === 'code') {
     FileIcon = FileCode;
-    iconBg = 'bg-indigo-50 text-indigo-600 border-indigo-200';
+    iconBg = 'bg-primary-50 text-primary-600 border-primary-200';
   } else if (type === 'archive') {
     FileIcon = Archive;
     iconBg = 'bg-amber-50 text-amber-600 border-amber-200';
   }
 
   return (
-    <div className="mt-2 flex items-center justify-between gap-4 p-3 max-w-md rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 shadow-2xs transition-all">
+    <div className="mt-2 flex items-center justify-between gap-4 p-3 max-w-md rounded-2xl border border-slate-200 bg-white hover:border-primary-300 shadow-2xs transition-all">
       <div className="flex items-center gap-3 min-w-0">
         <div className={`h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}`}>
           <FileIcon className="h-5 w-5" />
@@ -112,7 +112,7 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
               {extension}
             </span>
             <span>{formattedSize}</span>
-            <span className="text-[9px] text-indigo-600 font-extrabold flex items-center gap-0.5" title="Stored securely on UploadThing CDN">
+            <span className="text-[9px] text-primary-600 font-extrabold flex items-center gap-0.5" title="Stored securely on UploadThing CDN">
               <Cloud className="h-3 w-3" /> UploadThing
             </span>
           </div>
@@ -123,7 +123,7 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
         {extension === 'pdf' && (
           <button
             onClick={() => onOpenPreview(attachment)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 transition-colors"
+            className="p-2 rounded-xl bg-slate-100 hover:bg-primary-50 hover:text-primary-600 text-slate-600 transition-colors"
             title="Preview PDF"
             aria-label="Preview PDF"
           >
@@ -134,7 +134,7 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="p-2 rounded-xl bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white transition-colors"
+          className="p-2 rounded-xl bg-primary-50 hover:bg-primary-600 text-primary-600 hover:text-white transition-colors"
           title="Download File"
           aria-label="Download File"
         >

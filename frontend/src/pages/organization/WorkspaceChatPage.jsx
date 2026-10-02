@@ -597,7 +597,7 @@ export default function WorkspaceChatPage() {
     return (
       <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-slate-50">
         <div className="text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary-600 mx-auto" />
           <p className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">
             Loading Workspace Chat...
           </p>
@@ -697,7 +697,7 @@ export default function WorkspaceChatPage() {
                 <Menu className="h-4 w-4" />
               </button>
 
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-600 shrink-0">
                 {activeChannel.isDefault ? (
                   <Hash className="h-4 w-4 stroke-[2.5]" />
                 ) : (
@@ -737,7 +737,7 @@ export default function WorkspaceChatPage() {
                 <button
                   type="button"
                   onClick={() => setChannelToConfigure(activeChannel)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                   title="Channel Settings"
                 >
                   <Settings className="h-4 w-4 text-slate-600" />
@@ -749,11 +749,11 @@ export default function WorkspaceChatPage() {
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                 title="Search messages (Ctrl+K)"
                 aria-label="Search messages"
               >
-                <Search className="h-4 w-4 text-indigo-600" />
+                <Search className="h-4 w-4 text-primary-600" />
                 <span className="hidden sm:inline">Search</span>
                 <kbd className="hidden sm:inline px-1 py-0.2 rounded bg-white text-[9px] font-mono border border-slate-200 text-slate-400">
                   ⌘K
@@ -763,10 +763,10 @@ export default function WorkspaceChatPage() {
               {/* Mobile Roster Toggle */}
               <button
                 onClick={() => setMobileRosterOpen(!mobileRosterOpen)}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-label="Toggle team roster"
               >
-                <Users className="h-4 w-4 text-indigo-600" />
+                <Users className="h-4 w-4 text-primary-600" />
                 <span>({members.length})</span>
               </button>
             </div>
@@ -788,7 +788,7 @@ export default function WorkspaceChatPage() {
           >
             {/* Older Messages Loading Indicator */}
             {isLoadingOlder && (
-              <div className="flex items-center justify-center py-2 text-xs text-indigo-600 font-medium animate-in fade-in">
+              <div className="flex items-center justify-center py-2 text-xs text-primary-600 font-medium animate-in fade-in">
                 <Loader2 className="animate-spin h-3.5 w-3.5 mr-1.5" />
                 <span>Loading older messages...</span>
               </div>
@@ -866,7 +866,7 @@ export default function WorkspaceChatPage() {
             <div className="absolute bottom-20 right-6 z-20 animate-in fade-in slide-in-from-bottom-2 duration-150">
               <button
                 onClick={scrollToBottom}
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-600 text-white font-semibold text-xs shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary-600 text-white font-semibold text-xs shadow-lg hover:bg-primary-700 transition-all transform hover:scale-105"
               >
                 <ArrowDown className="h-3.5 w-3.5 animate-bounce" />
                 <span>New messages below</span>

@@ -52,7 +52,7 @@ export function ImportToWorkspaceModal({
           <span>{successMsg}</span>
           <button
             onClick={() => navigate(`/workspaces/${workspace.orgId}/ideas`)}
-            className="font-bold underline text-xs text-indigo-700 hover:text-indigo-900 shrink-0"
+            className="font-bold underline text-xs text-primary-700 hover:text-primary-900 shrink-0"
           >
             Go to Workspace →
           </button>
@@ -129,9 +129,9 @@ export function ImportToWorkspaceModal({
 
         {/* Case 2: Single Workspace (Direct Confirmation Screen) */}
         {isSingleWorkspace && (
-          <div className="space-y-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+          <div className="space-y-4 bg-primary-50/50 p-4 rounded-xl border border-primary-200/60">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
+              <span className="text-xs font-bold text-primary-900 uppercase tracking-wider">
                 Destination Workspace
               </span>
               <Badge variant="info">1 Active Membership</Badge>
@@ -142,7 +142,7 @@ export function ImportToWorkspaceModal({
               <p className="text-xs text-slate-500">{workspaces[0].hackathonName || 'Hackathon Team Workspace'}</p>
               <div className="flex items-center gap-4 pt-1 text-xs text-slate-600">
                 <span className="flex items-center gap-1 font-medium">
-                  <Users className="h-3.5 w-3.5 text-indigo-500" /> {workspaces[0].memberCount || 1} Members
+                  <Users className="h-3.5 w-3.5 text-primary-500" /> {workspaces[0].memberCount || 1} Members
                 </span>
                 {workspaces[0].activeMvpTitle && (
                   <span className="flex items-center gap-1 font-medium truncate max-w-[180px]">
@@ -158,7 +158,7 @@ export function ImportToWorkspaceModal({
               isLoading={Boolean(importingWorkspaceId)}
               onClick={() => handleImport(workspaces[0])}
               icon={<FolderPlus className="h-4 w-4" />}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-sm shadow-primary-500/20"
             >
               {importingWorkspaceId ? 'Importing...' : `Confirm Import to ${workspaces[0].name}`}
             </Button>
@@ -182,7 +182,7 @@ export function ImportToWorkspaceModal({
                 return (
                   <Card
                     key={ws.orgId}
-                    className="p-4 flex items-center justify-between gap-4 hover:border-indigo-300 transition-colors bg-white border border-slate-200"
+                    className="p-4 flex items-center justify-between gap-4 hover:border-primary-300 transition-colors bg-white border border-slate-200"
                   >
                     <div className="min-w-0 space-y-1">
                       <h5 className="font-bold text-slate-900 text-sm truncate">{ws.name}</h5>

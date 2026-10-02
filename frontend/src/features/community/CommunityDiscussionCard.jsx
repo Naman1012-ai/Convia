@@ -220,7 +220,7 @@ export function CommunityDiscussionCard({
             onClick={(e) => e.stopPropagation()}
             className={`${
               isOwn
-                ? 'text-indigo-200 underline font-semibold hover:text-white'
+                ? 'text-primary-200 underline font-semibold hover:text-white'
                 : 'text-emerald-700 underline font-semibold hover:text-emerald-900'
             } break-all`}
           >
@@ -350,10 +350,10 @@ export function CommunityDiscussionCard({
               handleCloseThisMenu();
               onTurnIntoIdea(message);
             }}
-            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 transition-colors cursor-pointer"
             role="menuitem"
           >
-            <Sparkles className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
+            <Sparkles className="h-3.5 w-3.5 text-primary-600 shrink-0" />
             <span>Turn into Idea</span>
           </button>
 
@@ -570,7 +570,7 @@ export function CommunityDiscussionCard({
                   Featured
                 </span>
               )}
-              <span className="text-xs font-bold text-indigo-700">You</span>
+              <span className="text-xs font-bold text-primary-700">You</span>
               {typeConfig && (
                 <>
                   <span className="text-slate-300 text-xs font-mono">•</span>
@@ -595,8 +595,8 @@ export function CommunityDiscussionCard({
 
             {/* Bubble Surface */}
             <div
-              className={`relative rounded-2xl rounded-tr-xs bg-indigo-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
-                isHighlighted ? 'ring-2 ring-indigo-300' : ''
+              className={`relative rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
+                isHighlighted ? 'ring-2 ring-primary-300' : ''
               }`}
             >
               {isEditing ? (
@@ -616,7 +616,7 @@ export function CommunityDiscussionCard({
                       onKeyDown={handleEditKeyDown}
                       rows={2}
                       disabled={isSavingEdit}
-                      className="w-full rounded-xl border border-indigo-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300 shadow-inner resize-none leading-relaxed"
+                      className="w-full rounded-xl border border-primary-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-300 shadow-inner resize-none leading-relaxed"
                       aria-label="Edit discussion content"
                     />
                     <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-slate-400">
@@ -628,7 +628,7 @@ export function CommunityDiscussionCard({
                     <button
                       type="submit"
                       disabled={isSavingEdit || !editContent.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 disabled:bg-indigo-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-primary-700 hover:bg-primary-50 disabled:bg-primary-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
                     >
                       {isSavingEdit ? (
                         <>
@@ -647,11 +647,11 @@ export function CommunityDiscussionCard({
                         setEditContent(message.content || '');
                       }}
                       disabled={isSavingEdit}
-                      className="px-2.5 py-1.5 rounded-lg bg-indigo-700/60 hover:bg-indigo-700 text-indigo-100 font-medium text-xs transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-primary-700/60 hover:bg-primary-700 text-primary-100 font-medium text-xs transition-colors cursor-pointer"
                     >
                       Cancel
                     </button>
-                    <span className="text-[10px] text-indigo-200/80 font-mono hidden sm:inline">
+                    <span className="text-[10px] text-primary-200/80 font-mono hidden sm:inline">
                       Enter to save, Esc to cancel
                     </span>
                   </div>
@@ -664,7 +664,7 @@ export function CommunityDiscussionCard({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-indigo-200/90 font-mono select-none pt-0.5">
+                  <div className="flex items-center justify-end gap-1 text-[10px] text-primary-200/90 font-mono select-none pt-0.5">
                     {isSaved && (
                       <span title="Saved discussion" className="inline-flex items-center">
                         <Bookmark className="h-3 w-3 text-amber-300 fill-amber-300 shrink-0 mr-0.5" />

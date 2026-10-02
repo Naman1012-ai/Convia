@@ -260,7 +260,7 @@ export function ChatMessageInput({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={`relative bg-white p-3 border-t border-slate-200 transition-colors ${
-        isDragging ? 'bg-indigo-50/90 border-indigo-400' : ''
+        isDragging ? 'bg-primary-50/90 border-primary-400' : ''
       }`}
       aria-label="Message Composer"
     >
@@ -283,7 +283,7 @@ export function ChatMessageInput({
 
       {/* Drag & Drop Visual Backdrop */}
       {isDragging && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-indigo-600/90 text-white font-extrabold text-xs sm:text-sm rounded-t-2xl backdrop-blur-xs shadow-inner">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-primary-600/90 text-white font-extrabold text-xs sm:text-sm rounded-t-2xl backdrop-blur-xs shadow-inner">
           Drop file to attach via UploadThing
         </div>
       )}
@@ -310,7 +310,7 @@ export function ChatMessageInput({
       {pendingFile && (
         <div className="mb-2 p-2 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-between text-xs font-mono animate-in fade-in">
           <div className="flex items-center gap-2 min-w-0">
-            <Paperclip className="h-4 w-4 text-indigo-600 shrink-0" />
+            <Paperclip className="h-4 w-4 text-primary-600 shrink-0" />
             <span className="font-bold text-slate-900 truncate max-w-[200px] sm:max-w-xs">
               {pendingFile.name}
             </span>
@@ -334,13 +334,13 @@ export function ChatMessageInput({
       {/* UploadThing Upload Progress Bar */}
       {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
         <div className="mb-2 space-y-1">
-          <div className="flex justify-between text-[10px] font-mono text-indigo-600 font-bold">
+          <div className="flex justify-between text-[10px] font-mono text-primary-600 font-bold">
             <span>Uploading attachment to UploadThing CDN...</span>
             <span>{uploadProgress}%</span>
           </div>
           <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
             <div
-              className="h-full bg-indigo-600 transition-all duration-150 rounded-full"
+              className="h-full bg-primary-600 transition-all duration-150 rounded-full"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
@@ -348,7 +348,7 @@ export function ChatMessageInput({
       )}
 
       {/* Main Composer Box */}
-      <div className="flex flex-col gap-1.5 rounded-2xl border border-slate-300/90 bg-slate-50/70 p-2 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:bg-white transition-all shadow-2xs">
+      <div className="flex flex-col gap-1.5 rounded-2xl border border-slate-300/90 bg-slate-50/70 p-2 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:bg-white transition-all shadow-2xs">
         <textarea
           ref={textareaRef}
           value={content}
@@ -386,7 +386,7 @@ export function ChatMessageInput({
             <button
               type="submit"
               disabled={!canSubmit}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
               aria-label="Send Message"
             >
               {isSubmitting ? (

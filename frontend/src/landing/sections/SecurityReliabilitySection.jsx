@@ -15,7 +15,7 @@ export function SecurityReliabilitySection() {
     <section className="py-24 bg-slate-950/90 border-b border-slate-800/80 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Infrastructure & Security
           </span>
 
@@ -34,9 +34,9 @@ export function SecurityReliabilitySection() {
             return (
               <div
                 key={item.title}
-                className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 shadow-xl space-y-3 hover:-translate-y-1 transition-all duration-300 group"
+                className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800/80 hover:border-primary-500/40 shadow-xl space-y-3 hover:-translate-y-1 transition-all duration-300 group"
               >
-                <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 w-fit group-hover:scale-110 transition-transform">
+                <div className="p-3 rounded-xl bg-primary-500/10 text-primary-400 border border-primary-500/20 w-fit group-hover:scale-110 transition-transform">
                   <IconComp className="h-5 w-5" />
                 </div>
                 <h3 className="text-base font-extrabold text-white">{item.title}</h3>

@@ -7,7 +7,7 @@ export function ChaosToClaritySection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Visual Comparison
           </span>
 
@@ -62,13 +62,13 @@ export function ChaosToClaritySection() {
           </div>
 
           {/* RIGHT: With Convia */}
-          <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-purple-950/70 via-slate-900 to-indigo-950/70 border border-purple-500/50 shadow-2xl shadow-purple-950/50 space-y-6 relative overflow-hidden">
-            <div className="flex items-center justify-between pb-4 border-b border-purple-800/60">
+          <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-primary-950/70 via-slate-900 to-primary-900/50 border border-primary-500/50 shadow-2xl shadow-primary-950/50 space-y-6 relative overflow-hidden">
+            <div className="flex items-center justify-between pb-4 border-b border-primary-800/60">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                 <h3 className="text-xl font-extrabold text-white">With Convia</h3>
               </div>
-              <span className="px-3 py-1 rounded-lg text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/40">
+              <span className="px-3 py-1 rounded-lg text-xs font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/40">
                 STRUCTURED & FOCUSED
               </span>
             </div>
@@ -79,14 +79,14 @@ export function ChaosToClaritySection() {
                 <span className="text-emerald-400">Team Consensus</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-purple-500/30 text-purple-300 flex items-center justify-between font-bold">
+              <div className="p-4 rounded-2xl bg-slate-950/90 border border-primary-500/30 text-primary-300 flex items-center justify-between font-bold">
                 <span>⚡ AI Blueprint & Tech PRD Generated</span>
-                <span className="text-purple-400">Instant Architecture</span>
+                <span className="text-primary-400">Instant Architecture</span>
               </div>
 
-              <div className="p-4 rounded-2xl bg-slate-950/90 border border-indigo-500/30 text-indigo-300 flex items-center justify-between font-bold">
+              <div className="p-4 rounded-2xl bg-slate-950/90 border border-primary-500/30 text-primary-200 flex items-center justify-between font-bold">
                 <span>📋 Kanban Tasks Assigned</span>
-                <span className="text-indigo-400">Sprint Ready</span>
+                <span className="text-primary-400">Sprint Ready</span>
               </div>
 
               <div className="p-4 rounded-2xl bg-slate-950/90 border border-emerald-500/40 text-white flex items-center justify-between font-extrabold bg-gradient-to-r from-emerald-950/60 to-slate-950">

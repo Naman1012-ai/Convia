@@ -21,7 +21,7 @@ export default function MembersPage() {
       <Card>
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <Users className="h-5 w-5 text-indigo-600" /> Team Roster ({members.length} / {org.maxMembers || org.teamSizeLimit || 5})
+            <Users className="h-5 w-5 text-primary-600" /> Team Roster ({members.length} / {org.maxMembers || org.teamSizeLimit || 5})
           </h2>
         </div>
         <OrgMemberList onToast={(msg) => NotificationService.info(msg)} />

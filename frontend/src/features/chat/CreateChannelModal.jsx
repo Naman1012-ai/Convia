@@ -85,12 +85,12 @@ export function CreateChannelModal({
               }}
               placeholder="e.g. dev-team, roadmap, feedback"
               maxLength={40}
-              className="w-full pl-8 pr-4 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-2xs"
+              className="w-full pl-8 pr-4 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all shadow-2xs"
             />
           </div>
           {previewSlug && previewSlug !== name && (
             <p className="mt-1 text-xs text-slate-500">
-              Slug preview: <code className="font-semibold text-indigo-600">#{previewSlug}</code>
+              Slug preview: <code className="font-semibold text-primary-600">#{previewSlug}</code>
             </p>
           )}
         </div>
@@ -106,13 +106,13 @@ export function CreateChannelModal({
             onChange={(e) => setTopic(e.target.value)}
             placeholder="What is this channel about?"
             maxLength={150}
-            className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-2xs"
+            className="w-full px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder:text-slate-400 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all shadow-2xs"
           />
         </div>
 
         {/* Workspace Privacy Notice */}
         <div className="flex items-start gap-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-          <Lock className="h-4 w-4 text-indigo-600 shrink-0 mt-0.5" />
+          <Lock className="h-4 w-4 text-primary-600 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             This channel will be private to your workspace team. Only verified members of this workspace can view and send messages.
           </p>
@@ -131,7 +131,7 @@ export function CreateChannelModal({
           <button
             type="submit"
             disabled={isSubmitting || !previewSlug}
-            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2 text-xs font-semibold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-all"
           >
             {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             <span>Create Channel</span>

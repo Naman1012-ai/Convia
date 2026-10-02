@@ -65,7 +65,7 @@ export function ReauthenticateModal({ isOpen, onClose, onSuccess }) {
             variant="primary"
             isLoading={isSubmitting}
             icon={<Lock className="h-4 w-4" />}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+            className="bg-primary-600 hover:bg-primary-700 text-white font-bold"
           >
             Confirm & Continue
           </Button>

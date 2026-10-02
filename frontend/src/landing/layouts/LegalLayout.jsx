@@ -44,7 +44,7 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-purple-500 selection:text-white antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-primary-500 selection:text-white antialiased">
       <LandingNavbar />
 
       <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-10">
@@ -53,10 +53,10 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
           <div className="flex flex-wrap items-center justify-between gap-4">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white hover:border-purple-500/40 shadow-sm transition-all hover:-translate-x-0.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-300 hover:text-white hover:border-primary-500/40 shadow-sm transition-all hover:-translate-x-0.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
               aria-label="Back to Home"
             >
-              <ArrowLeft className="h-4 w-4 text-purple-400" />
+              <ArrowLeft className="h-4 w-4 text-primary-400" />
               <span>Back to Home</span>
             </Link>
 
@@ -64,14 +64,14 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
             <nav className="flex items-center gap-2 text-xs font-mono text-slate-400" aria-label="Breadcrumb">
               <Link to="/" className="hover:text-white transition-colors">Home</Link>
               <ChevronRight className="h-3 w-3 text-slate-600" />
-              <span className="text-purple-300 font-bold">{title}</span>
+              <span className="text-primary-300 font-bold">{title}</span>
             </nav>
           </div>
 
           {/* Title Header */}
           <div className="space-y-3 pt-2 border-b border-slate-800/80 pb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
-              <Shield className="h-3.5 w-3.5 text-purple-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
+              <Shield className="h-3.5 w-3.5 text-primary-400" />
               <span>Trust & Transparency</span>
             </div>
 
@@ -95,7 +95,7 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
           <div className="lg:hidden rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden">
             <button
               onClick={() => setMobileTocOpen(!mobileTocOpen)}
-              className="w-full p-4 flex items-center justify-between text-xs font-mono font-bold text-purple-300 focus:outline-none"
+              className="w-full p-4 flex items-center justify-between text-xs font-mono font-bold text-primary-300 focus:outline-none"
               aria-expanded={mobileTocOpen}
             >
               <span>Table of Contents ({toc.length} Sections)</span>
@@ -110,7 +110,7 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
                     onClick={() => scrollToSection(item.id)}
                     className="w-full text-left py-1.5 px-2 rounded hover:bg-slate-800 transition-colors flex items-center gap-2"
                   >
-                    <span className="text-purple-400 font-mono text-[11px] font-bold">{idx + 1}.</span>
+                    <span className="text-primary-400 font-mono text-[11px] font-bold">{idx + 1}.</span>
                     <span>{item.title}</span>
                   </button>
                 ))}
@@ -136,11 +136,11 @@ export function LegalLayout({ title, subtitle, lastUpdated = 'July 24, 2026', to
                       onClick={() => scrollToSection(item.id)}
                       className={`w-full text-left py-2 px-3 rounded-xl transition-all duration-150 flex items-start gap-2 ${
                         isActive
-                          ? 'bg-purple-600/20 border border-purple-500/40 text-white font-bold shadow-sm'
+                          ? 'bg-primary-600/20 border border-primary-500/40 text-white font-bold shadow-sm'
                           : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                       }`}
                     >
-                      <span className="text-purple-400 font-mono text-[10px] font-extrabold mt-0.5">
+                      <span className="text-primary-400 font-mono text-[10px] font-extrabold mt-0.5">
                         {idx + 1}.
                       </span>
                       <span className="leading-tight">{item.title}</span>

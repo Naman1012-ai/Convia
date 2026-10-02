@@ -48,7 +48,7 @@ export function BlueprintArchitectureTab({
       <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
         <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
           <span className="flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-purple-400" /> System Architecture & Data Flow
+            <Cpu className="h-4 w-4 text-primary-400" /> System Architecture & Data Flow
           </span>
           {isEditing && (
             <span className="text-xs font-mono font-bold text-amber-400">Editing Architecture</span>
@@ -90,7 +90,7 @@ export function BlueprintArchitectureTab({
           <div className="space-y-4 text-xs">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-slate-400 uppercase tracking-wider font-mono">Pattern: </span>
-              <span className="px-3 py-1 rounded-lg bg-purple-950 text-purple-200 border border-purple-800 font-mono font-bold">
+              <span className="px-3 py-1 rounded-lg bg-primary-950 text-primary-200 border border-primary-800 font-mono font-bold">
                 {rawPattern}
               </span>
             </div>
@@ -136,7 +136,7 @@ export function BlueprintArchitectureTab({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {/* Frontend */}
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-            <span className="text-[10px] font-mono font-bold uppercase text-purple-400">Frontend Layer</span>
+            <span className="text-[10px] font-mono font-bold uppercase text-primary-400">Frontend Layer</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {safeArray(techStack.frontend || ['React', 'Tailwind CSS', 'Vite']).map((t, idx) => (
                 <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
@@ -196,8 +196,8 @@ export function BlueprintArchitectureTab({
         </div>
 
         {techStack.evaluationReason && (
-          <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-900/50 text-xs text-purple-200 font-medium">
-            <span className="font-bold font-mono text-purple-300">Stack Rationale: </span>
+          <div className="p-3.5 rounded-xl bg-primary-950/30 border border-primary-900/50 text-xs text-primary-200 font-medium">
+            <span className="font-bold font-mono text-primary-300">Stack Rationale: </span>
             {safeText(techStack.evaluationReason)}
           </div>
         )}
@@ -222,7 +222,7 @@ export function BlueprintArchitectureTab({
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs font-black text-white flex items-center gap-1.5">
-                  <Database className="h-3.5 w-3.5 text-purple-400" />
+                  <Database className="h-3.5 w-3.5 text-primary-400" />
                   {safeText(entity.entityName || entity.name, `Entity ${idx + 1}`)}
                 </span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
@@ -245,7 +245,7 @@ export function BlueprintArchitectureTab({
                 <span className="text-[10px] font-mono uppercase text-slate-500 font-bold">Core Schema Fields:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {safeArray(entity.fields).map((f, fIdx) => (
-                    <span key={fIdx} className="px-1.5 py-0.5 rounded bg-slate-900 text-purple-200 font-mono text-[11px] border border-slate-800">
+                    <span key={fIdx} className="px-1.5 py-0.5 rounded bg-slate-900 text-primary-200 font-mono text-[11px] border border-slate-800">
                       {safeText(f)}
                     </span>
                   ))}

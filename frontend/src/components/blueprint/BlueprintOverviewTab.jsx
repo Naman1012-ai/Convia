@@ -77,11 +77,11 @@ export function BlueprintOverviewTab({
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <Target className="h-4 w-4 text-purple-400" /> Project Direction: What Are We Building & Why?
+              <Target className="h-4 w-4 text-primary-400" /> Project Direction: What Are We Building & Why?
             </h3>
             <p className="text-xs text-slate-400">Core value chain from problem to MVP solution</p>
           </div>
-          <span className="text-[11px] font-mono text-purple-300 font-bold bg-purple-950 px-2.5 py-0.5 rounded-full border border-purple-800">
+          <span className="text-[11px] font-mono text-primary-300 font-bold bg-primary-950 px-2.5 py-0.5 rounded-full border border-primary-800">
             1-Min Briefing
           </span>
         </div>
@@ -108,7 +108,7 @@ export function BlueprintOverviewTab({
           {/* 2. Solution */}
           <BlueprintSummaryCard
             tag="2. Solution"
-            tagColor="text-purple-400"
+            tagColor="text-primary-400"
             title="2. Proposed Solution"
             content={safeText(pu.proposedSolution) || 'Engineered software platform addressing core workflow bottlenecks.'}
             footer="Core mechanism"
@@ -200,7 +200,7 @@ export function BlueprintOverviewTab({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-mono uppercase text-slate-400 font-bold">Phase 6 Production Readiness</span>
-                <span className="px-2 py-0.2 rounded bg-slate-950 text-purple-300 font-mono text-[10px] border border-slate-800 font-bold">
+                <span className="px-2 py-0.2 rounded bg-slate-950 text-primary-300 font-mono text-[10px] border border-slate-800 font-bold">
                   {safeText(readiness.level || readiness.derivedLevel, 'Ready for Development')}
                 </span>
               </div>
@@ -212,7 +212,7 @@ export function BlueprintOverviewTab({
 
           <button
             onClick={() => onNavigateTab('quality')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 text-purple-300 border border-purple-800 font-mono text-xs font-bold hover:bg-purple-900 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-950/80 text-primary-300 border border-primary-800 font-mono text-xs font-bold hover:bg-primary-900 transition-colors"
           >
             <span>Inspect Quality Gates & Risks</span>
             <ArrowRight className="h-3.5 w-3.5" />
@@ -225,7 +225,7 @@ export function BlueprintOverviewTab({
             <span className="text-slate-500 font-bold uppercase text-[10px]">Quality Gates</span>
             <div className="flex items-center justify-between font-bold text-white">
               <span>{passedGates} passed</span>
-              <span className="text-purple-400">{qualityGates.length - passedGates} pending</span>
+              <span className="text-primary-400">{qualityGates.length - passedGates} pending</span>
             </div>
           </div>
 
@@ -251,7 +251,7 @@ export function BlueprintOverviewTab({
             <span className="text-slate-500 font-bold uppercase text-[10px]">Execution Status</span>
             <div className="flex items-center justify-between font-bold text-emerald-400">
               <span>{completedTasksCount}/{tasksCount} Done</span>
-              <span className="text-purple-400">{syncedTasksCount} synced</span>
+              <span className="text-primary-400">{syncedTasksCount} synced</span>
             </div>
           </div>
         </div>
@@ -262,7 +262,7 @@ export function BlueprintOverviewTab({
         {/* Requirements */}
         <div
           onClick={() => onNavigateTab('requirements')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-950 text-blue-300 border border-blue-800 group-hover:border-blue-600">
@@ -278,20 +278,20 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>Traceable to tasks</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
 
         {/* Features & Workflow */}
         <div
           onClick={() => onNavigateTab('execution')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-950 text-purple-300 border border-purple-800 group-hover:border-purple-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-950 text-primary-300 border border-primary-800 group-hover:border-primary-600">
               <Workflow className="h-5 w-5" />
             </div>
-            <span className="text-[10px] font-mono text-purple-400 font-bold bg-purple-950/80 px-2 py-0.5 rounded border border-purple-900">
+            <span className="text-[10px] font-mono text-primary-400 font-bold bg-primary-950/80 px-2 py-0.5 rounded border border-primary-900">
               {safeArray(v2.execution?.workflow).length} Steps
             </span>
           </div>
@@ -301,14 +301,14 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>Workflow pipeline</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
 
         {/* Tasks & Effort */}
         <div
           onClick={() => onNavigateTab('execution')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-950 text-emerald-300 border border-emerald-800 group-hover:border-emerald-600">
@@ -324,14 +324,14 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>{inProgressTasksCount > 0 ? `${inProgressTasksCount} active in progress` : 'Critical path mapped'}</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
 
         {/* Decisions */}
         <div
           onClick={() => onNavigateTab('decisions')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-950 text-amber-300 border border-amber-800 group-hover:border-amber-600">
@@ -347,14 +347,14 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>Cross-entity links</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
 
         {/* Risks */}
         <div
           onClick={() => onNavigateTab('quality')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-950 text-rose-300 border border-rose-800 group-hover:border-rose-600">
@@ -370,17 +370,17 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>Mitigation matrix</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
 
         {/* Open Questions */}
         <div
           onClick={() => onNavigateTab('decisions')}
-          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
+          className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-3 group shadow-md"
         >
           <div className="flex items-center justify-between">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-950 text-indigo-300 border border-indigo-800 group-hover:border-indigo-600">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-950 text-primary-300 border border-primary-800 group-hover:border-primary-600">
               <Zap className="h-5 w-5" />
             </div>
             {blockingQuestionsCount > 0 ? (
@@ -401,7 +401,7 @@ export function BlueprintOverviewTab({
           </div>
           <div className="text-xs text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-2 font-mono">
             <span>Next action items</span>
-            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-purple-400" />
+            <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform text-primary-400" />
           </div>
         </div>
       </div>
@@ -410,7 +410,7 @@ export function BlueprintOverviewTab({
       <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4">
         <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
           <span className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-purple-400" /> Executive Overview & Vision
+            <FileText className="h-4 w-4 text-primary-400" /> Executive Overview & Vision
           </span>
           {isEditing && (
             <span className="text-xs font-mono font-bold text-amber-400">Editing Section</span>
@@ -430,7 +430,7 @@ export function BlueprintOverviewTab({
                   }))
                 }
                 rows={4}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-purple-500 font-medium leading-relaxed"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-primary-500 font-medium leading-relaxed"
               />
             </div>
           </div>
@@ -441,8 +441,8 @@ export function BlueprintOverviewTab({
             </div>
 
             {rawVision && (
-              <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-900/60 text-xs text-purple-200 font-medium">
-                <span className="font-bold font-mono text-purple-300">Target Vision: </span>
+              <div className="p-3.5 rounded-xl bg-primary-950/40 border border-primary-900/60 text-xs text-primary-200 font-medium">
+                <span className="font-bold font-mono text-primary-300">Target Vision: </span>
                 {rawVision}
               </div>
             )}

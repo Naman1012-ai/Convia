@@ -97,12 +97,12 @@ function IdeaBoardContent() {
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono">
               Community Votes
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-600 border border-primary-100">
               <ThumbsUp className="h-4 w-4" />
             </div>
           </div>
           <div className="flex items-baseline justify-between">
-            <h3 className="text-2xl font-black text-indigo-600">{stats?.totalVotes || 0}</h3>
+            <h3 className="text-2xl font-black text-primary-600">{stats?.totalVotes || 0}</h3>
             <span className="text-xs font-bold text-slate-500">Total Cast</span>
           </div>
         </Card>
@@ -133,7 +133,7 @@ function IdeaBoardContent() {
             <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono">
               Team Roster
             </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-600 border border-primary-100">
               <Users className="h-4 w-4" />
             </div>
           </div>
@@ -146,8 +146,8 @@ function IdeaBoardContent() {
 
       {/* 2. FEATURED SELECTED MVP HERO BANNER */}
       {selectedMvp && (
-        <Card className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-indigo-800/80 shadow-xl relative overflow-hidden w-full">
-          <div className="absolute top-0 right-0 h-40 w-40 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+        <Card className="bg-gradient-to-r from-slate-900 via-primary-950 to-slate-900 text-white rounded-2xl border border-primary-800/80 shadow-xl relative overflow-hidden w-full">
+          <div className="absolute top-0 right-0 h-40 w-40 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 p-6 sm:p-8 rounded-2xl w-full relative z-10">
             <div className="space-y-3 max-w-2xl w-full">
@@ -155,10 +155,10 @@ function IdeaBoardContent() {
                 <Badge variant="success" className="bg-amber-500 text-white font-bold flex items-center gap-1 shadow-sm">
                   <Trophy className="h-3.5 w-3.5" /> Workspace Winning MVP
                 </Badge>
-                <Badge variant="info" className="bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
+                <Badge variant="info" className="bg-primary-500/30 text-primary-200 border border-primary-400/30">
                   {safeText(selectedMvp.difficultyLevel, 'Medium')} Build
                 </Badge>
-                <span className="text-xs font-mono text-indigo-300 font-bold">
+                <span className="text-xs font-mono text-primary-300 font-bold">
                   👍 {selectedMvp.voteCount || 0} Votes
                 </span>
               </div>
@@ -179,8 +179,8 @@ function IdeaBoardContent() {
                 <Button
                   variant="primary"
                   size="sm"
-                  icon={<FileText className="h-4 w-4 text-purple-200" />}
-                  className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md w-full justify-center"
+                  icon={<FileText className="h-4 w-4 text-primary-200" />}
+                  className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs shadow-md w-full justify-center"
                 >
                   View Blueprint
                 </Button>
@@ -189,8 +189,8 @@ function IdeaBoardContent() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  icon={<CheckSquare className="h-4 w-4 text-indigo-300" />}
-                  className="bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 border-indigo-800 font-bold text-xs w-full justify-center"
+                  icon={<CheckSquare className="h-4 w-4 text-primary-300" />}
+                  className="bg-primary-950/80 hover:bg-primary-900 text-primary-200 border-primary-800 font-bold text-xs w-full justify-center"
                 >
                   Sprint Task Board
                 </Button>
@@ -229,7 +229,7 @@ function IdeaBoardContent() {
                   onClick={() => setActiveFilter(tab.id)}
                   className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                     active
-                      ? 'bg-indigo-600 text-white shadow-sm'
+                      ? 'bg-primary-600 text-white shadow-sm'
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
@@ -243,8 +243,8 @@ function IdeaBoardContent() {
             <Button
               variant="secondary"
               size="sm"
-              icon={<Globe className="h-3.5 w-3.5 text-indigo-600" />}
-              className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 font-bold text-xs whitespace-nowrap"
+              icon={<Globe className="h-3.5 w-3.5 text-primary-600" />}
+              className="bg-primary-50 hover:bg-primary-100 text-primary-700 border-primary-200 font-bold text-xs whitespace-nowrap"
             >
               Explore Public Feed
             </Button>
@@ -283,7 +283,7 @@ function IdeaBoardContent() {
                 size="sm"
                 icon={<Plus className="h-4 w-4" />}
                 onClick={handleOpenCreateModal}
-                className="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold w-full sm:w-auto justify-center"
+                className="shrink-0 bg-primary-600 hover:bg-primary-700 text-white font-bold w-full sm:w-auto justify-center"
               >
                 Propose Idea
               </Button>

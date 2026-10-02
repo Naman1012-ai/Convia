@@ -121,9 +121,9 @@ export function CreatePublicIdeaModal({ isOpen, onClose, onSuccess = () => {}, i
             </div>
           )}
 
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-4 mb-2 flex items-center gap-3">
-            <Globe className="h-5 w-5 text-indigo-600 shrink-0" />
-            <p className="text-xs text-indigo-900 leading-relaxed">
+          <div className="rounded-xl border border-primary-200/60 bg-primary-50/60 p-4 mb-2 flex items-center gap-3">
+            <Globe className="h-5 w-5 text-primary-600 shrink-0" />
+            <p className="text-xs text-primary-900 leading-relaxed">
               Public ideas are visible to all Convia innovators. Great for open feedback, networking, or finding future hackathon teammates!
             </p>
           </div>

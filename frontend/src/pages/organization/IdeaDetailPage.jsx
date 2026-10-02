@@ -165,17 +165,17 @@ export default function IdeaDetailPage() {
       <Card className="p-8">
         {/* Imported Attribution Section */}
         {(idea.importedFromPublicId || idea.origin?.publicIdeaId) && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-indigo-50/80 border border-indigo-200/80 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-primary-50/80 border border-primary-200/80 mb-6">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <Badge variant="info" className="bg-indigo-600 text-white font-bold text-[10px] flex items-center gap-1">
+                <Badge variant="info" className="bg-primary-600 text-white font-bold text-[10px] flex items-center gap-1">
                   <Globe className="h-3 w-3" /> Imported from Public Ideas
                 </Badge>
-                <span className="text-xs text-indigo-900 font-semibold">
-                  Originally created by <strong className="text-indigo-950">{idea.originalAuthorName || idea.authorName}</strong>
+                <span className="text-xs text-primary-900 font-semibold">
+                  Originally created by <strong className="text-primary-950">{idea.originalAuthorName || idea.authorName}</strong>
                 </span>
               </div>
-              <p className="text-[11px] text-indigo-700">
+              <p className="text-[11px] text-primary-700">
                 Posted originally: {formatTimestamp(idea.originalCreatedAt || idea.createdAt)} · Imported: {formatTimestamp(idea.importedAt || idea.createdAt)}
               </p>
             </div>
@@ -183,9 +183,9 @@ export default function IdeaDetailPage() {
             <Button
               variant="secondary"
               size="sm"
-              icon={<Globe className="h-3.5 w-3.5 text-indigo-600" />}
+              icon={<Globe className="h-3.5 w-3.5 text-primary-600" />}
               onClick={handleViewOriginalPublicIdea}
-              className="bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-100 shrink-0 font-bold"
+              className="bg-white border-primary-200 text-primary-700 hover:bg-primary-100 shrink-0 font-bold"
             >
               View Original Public Idea
             </Button>
@@ -300,7 +300,7 @@ export default function IdeaDetailPage() {
       {/* Discussion & Collaboration Panel */}
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-          <MessageCircle className="h-5 w-5 text-indigo-600" /> Discussion & Technical Refinement
+          <MessageCircle className="h-5 w-5 text-primary-600" /> Discussion & Technical Refinement
         </h2>
         <DiscussionPanel idea={idea} onToast={(msg) => NotificationService.info(msg)} />
       </div>

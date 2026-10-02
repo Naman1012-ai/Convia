@@ -4,8 +4,8 @@ import { SocialProofPlaceholder } from '../components/SocialProofPlaceholder';
 
 const AUDIENCE_BADGES = [
   { label: 'Hackathons', icon: Rocket, color: 'text-amber-400 border-amber-500/30 bg-amber-500/10' },
-  { label: 'Students', icon: GraduationCap, color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10' },
-  { label: 'Innovators', icon: Lightbulb, color: 'text-purple-400 border-purple-500/30 bg-purple-500/10' },
+  { label: 'Students', icon: GraduationCap, color: 'text-primary-400 border-primary-500/30 bg-primary-500/10' },
+  { label: 'Innovators', icon: Lightbulb, color: 'text-primary-300 border-primary-500/30 bg-primary-500/10' },
   { label: 'Startups', icon: Zap, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' },
   { label: 'Open Source Teams', icon: Code2, color: 'text-sky-400 border-sky-500/30 bg-sky-500/10' },
 ];

@@ -59,7 +59,7 @@ export function ChatMemberList({ members = [], currentUserId }) {
                 className="h-8 w-8 rounded-full object-cover border border-slate-200"
               />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+              <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
                 {name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -104,7 +104,7 @@ export function ChatMemberList({ members = [], currentUserId }) {
       <div className="p-4 border-b border-slate-200 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-indigo-600" />
+            <Users className="h-4 w-4 text-primary-600" />
             <h3 className="text-xs font-mono font-bold text-slate-900 uppercase tracking-wider">
               Workspace Team ({members.length})
             </h3>
@@ -119,7 +119,7 @@ export function ChatMemberList({ members = [], currentUserId }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search members..."
-            className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
       </div>

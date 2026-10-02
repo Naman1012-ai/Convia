@@ -123,7 +123,7 @@ export function renderFormattedContent(content, members = [], currentUserId = nu
                   : 'bg-white/25 text-white font-bold border border-white/30'
                 : isSelfMention
                 ? 'bg-amber-100/90 text-amber-900 border border-amber-300 font-bold shadow-2xs'
-                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80 border border-indigo-200/60'
+                : 'bg-primary-50 text-primary-700 hover:bg-primary-100/80 border border-primary-200/60'
             }`,
             title: `Mentioned: ${displayName} (@${matchedMember.username || 'member'})`,
           },

@@ -11,7 +11,7 @@ export function ChatEmptyState({
       <div className={`flex h-16 w-16 items-center justify-center rounded-2xl shadow-sm ${
         isPublic
           ? 'bg-emerald-50 border border-emerald-200 text-emerald-600'
-          : 'bg-indigo-50 border border-indigo-200 text-indigo-600'
+          : 'bg-primary-50 border border-primary-200 text-primary-600'
       }`}>
         {isPublic ? <Globe className="h-8 w-8" /> : <MessageSquare className="h-8 w-8" />}
       </div>
@@ -36,7 +36,7 @@ export function ChatEmptyState({
           </>
         ) : (
           <>
-            <Users className="h-3.5 w-3.5 text-indigo-500" />
+            <Users className="h-3.5 w-3.5 text-primary-500" />
             <span>Workspace members only</span>
           </>
         )}

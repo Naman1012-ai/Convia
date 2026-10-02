@@ -52,15 +52,15 @@ export function ToastProvider({ children }) {
     success: <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />,
     warning: <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />,
     error: <XCircle className="h-5 w-5 text-rose-500 shrink-0" />,
-    info: <Info className="h-5 w-5 text-indigo-500 shrink-0" />,
-    loading: <Loader2 className="h-5 w-5 text-indigo-500 animate-spin shrink-0" />,
+    info: <Info className="h-5 w-5 text-primary-500 shrink-0" />,
+    loading: <Loader2 className="h-5 w-5 text-primary-500 animate-spin shrink-0" />,
   };
 
   const borderColors = {
     success: 'border-emerald-200 bg-emerald-50/95 text-emerald-950 shadow-emerald-500/10',
     warning: 'border-amber-200 bg-amber-50/95 text-amber-950 shadow-amber-500/10',
     error: 'border-rose-200 bg-rose-50/95 text-rose-950 shadow-rose-500/10',
-    info: 'border-indigo-200 bg-indigo-50/95 text-indigo-950 shadow-indigo-500/10',
+    info: 'border-primary-200 bg-primary-50/95 text-primary-950 shadow-primary-500/10',
     loading: 'border-slate-200 bg-white/95 text-slate-900 shadow-slate-500/10',
   };
 

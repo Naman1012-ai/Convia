@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { inAppNotificationService } from '../services/inAppNotificationService';
+import { setupForegroundMessageHandler } from '../services/fcmService';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Convia Phase 7A: Authoritative Persistent Notification Hook.
@@ -64,8 +66,18 @@ export function useNotifications() {
       }
     );
 
+    const unsubFcm = setupForegroundMessageHandler((payload) => {
+      if (!isMountedRef.current) return;
+      const title = payload.notification?.title || payload.data?.title || 'Convia Notification';
+      const body = payload.notification?.body || payload.data?.body || '';
+      NotificationService.info(`${title}${body ? `: ${body}` : ''}`);
+    });
+
     return () => {
       unsubscribe();
+      if (typeof unsubFcm === 'function') {
+        unsubFcm();
+      }
     };
   }, [user?.uid]);
 

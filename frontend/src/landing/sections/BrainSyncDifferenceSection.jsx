@@ -7,7 +7,7 @@ const PIPELINE_NODES = [
     action: 'COMMUNICATES',
     role: 'Real-time team chat & voice sync',
     icon: MessageSquare,
-    color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10',
+    color: 'border-primary-500/30 text-primary-400 bg-primary-500/10',
   },
   {
     tool: 'Convia',
@@ -15,7 +15,7 @@ const PIPELINE_NODES = [
     role: 'Ideation, voting & AI technical blueprint',
     icon: Zap,
     highlight: true,
-    color: 'border-purple-500/50 text-purple-300 bg-purple-600 shadow-xl shadow-purple-500/30',
+    color: 'border-primary-500/50 text-primary-300 bg-primary-600 shadow-xl shadow-primary-500/30',
   },
   {
     tool: 'Notion',
@@ -37,18 +37,18 @@ export function ConviaDifferenceSection() {
   return (
     <section className="py-24 bg-slate-950 border-b border-slate-800/80 relative overflow-hidden">
       {/* Background Radial Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-6xl h-96 bg-purple-600/10 blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-6xl h-96 bg-primary-600/10 blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-mono text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 font-mono text-xs font-bold uppercase tracking-wider">
             <span>Workflow Position</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
             Convia Doesn&apos;t Replace Your Tools. <br />
-            <span className="bg-gradient-to-r from-purple-400 via-indigo-300 to-indigo-500 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary-300 via-primary-200 to-primary-400 bg-clip-text text-transparent">
               It Decides What Deserves To Be Built.
             </span>
           </h2>
@@ -67,7 +67,7 @@ export function ConviaDifferenceSection() {
                 key={idx}
                 className={`p-6 rounded-3xl border transition-all duration-200 ${
                   item.highlight
-                    ? 'bg-slate-900/90 border-purple-500/50 shadow-xl shadow-purple-950/40 ring-1 ring-purple-500/30'
+                    ? 'bg-slate-900/90 border-primary-500/50 shadow-xl shadow-primary-950/40 ring-1 ring-primary-500/30'
                     : 'bg-slate-900/50 border-slate-800 hover:border-slate-700'
                 }`}
               >
@@ -92,7 +92,7 @@ export function ConviaDifferenceSection() {
         {/* Explanation Banner */}
         <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800/80 text-center max-w-2xl mx-auto space-y-2">
           <p className="text-sm text-slate-200 font-semibold">
-            <strong className="text-indigo-400">Discord</strong> communicates &bull; <strong className="text-purple-400">Convia</strong> decides &bull; <strong className="text-amber-400">Notion</strong> documents &bull; <strong className="text-emerald-400">GitHub</strong> builds.
+            <strong className="text-primary-300">Discord</strong> communicates &bull; <strong className="text-primary-400">Convia</strong> decides &bull; <strong className="text-amber-400">Notion</strong> documents &bull; <strong className="text-emerald-400">GitHub</strong> builds.
           </p>
         </div>
       </div>

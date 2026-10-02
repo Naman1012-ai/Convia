@@ -8,7 +8,7 @@ const DEMO_TRENDING_MVPS = [
     selectionDate: 'July 24, 2026',
     votes: 48,
     status: 'Official MVP Locked',
-    gradient: 'from-purple-950/80 via-slate-900 to-indigo-950/80 border-purple-500/50',
+    gradient: 'from-primary-950/80 via-slate-900 to-primary-900/60 border-primary-500/50',
   },
   {
     workspace: 'Quantum Innovators',
@@ -16,7 +16,7 @@ const DEMO_TRENDING_MVPS = [
     selectionDate: 'July 23, 2026',
     votes: 36,
     status: 'Sprint in Progress',
-    gradient: 'from-indigo-950/80 via-slate-900 to-slate-950 border-indigo-500/50',
+    gradient: 'from-primary-950/80 via-slate-900 to-slate-950 border-primary-500/50',
   },
   {
     workspace: 'DevLabs Open Source',
@@ -24,7 +24,7 @@ const DEMO_TRENDING_MVPS = [
     selectionDate: 'July 22, 2026',
     votes: 42,
     status: 'AI Blueprint Ready',
-    gradient: 'from-slate-950 via-slate-900 to-purple-950/80 border-slate-700',
+    gradient: 'from-slate-950 via-slate-900 to-primary-950/80 border-slate-700',
   },
 ];
 
@@ -57,7 +57,7 @@ export function TrendingMvpsSection() {
                 <span className="px-3 py-1 rounded-full text-[10px] font-mono font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
                   <Trophy className="h-3 w-3" /> MVP LOCKED
                 </span>
-                <span className="text-xs font-mono font-bold text-purple-300 flex items-center gap-1">
+                <span className="text-xs font-mono font-bold text-primary-300 flex items-center gap-1">
                   <ThumbsUp className="h-3.5 w-3.5" /> +{mvp.votes} Votes
                 </span>
               </div>

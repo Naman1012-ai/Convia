@@ -14,14 +14,14 @@ const REASONS = [
     icon: Layers,
     highlight: 'Zero Discord Noise',
     description: 'Every idea, suggestion, and upvote has a dedicated, permanent place. Technical discussions stay clean and easy to inspect.',
-    color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10',
+    color: 'border-primary-500/30 text-primary-400 bg-primary-500/10',
   },
   {
     title: 'AI-Powered Planning',
     icon: Zap,
     highlight: 'Instant Architecture',
     description: 'Generate comprehensive PRDs, database schemas, REST endpoints, and technical blueprints instantly upon selecting your MVP.',
-    color: 'border-purple-500/30 text-purple-400 bg-purple-500/10',
+    color: 'border-primary-500/30 text-primary-300 bg-primary-500/10',
   },
   {
     title: 'Execution Ready',
@@ -38,7 +38,7 @@ export function WhyItWorksSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Core Competitive Advantage
           </span>
 
@@ -58,13 +58,13 @@ export function WhyItWorksSection() {
             return (
               <div
                 key={r.title}
-                className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-purple-500/40 shadow-xl space-y-5 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
+                className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800/80 hover:border-primary-500/40 shadow-xl space-y-5 group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
               >
                 <div className="flex items-center justify-between">
                   <div className={`p-3 rounded-2xl border ${r.color}`}>
                     <IconComp className="h-6 w-6" />
                   </div>
-                  <span className="text-[11px] font-mono font-extrabold text-purple-300 px-3 py-1 rounded-lg bg-slate-950 border border-slate-800">
+                  <span className="text-[11px] font-mono font-extrabold text-primary-300 px-3 py-1 rounded-lg bg-slate-950 border border-slate-800">
                     {r.highlight}
                   </span>
                 </div>

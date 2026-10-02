@@ -138,14 +138,14 @@ function WorkspaceDashboardContent() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 overflow-x-hidden">
       {/* 1. DASHBOARD HEADER / HERO BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-indigo-50/40 to-purple-50/30 p-6 sm:p-8 border border-slate-200/80 shadow-sm">
-        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-primary-50/40 to-lavender-surface p-6 sm:p-8 border border-slate-200/80 shadow-sm">
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-primary-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 rounded-full bg-primary-400/10 blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200/80 shadow-xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-primary-50 text-primary-700 border border-primary-200/80 shadow-xs">
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 Workspace Overview
               </span>
@@ -163,8 +163,8 @@ function WorkspaceDashboardContent() {
               )}
 
               {isLeader && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-purple-50 text-purple-700 border border-purple-200/80 shadow-xs">
-                  <Shield className="h-3 w-3 text-purple-600" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-primary-50 text-primary-800 border border-primary-200/80 shadow-xs">
+                  <Shield className="h-3 w-3 text-primary-600" />
                   Lead
                 </span>
               )}
@@ -209,7 +209,7 @@ function WorkspaceDashboardContent() {
                 size="sm"
                 icon={<Plus className="h-4 w-4" />}
                 onClick={handleOpenCreateModal}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-md shadow-indigo-200 text-xs"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-md shadow-primary-500/20 text-xs"
               >
                 Propose Idea
               </Button>
@@ -244,16 +244,16 @@ function WorkspaceDashboardContent() {
               const severityStyles = {
                 danger: 'bg-rose-50/80 border-rose-200 text-rose-950',
                 warning: 'bg-amber-50/80 border-amber-200 text-amber-950',
-                info: 'bg-indigo-50/80 border-indigo-200 text-indigo-950',
-                primary: 'bg-blue-50/80 border-blue-200 text-blue-950',
+                info: 'bg-primary-50/80 border-primary-200 text-primary-950',
+                primary: 'bg-primary-50/80 border-primary-200 text-primary-950',
                 neutral: 'bg-slate-50 border-slate-200 text-slate-900',
               }[item.severity || 'neutral'];
 
               const iconStyles = {
                 danger: <AlertTriangle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />,
                 warning: <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />,
-                info: <Info className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />,
-                primary: <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />,
+                info: <Info className="h-5 w-5 text-primary-600 shrink-0 mt-0.5" />,
+                primary: <Sparkles className="h-5 w-5 text-primary-600 shrink-0 mt-0.5" />,
                 neutral: <HelpCircle className="h-5 w-5 text-slate-600 shrink-0 mt-0.5" />,
               }[item.severity || 'neutral'];
 
@@ -318,7 +318,7 @@ function WorkspaceDashboardContent() {
           <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between">
             <Link
               to={`/workspaces/${orgId}/ideas`}
-              className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+              className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
             >
               <span>Explore Ideas</span>
               <ChevronRight className="h-3.5 w-3.5" />
@@ -338,7 +338,7 @@ function WorkspaceDashboardContent() {
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 font-mono">
                 AI Blueprint Status
               </span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-700 border border-primary-100">
                 <Sparkles className="h-4 w-4" />
               </div>
             </div>
@@ -375,7 +375,7 @@ function WorkspaceDashboardContent() {
             {selectedMvp ? (
               <Link
                 to={`/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`}
-                className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+                className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
               >
                 <span>View</span>
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -383,7 +383,7 @@ function WorkspaceDashboardContent() {
             ) : (
               <Link
                 to={`/workspaces/${orgId}/ideas`}
-                className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+                className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
               >
                 <span>Board</span>
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -418,7 +418,7 @@ function WorkspaceDashboardContent() {
             </span>
             <Link
               to={`/workspaces/${orgId}/ideas`}
-              className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+              className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
             >
               <span>Review</span>
               <ChevronRight className="h-3.5 w-3.5" />
@@ -452,7 +452,7 @@ function WorkspaceDashboardContent() {
             </span>
             <Link
               to={`/workspaces/${orgId}/members`}
-              className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+              className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
             >
               <span>Manage</span>
               <ChevronRight className="h-3.5 w-3.5" />
@@ -462,10 +462,10 @@ function WorkspaceDashboardContent() {
       </div>
 
       {/* 4. BLUEPRINT / SPRINT STATE HIGHLIGHT CARD */}
-      <Card className="p-6 bg-gradient-to-br from-white via-slate-50 to-indigo-50/20 border border-slate-200 rounded-3xl shadow-sm space-y-5">
+      <Card className="p-6 bg-gradient-to-br from-white via-slate-50 to-primary-50/20 border border-slate-200 rounded-3xl shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/70 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md shadow-primary-500/25">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
@@ -507,7 +507,7 @@ function WorkspaceDashboardContent() {
                   variant="primary"
                   size="sm"
                   icon={<Sparkles className="h-4 w-4" />}
-                  className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white shadow-sm shadow-primary-500/20"
                 >
                   {bp?.status === 'completed' ? 'Open Blueprint Specification' : 'Synthesize Blueprint'}
                 </Button>
@@ -529,7 +529,7 @@ function WorkspaceDashboardContent() {
               <Button
                 variant="secondary"
                 size="sm"
-                icon={<CheckSquare className="h-4 w-4 text-indigo-600" />}
+                icon={<CheckSquare className="h-4 w-4 text-primary-600" />}
                 className="text-xs font-bold border-slate-300"
               >
                 Sprint Tasks
@@ -551,7 +551,7 @@ function WorkspaceDashboardContent() {
               <span className="text-[10px] font-mono font-bold uppercase text-slate-400">
                 Actionable Tasks
               </span>
-              <p className="text-base font-black text-indigo-600 font-mono">{bp.taskCount} Total</p>
+              <p className="text-base font-black text-primary-600 font-mono">{bp.taskCount} Total</p>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-mono font-bold uppercase text-slate-400">
@@ -563,14 +563,14 @@ function WorkspaceDashboardContent() {
               <span className="text-[10px] font-mono font-bold uppercase text-slate-400">
                 Critical Path
               </span>
-              <p className="text-base font-black text-purple-600 font-mono">
+              <p className="text-base font-black text-primary-600 font-mono">
                 {bp.criticalPathLength} Tasks
               </p>
             </div>
           </div>
         ) : bp?.status === 'generating' ? (
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50/80 border border-indigo-200 text-indigo-900">
-            <Loader2 className="h-5 w-5 animate-spin text-indigo-600 shrink-0" />
+          <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary-50/80 border border-primary-200 text-primary-900">
+            <Loader2 className="h-5 w-5 animate-spin text-primary-600 shrink-0" />
             <div className="space-y-0.5">
               <p className="text-xs font-bold">
                 AI Synthesis in progress ({bp.generationStage || 'Synthesizing'})
@@ -607,7 +607,7 @@ function WorkspaceDashboardContent() {
             </div>
             <Link
               to={`/workspaces/${orgId}/ideas`}
-              className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-800 shrink-0 inline-flex items-center gap-1"
+              className="text-xs font-mono font-bold text-primary-600 hover:text-primary-800 shrink-0 inline-flex items-center gap-1"
             >
               <span>View Idea Board</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -627,7 +627,7 @@ function WorkspaceDashboardContent() {
             </div>
             <Link
               to={`/workspaces/${orgId}/ideas`}
-              className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+              className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
             >
               <span>View all ({dashboardData?.totalIdeas || 0})</span>
               <ArrowRight className="h-3.5 w-3.5" />
@@ -683,7 +683,7 @@ function WorkspaceDashboardContent() {
                       </div>
 
                       <Link to={`/workspaces/${orgId}/ideas/${ideaId}`}>
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-primary-600 transition-colors line-clamp-1">
                           {idea.title}
                         </h3>
                       </Link>
@@ -696,7 +696,7 @@ function WorkspaceDashboardContent() {
                     <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center gap-3">
                         <span className="inline-flex items-center gap-1 font-mono font-semibold text-slate-700">
-                          <ThumbsUp className="h-3.5 w-3.5 text-indigo-500" />
+                          <ThumbsUp className="h-3.5 w-3.5 text-primary-500" />
                           {idea.voteCount || 0}
                         </span>
                         <span className="inline-flex items-center gap-1 font-mono text-slate-500">
@@ -707,7 +707,7 @@ function WorkspaceDashboardContent() {
 
                       <Link
                         to={`/workspaces/${orgId}/ideas/${ideaId}`}
-                        className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-indigo-600 hover:text-indigo-700"
+                        className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-primary-600 hover:text-primary-700"
                       >
                         <span>Details</span>
                         <ChevronRight className="h-3.5 w-3.5" />
@@ -747,7 +747,7 @@ function WorkspaceDashboardContent() {
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <HelpCircle className="h-5 w-5 text-indigo-600" />
+              <HelpCircle className="h-5 w-5 text-primary-600" />
               <h2 className="text-base font-bold text-slate-900">Collaboration Feed</h2>
             </div>
             <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
@@ -798,7 +798,7 @@ function WorkspaceDashboardContent() {
                       <div className="pt-0.5 flex items-center justify-between text-[10px] font-mono">
                         <Link
                           to={`/workspaces/${orgId}/ideas/${q.ideaId}`}
-                          className="text-indigo-600 hover:text-indigo-800 truncate max-w-[180px] font-semibold"
+                          className="text-primary-600 hover:text-primary-800 truncate max-w-[180px] font-semibold"
                         >
                           on {q.ideaTitle}
                         </Link>
@@ -838,7 +838,7 @@ function WorkspaceDashboardContent() {
                     <div className="pt-0.5 flex items-center justify-between text-[10px] font-mono">
                       <Link
                         to={`/workspaces/${orgId}/ideas/${s.ideaId}`}
-                        className="text-indigo-600 hover:text-indigo-800 truncate max-w-[180px] font-semibold"
+                        className="text-primary-600 hover:text-primary-800 truncate max-w-[180px] font-semibold"
                       >
                         on {s.ideaTitle}
                       </Link>
@@ -858,7 +858,7 @@ function WorkspaceDashboardContent() {
       {/* 6. QUICK COLLABORATION HUB / JUMP TARGETS */}
       <div className="space-y-3">
         <div className="flex items-center gap-2 px-1">
-          <Layers className="h-4 w-4 text-indigo-600" />
+          <Layers className="h-4 w-4 text-primary-600" />
           <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-600">
             Workspace Hub & Navigation
           </h2>
@@ -868,12 +868,12 @@ function WorkspaceDashboardContent() {
           {/* Hub 1: Idea Board */}
           <Link
             to={`/workspaces/${orgId}/ideas`}
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
             <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Lightbulb className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Idea Board
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">Brainstorming</span>
@@ -882,12 +882,12 @@ function WorkspaceDashboardContent() {
           {/* Hub 2: Team Chat */}
           <Link
             to={`/workspaces/${orgId}/chat`}
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
             <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <MessageSquare className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Team Chat
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">Channels & DMs</span>
@@ -900,12 +900,12 @@ function WorkspaceDashboardContent() {
                 ? `/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`
                 : `/workspaces/${orgId}/ideas`
             }
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
-            <div className="h-10 w-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+            <div className="h-10 w-10 rounded-xl bg-primary-50 text-primary-700 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Sparkles className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Blueprint
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">AI Architecture</span>
@@ -914,12 +914,12 @@ function WorkspaceDashboardContent() {
           {/* Hub 4: Sprint Tasks */}
           <Link
             to={`/workspaces/${orgId}/tasks`}
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
             <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <CheckSquare className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Sprint Tasks
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">Execution Board</span>
@@ -928,12 +928,12 @@ function WorkspaceDashboardContent() {
           {/* Hub 5: Team Members */}
           <Link
             to={`/workspaces/${orgId}/members`}
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
             <div className="h-10 w-10 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Users className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Members
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">Roster & Roles</span>
@@ -942,12 +942,12 @@ function WorkspaceDashboardContent() {
           {/* Hub 6: Audit Activity */}
           <Link
             to={`/workspaces/${orgId}/activity`}
-            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all text-center group"
+            className="flex flex-col items-center justify-center p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:shadow-md hover:border-primary-200 transition-all text-center group"
           >
             <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
               <Clock className="h-5 w-5" />
             </div>
-            <span className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">
+            <span className="text-xs font-bold text-slate-900 group-hover:text-primary-600">
               Audit Trail
             </span>
             <span className="text-[10px] text-slate-400 font-mono mt-0.5">Event History</span>
@@ -959,12 +959,12 @@ function WorkspaceDashboardContent() {
       <div className="space-y-4 pt-2">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-indigo-600" />
+            <Clock className="h-5 w-5 text-primary-600" />
             <h2 className="text-base font-bold text-slate-900">Recent Workspace Activity</h2>
           </div>
           <Link
             to={`/workspaces/${orgId}/activity`}
-            className="text-xs font-mono font-bold text-indigo-600 hover:text-indigo-700 inline-flex items-center gap-1"
+            className="text-xs font-mono font-bold text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
           >
             <span>Full Audit Trail</span>
             <ArrowRight className="h-3.5 w-3.5" />

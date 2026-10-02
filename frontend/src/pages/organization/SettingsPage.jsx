@@ -457,7 +457,7 @@ export default function SettingsPage() {
         <Card className="p-5 bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-xs rounded-2xl sticky top-4 z-20">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-indigo-100 shrink-0">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 text-white flex items-center justify-center font-black text-lg shadow-sm shadow-primary-100 shrink-0">
                 {org.name ? org.name.charAt(0).toUpperCase() : 'W'}
               </div>
               <div>
@@ -469,7 +469,7 @@ export default function SettingsPage() {
                     </Badge>
                   ) : isAdmin ? (
                     <Badge variant="primary" className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
-                      <Shield className="h-3 w-3 text-indigo-600" /> Admin
+                      <Shield className="h-3 w-3 text-primary-600" /> Admin
                     </Badge>
                   ) : (
                     <Badge variant="default" className="text-[10px] uppercase font-bold tracking-wider flex items-center gap-1">
@@ -498,8 +498,8 @@ export default function SettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEditing(true)}
-                  icon={<Edit3 className="h-3.5 w-3.5 text-indigo-600" />}
-                  className="text-xs font-semibold text-indigo-700 bg-indigo-50/60 hover:bg-indigo-100/70 border-indigo-200/80 shadow-2xs"
+                  icon={<Edit3 className="h-3.5 w-3.5 text-primary-600" />}
+                  className="text-xs font-semibold text-primary-700 bg-primary-50/60 hover:bg-primary-100/70 border-primary-200/80 shadow-2xs"
                 >
                   Edit Settings
                 </Button>
@@ -546,21 +546,21 @@ export default function SettingsPage() {
             onClick={() => scrollToSection('settings-general')}
             className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
           >
-            <Settings className="h-3.5 w-3.5 text-indigo-600" /> General
+            <Settings className="h-3.5 w-3.5 text-primary-600" /> General
           </button>
           <button
             type="button"
             onClick={() => scrollToSection('settings-links')}
             className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
           >
-            <FolderGit2 className="h-3.5 w-3.5 text-indigo-600" /> Project Links
+            <FolderGit2 className="h-3.5 w-3.5 text-primary-600" /> Project Links
           </button>
           <button
             type="button"
             onClick={() => scrollToSection('settings-access')}
             className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200/80 shadow-2xs transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
           >
-            <Shield className="h-3.5 w-3.5 text-indigo-600" /> Access & Team
+            <Shield className="h-3.5 w-3.5 text-primary-600" /> Access & Team
           </button>
           {isLegacy && (
             <button
@@ -593,7 +593,7 @@ export default function SettingsPage() {
         {/* SECTION 1: GENERAL */}
         <Card id="settings-general" className="p-6 bg-white border border-slate-200/80 shadow-sm relative rounded-2xl scroll-mt-6">
           <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
               <Settings className="h-4 w-4" />
             </div>
             <div>
@@ -675,7 +675,7 @@ export default function SettingsPage() {
         {/* SECTION 2: PROJECT LINKS */}
         <Card id="settings-links" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
           <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
               <FolderGit2 className="h-4 w-4" />
             </div>
             <div>
@@ -701,7 +701,7 @@ export default function SettingsPage() {
                     href={generalSettings.repositoryUrl.startsWith('http') ? generalSettings.repositoryUrl : `https://${generalSettings.repositoryUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 hover:underline"
                   >
                     Open <ExternalLink className="h-3 w-3" />
                   </a>
@@ -725,7 +725,7 @@ export default function SettingsPage() {
                     href={generalSettings.projectUrl.startsWith('http') ? generalSettings.projectUrl : `https://${generalSettings.projectUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 hover:underline"
                   >
                     Open <ExternalLink className="h-3 w-3" />
                   </a>
@@ -749,7 +749,7 @@ export default function SettingsPage() {
                     href={generalSettings.documentationUrl.startsWith('http') ? generalSettings.documentationUrl : `https://${generalSettings.documentationUrl}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium inline-flex items-center gap-1 hover:underline"
+                    className="text-xs text-primary-600 hover:text-primary-700 font-medium inline-flex items-center gap-1 hover:underline"
                   >
                     Open <ExternalLink className="h-3 w-3" />
                   </a>
@@ -762,7 +762,7 @@ export default function SettingsPage() {
         {/* SECTION 3: ACCESS & TEAM */}
         <Card id="settings-access" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
           <div className="flex items-center gap-3 mb-6 border-b border-slate-100 pb-3">
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
               <Shield className="h-4 w-4" />
             </div>
             <div>
@@ -980,7 +980,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                  className="h-full bg-primary-600 rounded-full transition-all duration-300"
                   style={{ width: `${progressPercentage}%` }}
                 />
               </div>
@@ -1015,7 +1015,7 @@ export default function SettingsPage() {
       <Card id="settings-access" className="p-6 bg-white border border-slate-200/80 shadow-sm rounded-2xl scroll-mt-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
               <Users className="h-4 w-4" />
             </div>
             <div>
@@ -1064,7 +1064,7 @@ export default function SettingsPage() {
                     <h4 className="font-bold text-slate-900 flex items-center gap-1.5 truncate">
                       {member.displayName || member.name}
                       {isSelf && (
-                        <span className="text-[10px] bg-indigo-50 text-indigo-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        <span className="text-[10px] bg-primary-50 text-primary-700 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
                           You
                         </span>
                       )}
@@ -1084,7 +1084,7 @@ export default function SettingsPage() {
                     </Badge>
                   ) : canEdit && !isSelf ? (
                     <div className="flex items-center gap-2">
-                      {isUpdatingThisMember && <Loader2 className="h-3.5 w-3.5 text-indigo-600 animate-spin" />}
+                      {isUpdatingThisMember && <Loader2 className="h-3.5 w-3.5 text-primary-600 animate-spin" />}
                       <Select
                         value={currentRoleValue}
                         onChange={(e) => handleRoleSelectChange(member, e.target.value)}
@@ -1097,7 +1097,7 @@ export default function SettingsPage() {
                       />
                     </div>
                   ) : isCaptain ? (
-                    <Badge variant="purple" className="font-bold flex items-center gap-1">
+                    <Badge variant="primary" className="font-bold flex items-center gap-1">
                       ⚡ Team Captain
                     </Badge>
                   ) : (

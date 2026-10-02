@@ -199,7 +199,7 @@ export function CommunityDiscoveryPanel({
         <div className="space-y-2 pt-2 border-t border-slate-100">
           <div className="flex items-center justify-between px-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             <div className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5 text-indigo-600" />
+              <Users className="h-3.5 w-3.5 text-primary-600" />
               <span>Active Creators</span>
             </div>
             <span className="text-[10px] font-mono text-slate-400 font-normal">

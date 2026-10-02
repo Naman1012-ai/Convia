@@ -13,7 +13,7 @@ export function CommunityHighlightsSection() {
     <section className="py-24 bg-slate-950/90 border-b border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Live Ecosystem Pulse
           </span>
 
@@ -30,7 +30,7 @@ export function CommunityHighlightsSection() {
           {/* Active Workspaces Card */}
           <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2 text-purple-400 font-bold text-base">
+              <div className="flex items-center gap-2 text-primary-400 font-bold text-base">
                 <Briefcase className="h-5 w-5" />
                 <span>Recently Active Workspaces</span>
               </div>
@@ -43,7 +43,7 @@ export function CommunityHighlightsSection() {
               {['Hackathon Alpha Team (4 Members)', 'Quantum Innovators (5 Members)', 'DevLabs Open Source (6 Members)'].map((ws) => (
                 <div key={ws} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-200">
                   <span>{ws}</span>
-                  <span className="text-purple-400 font-bold text-[10px] px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
+                  <span className="text-primary-300 font-bold text-[10px] px-2 py-0.5 rounded bg-primary-500/10 border border-primary-500/20">
                     Active Sprint
                   </span>
                 </div>
@@ -54,8 +54,8 @@ export function CommunityHighlightsSection() {
           {/* Live Activity Feed Card */}
           <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-base">
-                <Activity className="h-5 w-5 text-indigo-400 animate-pulse" />
+              <div className="flex items-center gap-2 text-primary-400 font-bold text-base">
+                <Activity className="h-5 w-5 text-primary-400 animate-pulse" />
                 <span>Live Public Activity Stream</span>
               </div>
               <span className="text-xs font-mono text-slate-500 font-bold">Auto-Updating</span>

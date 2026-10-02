@@ -94,7 +94,7 @@ export function BlueprintExecutionTab({
                 onClick={() => setSubView(item.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   active
-                    ? 'bg-purple-600 text-white shadow-sm'
+                    ? 'bg-primary-600 text-white shadow-sm'
                     : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white hover:bg-slate-800'
                 }`}
               >
@@ -102,7 +102,7 @@ export function BlueprintExecutionTab({
                 <span>{item.label}</span>
                 {item.count !== undefined && (
                   <span className={`px-1.5 py-0.2 rounded font-mono text-[10px] ${
-                    active ? 'bg-purple-800 text-white' : 'bg-slate-800 text-slate-400'
+                    active ? 'bg-primary-800 text-white' : 'bg-slate-800 text-slate-400'
                   }`}>
                     {item.count}
                   </span>
@@ -160,7 +160,7 @@ export function BlueprintExecutionTab({
                 >
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-mono text-xs font-black border border-purple-800">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-primary-950 text-primary-300 font-mono text-xs font-black border border-primary-800">
                         Wave {wave.waveNumber || waveIdx + 1}
                       </span>
                       <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
@@ -192,10 +192,10 @@ export function BlueprintExecutionTab({
                               raw: taskObj,
                             })
                           }
-                          className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-2 group shadow-sm"
+                          className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-2 group shadow-sm"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-mono text-xs font-black text-purple-300">
+                            <span className="font-mono text-xs font-black text-primary-300">
                               {taskObj.id}
                             </span>
                             <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase ${
@@ -207,7 +207,7 @@ export function BlueprintExecutionTab({
                             </span>
                           </div>
 
-                          <h5 className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors line-clamp-1">
+                          <h5 className="text-xs font-bold text-white group-hover:text-primary-200 transition-colors line-clamp-1">
                             {safeText(taskObj.title, 'Task Details')}
                           </h5>
 
@@ -230,7 +230,7 @@ export function BlueprintExecutionTab({
                     className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-purple-300">{task.id}</span>
+                      <span className="font-mono text-xs font-bold text-primary-300">{task.id}</span>
                       <span className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 font-mono text-[10px]">
                         {safeText(task.status, 'Todo')}
                       </span>
@@ -251,7 +251,7 @@ export function BlueprintExecutionTab({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                <GitBranch className="h-4 w-4 text-purple-400" /> Interactive Dependency Graph
+                <GitBranch className="h-4 w-4 text-primary-400" /> Interactive Dependency Graph
               </h3>
               <p className="text-xs text-slate-400">Node-to-node execution precedence and critical path highlighting</p>
             </div>
@@ -260,8 +260,8 @@ export function BlueprintExecutionTab({
               <span className="flex items-center gap-1.5 text-amber-400 font-bold">
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" /> Critical Path Node
               </span>
-              <span className="flex items-center gap-1.5 text-purple-400">
-                <span className="h-2.5 w-2.5 rounded-full bg-purple-500" /> Standard Node
+              <span className="flex items-center gap-1.5 text-primary-400">
+                <span className="h-2.5 w-2.5 rounded-full bg-primary-500" /> Standard Node
               </span>
             </div>
           </div>
@@ -287,7 +287,7 @@ export function BlueprintExecutionTab({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <span className={`px-2.5 py-0.5 rounded-lg font-mono text-xs font-black border ${
-                        isCrit ? 'bg-amber-900/60 text-amber-200 border-amber-600' : 'bg-purple-950 text-purple-300 border-purple-800'
+                        isCrit ? 'bg-amber-900/60 text-amber-200 border-amber-600' : 'bg-primary-950 text-primary-300 border border-primary-800'
                       }`}>
                         {task.id}
                       </span>
@@ -317,7 +317,7 @@ export function BlueprintExecutionTab({
                     {deps.length > 0 ? (
                       deps.map((dId) => (
                         <span key={dId} className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 flex items-center gap-1">
-                          <ArrowRight className="h-3 w-3 text-purple-400" />
+                          <ArrowRight className="h-3 w-3 text-primary-400" />
                           <span>{safeText(dId)}</span>
                         </span>
                       ))
@@ -345,7 +345,7 @@ export function BlueprintExecutionTab({
                 <span className="text-slate-600">·</span>
                 <span className="text-blue-400">{inProgressCount} In Progress</span>
                 <span className="text-slate-600">·</span>
-                <span className="text-purple-400">{syncedCount} Synced to Board</span>
+                <span className="text-primary-400">{syncedCount} Synced to Board</span>
               </div>
             </div>
 
@@ -354,10 +354,10 @@ export function BlueprintExecutionTab({
                 <Button
                   variant="outline"
                   size="sm"
-                  icon={<RefreshCw className={`h-3.5 w-3.5 text-purple-400 ${isSyncingTasks ? 'animate-spin' : ''}`} />}
+                  icon={<RefreshCw className={`h-3.5 w-3.5 text-primary-400 ${isSyncingTasks ? 'animate-spin' : ''}`} />}
                   onClick={onSyncTasks}
                   isLoading={isSyncingTasks}
-                  className="border-purple-800/80 bg-purple-950/40 hover:bg-purple-900 text-purple-200 text-xs font-bold py-1 px-3 h-8 shadow-sm"
+                  className="border-primary-800/80 bg-primary-950/40 hover:bg-primary-900 text-primary-200 text-xs font-bold py-1 px-3 h-8 shadow-sm"
                 >
                   Sync Blueprint Tasks
                 </Button>
@@ -370,7 +370,7 @@ export function BlueprintExecutionTab({
                     onClick={() => setTaskFilter(f)}
                     className={`px-2.5 py-1 rounded-lg font-bold capitalize transition-all ${
                       taskFilter === f
-                        ? 'bg-purple-600 text-white shadow-sm'
+                        ? 'bg-primary-600 text-white shadow-sm'
                         : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
                     }`}
                   >
@@ -396,11 +396,11 @@ export function BlueprintExecutionTab({
                     raw: t,
                   })
                 }
-                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-600/60 cursor-pointer transition-all space-y-2 group shadow-sm"
+                className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-primary-600/60 cursor-pointer transition-all space-y-2 group shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-black text-purple-300">
+                    <span className="font-mono text-xs font-black text-primary-300">
                       {t.id}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
@@ -430,8 +430,8 @@ export function BlueprintExecutionTab({
                     </span>
 
                     {t.isExecutionLinked && (
-                      <span className="px-1.5 py-0.5 rounded bg-purple-950/60 text-purple-300 font-mono text-[9px] border border-purple-800/80 flex items-center gap-1 font-bold">
-                        <CheckSquare className="h-2.5 w-2.5 text-purple-400" />
+                      <span className="px-1.5 py-0.5 rounded bg-primary-950/60 text-primary-300 font-mono text-[9px] border border-primary-800/80 flex items-center gap-1 font-bold">
+                        <CheckSquare className="h-2.5 w-2.5 text-primary-400" />
                         <span>Synced</span>
                       </span>
                     )}
@@ -442,7 +442,7 @@ export function BlueprintExecutionTab({
                   </span>
                 </div>
 
-                <h4 className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">
+                <h4 className="text-xs font-bold text-white group-hover:text-primary-200 transition-colors">
                   {safeText(t.title)}
                 </h4>
                 {t.description && (
@@ -461,7 +461,7 @@ export function BlueprintExecutionTab({
         <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
           <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
             <span className="flex items-center gap-2">
-              <Workflow className="h-4 w-4 text-purple-400" /> Feature Decomposition ({features.length})
+              <Workflow className="h-4 w-4 text-primary-400" /> Feature Decomposition ({features.length})
             </span>
           </h3>
 
@@ -473,7 +473,7 @@ export function BlueprintExecutionTab({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-mono text-xs font-black border border-purple-800">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-primary-950 text-primary-300 font-mono text-xs font-black border border-primary-800">
                       {safeText(f.id, `FEAT-0${idx + 1}`)}
                     </span>
                     <span className="font-mono text-xs font-bold text-white">{safeText(f.name || f.featureName || f.title)}</span>
@@ -512,14 +512,14 @@ export function BlueprintExecutionTab({
         <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
           <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
             <span className="flex items-center gap-2">
-              <Workflow className="h-4 w-4 text-purple-400" /> Implementation Workflow Pipeline ({workflow.length} Steps)
+              <Workflow className="h-4 w-4 text-primary-400" /> Implementation Workflow Pipeline ({workflow.length} Steps)
             </span>
           </h3>
 
           <div className="space-y-3 relative before:absolute before:left-4 before:top-4 before:bottom-4 before:w-0.5 before:bg-slate-800">
             {workflow.map((step, idx) => (
               <div key={idx} className="relative pl-10 space-y-1">
-                <div className="absolute left-2 top-2 -translate-x-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white font-mono text-[10px] font-bold ring-4 ring-slate-900">
+                <div className="absolute left-2 top-2 -translate-x-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-white font-mono text-[10px] font-bold ring-4 ring-slate-900">
                   {step.stepNumber || idx + 1}
                 </div>
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1">

@@ -135,7 +135,7 @@ export function SignInForm() {
             required
           />
           <div className="mt-1.5 text-right">
-            <Link to="/reset-password" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+            <Link to="/reset-password" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
               Forgot password?
             </Link>
           </div>
@@ -157,7 +157,7 @@ export function SignInForm() {
 
       <p className="text-center text-sm text-slate-600 mt-6">
         Don&apos;t have an account?{' '}
-        <Link to="/signup" className="font-semibold text-indigo-600 hover:text-indigo-700">
+        <Link to="/signup" className="font-semibold text-primary-600 hover:text-primary-700">
           Sign Up
         </Link>
       </p>

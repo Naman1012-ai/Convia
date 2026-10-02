@@ -56,7 +56,7 @@ export function ChatReactionPicker({
             onSelectReaction(emoji);
             onClose();
           }}
-          className="h-8 w-8 rounded-xl flex items-center justify-center text-base hover:scale-125 hover:bg-slate-100 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer select-none"
+          className="h-8 w-8 rounded-xl flex items-center justify-center text-base hover:scale-125 hover:bg-slate-100 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all cursor-pointer select-none"
         >
           {emoji}
         </button>

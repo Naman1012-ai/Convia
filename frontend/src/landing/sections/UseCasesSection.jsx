@@ -16,7 +16,7 @@ const USE_CASES = [
     tag: 'STUDENT TEAMS',
     description: 'Structure group ideation for semester projects, capstones, and research labs with transparent contribution tracking.',
     benefits: ['Clear task assignment', 'Fair democratic voting', 'Audit trail telemetry'],
-    color: 'border-indigo-500/30 text-indigo-400 bg-indigo-500/10',
+    color: 'border-primary-500/30 text-primary-400 bg-primary-500/10',
   },
   {
     title: 'Early-Stage Startups',
@@ -24,7 +24,7 @@ const USE_CASES = [
     tag: 'MVP BUILDERS',
     description: 'Validate feature ideas with early co-founders, generate technical blueprints, and maintain sprint execution velocity.',
     benefits: ['AI Architecture generator', 'Kanban task board', 'Real-time sync'],
-    color: 'border-purple-500/30 text-purple-400 bg-purple-500/10',
+    color: 'border-primary-500/30 text-primary-300 bg-primary-500/10',
   },
   {
     title: 'Open Source Sprints',
@@ -41,7 +41,7 @@ export function UseCasesSection() {
     <section id="use-cases" className="py-24 bg-slate-950 border-t border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
-          <span className="px-3 py-1 rounded-full bg-slate-900 border border-purple-500/30 text-purple-300 text-xs font-mono font-bold">
+          <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             Versatile Applications
           </span>
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
@@ -58,7 +58,7 @@ export function UseCasesSection() {
             return (
               <div
                 key={u.title}
-                className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5 hover:border-purple-500/40 transition-all duration-300"
+                className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-xl space-y-5 hover:border-primary-500/40 transition-all duration-300"
               >
                 <div className="flex items-center justify-between">
                   <div className={`p-3 rounded-2xl border ${u.color}`}>

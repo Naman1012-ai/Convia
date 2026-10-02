@@ -105,7 +105,7 @@ function OrgLayoutContent() {
             <Button
               variant="primary"
               onClick={() => navigate('/workspaces')}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              className="w-full font-bold"
             >
               Back to Workspaces
             </Button>
@@ -173,7 +173,7 @@ function OrgLayoutContent() {
   const isIdeaActive = Boolean(ideaId);
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <div className="flex min-h-screen flex-col bg-lavender-surface text-slate-900">
       <Navbar onMobileMenuToggle={() => setIsMobileOpen((prev) => !prev)} />
       <div className="flex flex-1">
         <Sidebar
@@ -183,20 +183,20 @@ function OrgLayoutContent() {
         />
         <main className="flex-1 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6">
           {/* Centralized Workspace Top Navigation Header */}
-          <div className="border-b border-slate-200/80 pb-5 space-y-3.5">
+          <div className="border-b border-lavender-border pb-5 space-y-3.5">
             {/* Single Breadcrumb System */}
             <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
-              <Link to="/workspaces" className="hover:text-indigo-600 transition-colors">
+              <Link to="/workspaces" className="hover:text-primary-600 transition-colors">
                 Workspaces
               </Link>
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-              <Link to={workspaceRootPath} className="hover:text-indigo-600 transition-colors font-semibold text-slate-700">
+              <Link to={workspaceRootPath} className="hover:text-primary-600 transition-colors font-semibold text-slate-700">
                 {org.name}
               </Link>
               {isIdeaActive && (
                 <>
                   <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                  <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-indigo-600 transition-colors truncate max-w-[160px]">
+                  <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-primary-600 transition-colors truncate max-w-[160px]">
                     {activeIdea ? activeIdea.title : 'Selected Idea'}
                   </Link>
                 </>
@@ -212,7 +212,7 @@ function OrgLayoutContent() {
             {/* Single Main Title Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start sm:items-center gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100/80 text-indigo-600 shadow-xs">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 border border-primary-200/70 text-primary-700 shadow-xs">
                   <SegmentIcon className="h-5 w-5" />
                 </div>
                 <div>
@@ -240,7 +240,7 @@ function OrgLayoutContent() {
                 <button
                   type="button"
                   onClick={() => setIsSearchOpen(true)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:text-indigo-600 shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-lavender-border dark:border-slate-700 hover:border-primary-400 hover:text-primary-700 shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
                   aria-label="Search workspace resources"
                 >
                   <Search className="h-4 w-4 text-slate-400" />

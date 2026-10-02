@@ -11,8 +11,10 @@ const firebaseConfig = {
   databaseURL:
     import.meta.env.VITE_FIREBASE_DATABASE_URL ||
     'https://brainsync-07-default-rtdb.asia-southeast1.firebasedatabase.app',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  storageBucket:
+    import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'brainsync-07.appspot.com',
+  messagingSenderId:
+    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '470734580927',
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 

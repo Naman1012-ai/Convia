@@ -69,8 +69,8 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
               {idea.difficultyLevel || 'Medium'}
             </Badge>
             {(idea.importedFromPublicId || idea.origin?.publicIdeaId) && (
-              <Badge variant="info" className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] flex items-center gap-1 font-semibold">
-                <Globe className="h-3 w-3 text-indigo-500" /> Imported Public Idea
+              <Badge variant="info" className="bg-primary-50 text-primary-700 border border-primary-200/60 text-[10px] flex items-center gap-1 font-semibold">
+                <Globe className="h-3 w-3 text-primary-500" /> Imported Public Idea
               </Badge>
             )}
             {idea.isSelected && (
@@ -132,7 +132,7 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
 
         {/* Title & Excerpt Link */}
         <Link to={targetDetailPath}>
-          <h3 className="text-lg font-bold text-slate-900 mb-2 hover:text-indigo-600 transition-colors line-clamp-2">
+          <h3 className="text-lg font-bold text-slate-900 mb-2 hover:text-primary-600 transition-colors line-clamp-2">
             {safeText(idea.title)}
           </h3>
           <p className="text-sm text-slate-600 mb-4 line-clamp-3 leading-relaxed">
@@ -180,8 +180,8 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
             disabled={isVoting}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
               hasVoted
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 scale-105'
-                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                ? 'bg-primary-600 text-white shadow-md shadow-primary-200/50 scale-105'
+                : 'bg-primary-50 text-primary-800 hover:bg-primary-100 border border-primary-200/60'
             }`}
           >
             <ThumbsUp className={`h-3.5 w-3.5 ${hasVoted ? 'fill-current' : ''}`} />
@@ -199,13 +199,13 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
               <Lightbulb className="h-3.5 w-3.5 text-amber-500" /> {idea.suggestionCount || 0}
             </span>
             <span className="flex items-center gap-1" title="Questions">
-              <HelpCircle className="h-3.5 w-3.5 text-indigo-500" /> {idea.questionCount || 0}
+              <HelpCircle className="h-3.5 w-3.5 text-primary-500" /> {idea.questionCount || 0}
             </span>
           </div>
 
           <Link
             to={targetDetailPath}
-            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-bold text-primary-600 hover:text-primary-800 transition-colors"
           >
             <span>View Details</span>
             <ArrowRight className="h-3.5 w-3.5" />

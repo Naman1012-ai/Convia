@@ -42,13 +42,13 @@ export function BlueprintVersionHistoryTab({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <History className="h-4 w-4 text-purple-400" /> Blueprint Version History ({versionsList.length})
+              <History className="h-4 w-4 text-primary-400" /> Blueprint Version History ({versionsList.length})
             </h3>
             <p className="text-xs text-slate-400">Immutable snapshots of previous AI generations, manual edits, and active versions</p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-purple-300 font-bold bg-purple-950 px-2.5 py-1 rounded-lg border border-purple-800">
+            <span className="text-xs font-mono text-primary-300 font-bold bg-primary-950 px-2.5 py-1 rounded-lg border border-primary-800">
               Active: Version {activeVerStr}
             </span>
           </div>
@@ -66,7 +66,7 @@ export function BlueprintVersionHistoryTab({
                 key={ver.key || idx}
                 className={`p-4 rounded-xl border transition-all space-y-2.5 ${
                   isSelected
-                    ? 'bg-purple-950/40 border-purple-600 shadow-md shadow-purple-950/50'
+                    ? 'bg-primary-950/40 border-primary-600 shadow-md shadow-primary-950/50'
                     : isCurrent
                     ? 'bg-slate-950 border-emerald-800/80'
                     : 'bg-slate-950 border-slate-800 hover:border-slate-700'
@@ -74,13 +74,13 @@ export function BlueprintVersionHistoryTab({
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-purple-950 text-purple-300 font-mono text-xs font-black border border-purple-800">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-primary-950 text-primary-300 font-mono text-xs font-black border border-primary-800">
                       v{verNumber}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
                       ver.lastModifiedSource === 'manual'
                         ? 'bg-amber-950 text-amber-300 border border-amber-800'
-                        : 'bg-purple-950 text-purple-300 border border-purple-800'
+                        : 'bg-primary-950 text-primary-300 border border-primary-800'
                     }`}>
                       {ver.lastModifiedSource === 'manual' ? 'Manual Edit' : 'AI Generation'}
                     </span>
@@ -107,7 +107,7 @@ export function BlueprintVersionHistoryTab({
                         size="sm"
                         onClick={() => onSelectVersion && onSelectVersion(ver.key)}
                         className={`text-xs font-bold py-1 px-2.5 h-7 ${
-                          isSelected ? 'border-purple-600 bg-purple-900/60 text-white' : 'border-slate-800 text-slate-300'
+                          isSelected ? 'border-primary-600 bg-primary-900/60 text-white' : 'border-slate-800 text-slate-300'
                         }`}
                       >
                         {isSelected ? 'Viewing' : 'Preview Snapshot'}
