@@ -1597,7 +1597,25 @@ export const chatService = {
    * Open to any authenticated Convia user.
    * Supports optional postType ('discussion', 'idea', 'question', 'collaboration').
    */
-  sendPublicIdeaChatMessage: async (content, user, attachmentData = null, postType = 'discussion') => {
+  sendPublicIdeaChatMessage: async (contentOrOptions, userParam = null, attachmentData = null, postTypeParam = 'discussion') => {
+    let content = contentOrOptions;
+    let user = userParam;
+    let attachment = attachmentData;
+    let postType = postTypeParam;
+
+    // Support both single options object { content, user, attachment, postType } and positional arguments
+    if (
+      contentOrOptions &&
+      typeof contentOrOptions === 'object' &&
+      !Array.isArray(contentOrOptions) &&
+      (contentOrOptions.user || contentOrOptions.content !== undefined)
+    ) {
+      user = contentOrOptions.user || userParam;
+      content = contentOrOptions.content;
+      attachment = contentOrOptions.attachment || attachmentData;
+      postType = contentOrOptions.postType || postTypeParam;
+    }
+
     if (!user?.uid) {
       throw new Error('Authenticated user is required to participate in community chat.');
     }
@@ -1607,7 +1625,7 @@ export const chatService = {
       channelId: 'ideas',
       user,
       content,
-      attachment: attachmentData,
+      attachment,
     });
 
     const validPostTypes = Object.values(COMMUNITY_POST_TYPES || {});
