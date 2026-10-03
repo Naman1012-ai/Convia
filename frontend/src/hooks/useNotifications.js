@@ -172,6 +172,37 @@ export function useNotifications() {
     }
   }, [user?.uid]);
 
+  // Context-aware mark as read (conversation-specific)
+  const markByContext = useCallback(async (context) => {
+    if (!user?.uid || !context) return [];
+    try {
+      const updatedIds = await inAppNotificationService.markNotificationsAsReadByContext(
+        user.uid,
+        context,
+        notifications
+      );
+
+      if (Array.isArray(updatedIds) && updatedIds.length > 0) {
+        const idSet = new Set(updatedIds);
+        setNotifications((prev) =>
+          prev.map((n) => {
+            const notifKey = n.notificationId || n.id;
+            return idSet.has(notifKey)
+              ? { ...n, read: true, readAt: Date.now() }
+              : n;
+          })
+        );
+        setUnreadCount((prev) => Math.max(0, prev - updatedIds.length));
+      }
+
+      return updatedIds;
+    } catch (err) {
+      console.warn('[useNotifications] markByContext error:', err);
+      if (isMountedRef.current) setError(err);
+      return [];
+    }
+  }, [user?.uid, notifications]);
+
   return {
     notifications,
     unreadCount,
@@ -180,6 +211,7 @@ export function useNotifications() {
     markAsRead,
     markAsUnread,
     markAllAsRead,
+    markByContext,
     refresh,
   };
 }

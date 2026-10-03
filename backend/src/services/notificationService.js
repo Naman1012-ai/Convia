@@ -480,16 +480,23 @@ export const notificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const deepLink = parentMessageId
-            ? `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${messageId}`
-            : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+          const isCommunity = workspaceId === 'community' || workspaceId === 'public';
+          const deepLink = isCommunity
+            ? (parentMessageId
+                ? `/community?threadId=${parentMessageId}&replyId=${messageId}`
+                : `/community?messageId=${messageId}`)
+            : (parentMessageId
+                ? `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${messageId}`
+                : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`);
 
           return await notificationService.createNotificationsForRecipients(validMentioned, {
             type: NOTIFICATION_TYPES.CHAT_MENTION,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
-            title: `${actorName} mentioned you in #${activeChannel}`,
+            title: isCommunity
+              ? `${actorName} mentioned you in the Community Hub`
+              : `${actorName} mentioned you in #${activeChannel}`,
             body: `${actorName}: ${preview}`,
             previewText: content,
             actorId: actorUid,
@@ -508,7 +515,8 @@ export const notificationService = {
         }
 
         case NOTIFICATION_TYPES.MESSAGE_REPLY:
-        case NOTIFICATION_TYPES.CHAT_REPLY: {
+        case NOTIFICATION_TYPES.CHAT_REPLY:
+        case NOTIFICATION_TYPES.COMMUNITY_REPLY: {
           const { workspaceId, channelId = 'general', parentMessageId, replyId, content, parentAuthorId, recipients = [] } = eventData;
           if (!workspaceId || !parentMessageId || !replyId) return [];
 
@@ -526,14 +534,19 @@ export const notificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${replyId}`;
+          const isCommunityReply = workspaceId === 'community' || workspaceId === 'public';
+          const deepLink = isCommunityReply
+            ? `/community?threadId=${parentMessageId}&replyId=${replyId}`
+            : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${replyId}`;
 
           return await notificationService.createNotificationsForRecipients(validRecipients, {
             type: NOTIFICATION_TYPES.MESSAGE_REPLY,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
-            title: `${actorName} replied to your message`,
+            title: isCommunityReply
+              ? `${actorName} replied to your community discussion`
+              : `${actorName} replied to your message`,
             body: `${actorName}: ${preview}`,
             previewText: content,
             actorId: actorUid,
@@ -630,7 +643,148 @@ export const notificationService = {
         }
 
         // -------------------------------------------------------------
-        // 8. SYSTEM / ADMIN EVENTS
+        // 8. TASK & PROJECT EXECUTION EVENTS
+        // -------------------------------------------------------------
+        case NOTIFICATION_TYPES.TASK_ASSIGNED: {
+          const { workspaceId, taskId, taskTitle, assignedToUid, priority } = eventData;
+          if (!assignedToUid || assignedToUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(assignedToUid, {
+            type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'New Task Assigned to You',
+            body: `${actorName} assigned you task: "${taskTitle || 'Untitled Task'}"${priority ? ` [${priority}]` : ''}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId, priority },
+            dedupeKey: `task_assign_${workspaceId}_${taskId}_${assignedToUid}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.TASK_COMPLETED: {
+          const { workspaceId, taskId, taskTitle, createdByUid } = eventData;
+          let recipients = [];
+          if (createdByUid && createdByUid !== actorUid) {
+            recipients = [createdByUid];
+          } else {
+            recipients = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          }
+
+          if (recipients.length === 0) return [];
+
+          return await notificationService.createNotificationsForRecipients(recipients, {
+            type: NOTIFICATION_TYPES.TASK_COMPLETED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Task Completed',
+            body: `${actorName} completed task: "${taskTitle || 'Untitled Task'}".`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId },
+            dedupeKey: `task_done_${workspaceId}_${taskId}_${Date.now()}`,
+          });
+        }
+
+        case NOTIFICATION_TYPES.TASK_STATUS_CHANGED: {
+          const { workspaceId, taskId, taskTitle, oldStatus, newStatus, targetUid } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.TASK_STATUS_CHANGED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Task Status Updated',
+            body: `${actorName} updated "${taskTitle || 'Task'}" from ${oldStatus || 'Todo'} to ${newStatus}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId, oldStatus, newStatus },
+            dedupeKey: `task_status_${workspaceId}_${taskId}_${newStatus}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        // -------------------------------------------------------------
+        // 9. INVITATION EVENTS
+        // -------------------------------------------------------------
+        case NOTIFICATION_TYPES.INVITATION_DECLINED: {
+          const { workspaceId, inviterUid, inviteeEmail, orgName } = eventData;
+          if (!inviterUid || inviterUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(inviterUid, {
+            type: NOTIFICATION_TYPES.INVITATION_DECLINED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Workspace Invitation Declined',
+            body: `${actorName || inviteeEmail || 'Invited user'} declined the invitation to join ${orgName || 'your workspace'}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName: actorName || inviteeEmail || 'User',
+            senderName: actorName || inviteeEmail || 'User',
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'workspace_invitation',
+            resourceId: workspaceId,
+            actionUrl: `/workspaces/${workspaceId}/members`,
+            metadata: { workspaceId, inviteeEmail },
+            dedupeKey: `invite_declined_${workspaceId}_${inviteeEmail}_${Date.now()}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED: {
+          const { workspaceId, orgName, targetUid, role } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+            workspaceId,
+            orgId: workspaceId,
+            title: `Invited to join ${orgName || 'Workspace'}`,
+            body: `${actorName} invited you to join ${orgName || 'their workspace'} as ${role || 'member'}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'workspace_invitation',
+            resourceId: workspaceId,
+            actionUrl: `/workspaces/${workspaceId}`,
+            metadata: { workspaceId, role },
+            dedupeKey: `invite_sent_${workspaceId}_${targetUid}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        // -------------------------------------------------------------
+        // 10. SYSTEM / ADMIN EVENTS
         // -------------------------------------------------------------
         case NOTIFICATION_TYPES.ADMIN_BROADCAST: {
           const { title, message, body, recipients = [], severity, actionUrl } = eventData;
@@ -907,6 +1061,111 @@ export const notificationService = {
     } catch (err) {
       console.warn(`[notificationService] markAllNotificationsAsRead error:`, err.message);
       return 0;
+    }
+  },
+
+  /**
+   * Marks unread notifications matching a specific context (workspace, channel, community thread)
+   * as read without clearing notifications for other conversations.
+   *
+   * @param {string} userId - User Auth UID
+   * @param {Object} context - Filter context
+   * @param {string} [context.workspaceId] - Workspace / Org ID
+   * @param {string} [context.channelId] - Channel ID
+   * @param {string} [context.discussionId] - Discussion / thread ID
+   * @param {string} [context.threadId] - Thread ID
+   * @param {string} [context.messageId] - Message ID
+   * @param {boolean} [context.isCommunity] - Whether context is community channel
+   * @returns {Promise<Array<string>>} List of updated notification IDs
+   */
+  markNotificationsAsReadByContext: async (userId, context = {}) => {
+    if (!userId || !context) return [];
+
+    try {
+      const cleanUid = String(userId).trim();
+      const rawVal = await rtdbService.getData(`user_notifications/${cleanUid}`);
+      if (!rawVal || typeof rawVal !== 'object') return [];
+
+      const list = Object.entries(rawVal).map(([id, val]) => ({
+        id,
+        notificationId: id,
+        ...(val && typeof val === 'object' ? val : {}),
+      }));
+
+      if (!list.length) return [];
+
+      const cleanWorkspaceId = context.workspaceId ? String(context.workspaceId).trim() : null;
+      const cleanChannelId = context.channelId ? String(context.channelId).trim().toLowerCase() : null;
+      const cleanDiscussionId = context.discussionId ? String(context.discussionId).trim() : null;
+      const cleanThreadId = context.threadId ? String(context.threadId).trim() : null;
+      const cleanMessageId = context.messageId ? String(context.messageId).trim() : null;
+
+      const updates = {};
+      const updatedNotifIds = [];
+      const now = Date.now();
+
+      list.forEach((n) => {
+        if (!n || n.read) return;
+
+        const notifWs = n.workspaceId || n.orgId || n.metadata?.workspaceId || null;
+        const notifChannel = (
+          n.channelId ||
+          n.metadata?.channelId ||
+          (n.type?.startsWith('CHAT_') ? 'general' : null)
+        );
+        const cleanNotifChannel = notifChannel ? String(notifChannel).trim().toLowerCase() : null;
+
+        let matches = false;
+
+        // 1. Workspace Chat Matching
+        if (cleanWorkspaceId && cleanWorkspaceId !== 'community' && cleanWorkspaceId !== 'public') {
+          const wsMatches = notifWs === cleanWorkspaceId;
+          if (wsMatches) {
+            if (cleanChannelId) {
+              matches = cleanNotifChannel === cleanChannelId;
+            } else {
+              matches = true;
+            }
+          }
+        }
+        // 2. Community Channel Matching
+        else if (cleanWorkspaceId === 'community' || cleanWorkspaceId === 'public' || context.isCommunity) {
+          const isCommNotif = notifWs === 'community' || notifWs === 'public';
+          if (isCommNotif) {
+            if (cleanThreadId || cleanDiscussionId) {
+              const targetThread = cleanThreadId || cleanDiscussionId;
+              const notifParent = n.secondaryEntityId || n.metadata?.parentMessageId || n.metadata?.discussionId || n.resourceId;
+              matches = notifParent === targetThread;
+            } else {
+              matches = true;
+            }
+          }
+        }
+        // 3. Direct Message / Thread Scope Matching
+        else if (cleanMessageId || cleanThreadId) {
+          const notifMsgId = n.resourceId || n.metadata?.messageId || n.metadata?.replyId;
+          const notifThreadId = n.secondaryEntityId || n.metadata?.parentMessageId;
+          matches = (cleanMessageId && notifMsgId === cleanMessageId) || (cleanThreadId && notifThreadId === cleanThreadId);
+        }
+
+        if (matches) {
+          const notifKey = n.notificationId || n.id;
+          if (notifKey) {
+            updates[`user_notifications/${cleanUid}/${notifKey}/read`] = true;
+            updates[`user_notifications/${cleanUid}/${notifKey}/readAt`] = now;
+            updatedNotifIds.push(notifKey);
+          }
+        }
+      });
+
+      if (Object.keys(updates).length > 0) {
+        await rtdbService.updateData('/', updates);
+      }
+
+      return updatedNotifIds;
+    } catch (err) {
+      console.warn(`[notificationService] markNotificationsAsReadByContext error:`, err.message);
+      return [];
     }
   },
 };

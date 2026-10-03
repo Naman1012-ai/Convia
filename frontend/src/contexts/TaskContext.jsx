@@ -90,21 +90,21 @@ export function TaskProvider({ children }) {
     async (taskId, updates) => {
       if (!orgId) return;
       try {
-        await taskService.updateTask(orgId, taskId, updates);
+        await taskService.updateTask(orgId, taskId, updates, user);
         toast.success(NOTIFICATION_MESSAGES.TASK.UPDATED);
       } catch (err) {
         toast.error(err);
       }
     },
-    [orgId, toast]
+    [orgId, user, toast]
   );
 
   const updateTaskStatus = useCallback(
     async (taskId, newStatus) => {
       if (!orgId) return;
       try {
-        await taskService.updateTaskStatus(orgId, taskId, newStatus);
-        if (newStatus === 'done' || newStatus === 'completed') {
+        await taskService.updateTaskStatus(orgId, taskId, newStatus, user);
+        if (newStatus === 'done' || newStatus === 'completed' || newStatus === 'Completed') {
           toast.success(NOTIFICATION_MESSAGES.TASK.COMPLETED);
         } else {
           toast.info(`Task status updated to ${newStatus}.`);
@@ -113,20 +113,20 @@ export function TaskProvider({ children }) {
         toast.error(err);
       }
     },
-    [orgId, toast]
+    [orgId, user, toast]
   );
 
   const assignTask = useCallback(
     async (taskId, assignedToUid, assignedToName) => {
       if (!orgId) return;
       try {
-        await taskService.assignTask(orgId, taskId, assignedToUid, assignedToName);
+        await taskService.assignTask(orgId, taskId, assignedToUid, assignedToName, user);
         toast.success(`Task assigned to ${assignedToName}.`);
       } catch (err) {
         toast.error(err);
       }
     },
-    [orgId, toast]
+    [orgId, user, toast]
   );
 
   const deleteTask = useCallback(

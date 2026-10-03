@@ -906,6 +906,21 @@ export const workspaceInvitationController = {
 
     await rtdbService.updateData('', atomicUpdates);
 
+    // Dispatch INVITATION_DECLINED notification to the inviter
+    if (invitation.invitedBy) {
+      const org = await rtdbService.getData(`organizations/${codeRecord.workspaceId}`).catch(() => null);
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.INVITATION_DECLINED,
+        {
+          workspaceId: codeRecord.workspaceId,
+          inviterUid: invitation.invitedBy,
+          inviteeEmail: normalizedUserEmail,
+          orgName: org?.name || 'Workspace',
+        },
+        { uid: userUid, displayName: normalizedUserEmail.split('@')[0], email: normalizedUserEmail }
+      ).catch(() => {});
+    }
+
     return {
       success: true,
       message: 'Invitation declined.',

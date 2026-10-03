@@ -9,6 +9,7 @@ import { evaluateSecurityRule } from './databaseRulesValidation.test.js';
 import {
   NOTIFICATION_TYPES,
   createCanonicalNotification,
+  buildNotificationActionUrl,
 } from '../../constants/notificationConstants.js';
 
 console.log('🧪 Running [fcmPhase4Repair.test.js] — Convia FCM Phase 4 End-to-End Verification Suite...');
@@ -293,13 +294,218 @@ async function runFcmPhase4Tests() {
   }
 
   // ==========================================================================
+  // VERIFICATION 8: Task Lifecycle Events (Assigned, Completed, Status Changed)
+  // ==========================================================================
+  console.log('\n▶ [VERIFICATION 8] Task Lifecycle Events (Assigned, Completed, Status Changed)');
+  {
+    // A. Task Assigned
+    const taskAssignedNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.TASK_ASSIGNED,
+      {
+        workspaceId: 'ws_alpha',
+        taskId: 'task_abc_1',
+        taskTitle: 'Implement Payment Gateway',
+        assignedToUid: testRecipientUid1,
+        priority: 'High',
+      },
+      { uid: testSenderUid, displayName: 'Manager Alice' }
+    );
+    assert.strictEqual(taskAssignedNotifs.length, 1, 'Task assigned notification must be created');
+    assert.strictEqual(taskAssignedNotifs[0].recipientId, testRecipientUid1, 'Recipient must be assigned user');
+    assert.strictEqual(taskAssignedNotifs[0].type, NOTIFICATION_TYPES.TASK_ASSIGNED);
+    assert.strictEqual(taskAssignedNotifs[0].actionUrl, '/workspaces/ws_alpha/tasks?taskId=task_abc_1');
+
+    // B. Self-assignment exclusion
+    const selfAssigned = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.TASK_ASSIGNED,
+      {
+        workspaceId: 'ws_alpha',
+        taskId: 'task_abc_2',
+        taskTitle: 'Self Assigned Task',
+        assignedToUid: testSenderUid,
+      },
+      { uid: testSenderUid, displayName: 'Manager Alice' }
+    );
+    assert.strictEqual(selfAssigned.length, 0, 'Self-assignment must not generate notification');
+
+    // C. Task Completed
+    const taskCompletedNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.TASK_COMPLETED,
+      {
+        workspaceId: 'ws_alpha',
+        taskId: 'task_abc_1',
+        taskTitle: 'Implement Payment Gateway',
+        createdByUid: testRecipientUid2,
+      },
+      { uid: testSenderUid, displayName: 'Worker Bob' }
+    );
+    assert.strictEqual(taskCompletedNotifs.length, 1, 'Task completed must notify task creator');
+    assert.strictEqual(taskCompletedNotifs[0].recipientId, testRecipientUid2);
+    console.log('  ✔ Task assignment and completion events generate targeted notifications');
+  }
+
+  // ==========================================================================
+  // VERIFICATION 9: Workspace Invitation and Membership Events
+  // ==========================================================================
+  console.log('\n▶ [VERIFICATION 9] Workspace Invitation and Membership Events');
+  {
+    // A. Member Invited
+    const inviteNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+      {
+        workspaceId: 'ws_alpha',
+        orgName: 'Alpha Corp',
+        targetUid: testRecipientUid1,
+        role: 'member',
+      },
+      { uid: testSenderUid, displayName: 'Admin Alice' }
+    );
+    assert.strictEqual(inviteNotifs.length, 1, 'Member invited notification must be created');
+    assert.strictEqual(inviteNotifs[0].recipientId, testRecipientUid1);
+    assert.strictEqual(inviteNotifs[0].type, NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED);
+
+    // B. Invitation Declined
+    const declineNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.INVITATION_DECLINED,
+      {
+        workspaceId: 'ws_alpha',
+        inviterUid: testSenderUid,
+        inviteeEmail: 'user@example.com',
+        orgName: 'Alpha Corp',
+      },
+      { uid: testRecipientUid1, displayName: 'Invited User' }
+    );
+    assert.strictEqual(declineNotifs.length, 1, 'Invitation declined must notify inviter');
+    assert.strictEqual(declineNotifs[0].recipientId, testSenderUid);
+
+    console.log('  ✔ Workspace invitation and decline events target correct actors');
+  }
+
+  // ==========================================================================
+  // VERIFICATION 10: Community Hub Activity (Posts, Replies, Mentions, Q&A)
+  // ==========================================================================
+  console.log('\n▶ [VERIFICATION 10] Community Hub Activity (Posts, Replies, Mentions, Q&A)');
+  {
+    // A. Community Reply
+    const commReplyNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.COMMUNITY_REPLY,
+      {
+        workspaceId: 'community',
+        parentMessageId: 'comm_thread_99',
+        replyId: 'reply_55',
+        content: 'I agree with this architectural decision!',
+        parentAuthorId: testRecipientUid1,
+      },
+      { uid: testSenderUid, displayName: 'Contributor Clara' }
+    );
+    assert.strictEqual(commReplyNotifs.length, 1, 'Community reply must notify parent author');
+    assert.strictEqual(commReplyNotifs[0].recipientId, testRecipientUid1);
+    assert.strictEqual(commReplyNotifs[0].actionUrl, '/community?threadId=comm_thread_99&replyId=reply_55');
+
+    // B. Community Mention
+    const commMentionNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.CHAT_MENTION,
+      {
+        workspaceId: 'community',
+        messageId: 'msg_comm_123',
+        content: 'Hey @Dev check this out',
+        mentionedUids: [testRecipientUid2],
+      },
+      { uid: testSenderUid, displayName: 'Contributor Clara' }
+    );
+    assert.strictEqual(commMentionNotifs.length, 1, 'Community mention must notify mentioned user');
+    assert.strictEqual(commMentionNotifs[0].recipientId, testRecipientUid2);
+    assert.strictEqual(commMentionNotifs[0].actionUrl, '/community?messageId=msg_comm_123');
+
+    // C. Idea Question
+    const questionNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.QUESTION_CREATED,
+      {
+        ideaId: 'idea_404',
+        targetAuthorId: testRecipientUid1,
+        questionSnippet: 'How do you handle offline mode?',
+        discussionId: 'disc_1',
+      },
+      { uid: testSenderUid, displayName: 'Contributor Clara' }
+    );
+    assert.strictEqual(questionNotifs.length, 1, 'Question must notify idea author');
+    assert.strictEqual(questionNotifs[0].recipientId, testRecipientUid1);
+
+    console.log('  ✔ Community Hub replies, mentions, and Q&A generate correct notifications & URLs');
+  }
+
+  // ==========================================================================
+  // VERIFICATION 11: Deep Links & Action URLs across All Event Types
+  // ==========================================================================
+  console.log('\n▶ [VERIFICATION 11] Deep Links & Action URLs across All Event Types');
+  {
+    const wsChatUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.CHAT_MESSAGE,
+      workspaceId: 'ws_alpha',
+      metadata: { channelId: 'general', messageId: 'm1' },
+    });
+    assert.strictEqual(wsChatUrl, '/workspaces/ws_alpha/chat?channel=general&messageId=m1');
+
+    const commReplyUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.COMMUNITY_REPLY,
+      workspaceId: 'community',
+      metadata: { parentMessageId: 'thread_1', replyId: 'r1' },
+    });
+    assert.strictEqual(commReplyUrl, '/community?threadId=thread_1');
+
+    const taskUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+      workspaceId: 'ws_alpha',
+      metadata: { taskId: 't1' },
+    });
+    assert.strictEqual(taskUrl, '/workspaces/ws_alpha/tasks?taskId=t1');
+
+    const bpUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
+      workspaceId: 'ws_alpha',
+    });
+    assert.strictEqual(bpUrl, '/workspaces/ws_alpha/blueprint');
+
+    const memberUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED,
+      workspaceId: 'ws_alpha',
+    });
+    assert.strictEqual(memberUrl, '/workspaces/ws_alpha/members');
+
+    console.log('  ✔ Deep links strictly map to correct Convia destinations');
+  }
+
+  // ==========================================================================
+  // VERIFICATION 12: Account Switching & Logout Token Cleanup
+  // ==========================================================================
+  console.log('\n▶ [VERIFICATION 12] Account Switching & Logout Token Cleanup');
+  {
+    const switchUserUid = `user_switch_${Date.now()}`;
+    const switchToken = 'fcm_switch_device_token_99887766_test';
+
+    await fcmPushService.registerToken(switchUserUid, { token: switchToken });
+    const tokensBefore = await fcmPushService.getUserTokens(switchUserUid);
+    assert.strictEqual(tokensBefore.length, 1, 'Token registered before logout');
+
+    // Simulate logout unregister
+    await fcmPushService.unregisterToken(switchUserUid, switchToken);
+    const tokensAfter = await fcmPushService.getUserTokens(switchUserUid);
+    assert.strictEqual(tokensAfter.length, 0, 'Token removed from user node on logout');
+
+    console.log('  ✔ Device token successfully unregistered on user logout');
+  }
+
+  // ==========================================================================
   // Cleanup test artifacts
   // ==========================================================================
   await rtdbService.removeData(`fcm_tokens/${testSenderUid}`).catch(() => {});
   await rtdbService.removeData(`fcm_tokens/${testRecipientUid1}`).catch(() => {});
   await rtdbService.removeData(`fcm_tokens/${testRecipientUid2}`).catch(() => {});
+  await rtdbService.setData(`user_notifications/${testRecipientUid1}`, null).catch(() => {});
+  await rtdbService.setData(`user_notifications/${testRecipientUid2}`, null).catch(() => {});
+  await rtdbService.setData(`user_notifications/${testSenderUid}`, null).catch(() => {});
 
-  console.log('\n🎉 ALL 7 FCM PHASE 4 REPAIR VERIFICATION TESTS PASSED!\n');
+  console.log('\n🎉 ALL 12 FCM PHASE 4 VERIFICATION TESTS PASSED!\n');
   process.exit(0);
 }
 

@@ -27,6 +27,7 @@ import { useUser } from '../../hooks/useUser';
 import { useUserProfiles } from '../../hooks/useUserProfile';
 import { useToast } from '../../hooks/useToast';
 import { chatService } from '../../services/chatService';
+import { inAppNotificationService } from '../../services/inAppNotificationService';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
@@ -252,6 +253,25 @@ export default function CommunityPage() {
       }, 300);
     }
   }, [loading, searchParams, messages]);
+
+  // Context-aware notification clearing: Clear notifications for open thread or general community view
+  useEffect(() => {
+    if (!user?.uid || loading) return;
+
+    // Only mark read if document/tab is currently active/visible
+    const isDocVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    if (!isDocVisible) return;
+
+    const threadId = activeThreadMessage?.messageId || searchParams.get('threadId');
+
+    inAppNotificationService.markNotificationsAsReadByContext(user.uid, {
+      workspaceId: 'community',
+      threadId: threadId || null,
+      isCommunity: true,
+    }).catch((err) => {
+      console.warn('[CommunityPage] markNotificationsAsReadByContext warning:', err);
+    });
+  }, [user?.uid, loading, activeThreadMessage?.messageId, searchParams]);
 
   // Filter change handler
   const handleSelectFilter = (filterId) => {

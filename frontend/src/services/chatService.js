@@ -1652,6 +1652,28 @@ export const chatService = {
     };
 
     await set(newMsgRef, canonicalMsg);
+
+    try {
+      const members = contentOrOptions?.members || [];
+      const mentions = Array.isArray(members) && members.length > 0 ? extractMentions(trimmedContent, members) : [];
+      const mentionedUids = mentions.map((m) => m.uid).filter((uid) => uid && uid !== user.uid);
+      if (mentionedUids.length > 0) {
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.CHAT_MENTION,
+          {
+            workspaceId: 'community',
+            channelId: 'general',
+            messageId,
+            content: trimmedContent,
+            mentionedUids,
+          },
+          user
+        ).catch((e) => console.warn('[chatService] Community mention notification warning:', e));
+      }
+    } catch (err) {
+      console.warn('[chatService] Community message mention warning:', err?.message);
+    }
+
     return messageId;
   },
 
@@ -1793,8 +1815,7 @@ export const chatService = {
 
     await set(newReplyRef, canonicalReply);
 
-    // Dispatch in-app notification if parent message author is another user
-    try {
+      // Dispatch in-app notification if parent message author is another user
       const parentAuthorId = parentMessage?.senderId || parentMessage?.authorId;
       if (parentAuthorId && parentAuthorId !== user.uid && parentAuthorId !== 'system') {
         inAppNotificationService.dispatchNotificationEvent(
@@ -1810,9 +1831,29 @@ export const chatService = {
           user
         ).catch((e) => console.warn('[chatService] Public community reply notification error:', e));
       }
-    } catch (err) {
-      console.warn('[chatService] Public community reply dispatch warning:', err.message);
-    }
+
+      // Dispatch mention notifications in reply if members provided
+      const replyMentions = Array.isArray(parentMessage?.members) && parentMessage.members.length > 0
+        ? extractMentions(trimmed, parentMessage.members)
+        : [];
+      const replyMentionedUids = replyMentions
+        .map((m) => m.uid)
+        .filter((uid) => uid && uid !== user.uid && uid !== parentAuthorId);
+
+      if (replyMentionedUids.length > 0) {
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.CHAT_MENTION,
+          {
+            workspaceId: 'community',
+            channelId: 'general',
+            messageId: replyId,
+            parentMessageId,
+            content: trimmed,
+            mentionedUids: replyMentionedUids,
+          },
+          user
+        ).catch((e) => console.warn('[chatService] Community reply mention warning:', e));
+      }
 
     return canonicalReply;
   },

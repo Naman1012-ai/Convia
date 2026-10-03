@@ -1,4 +1,6 @@
 import { rtdbService } from '../rtdbService.js';
+import { notificationService } from '../notificationService.js';
+import { NOTIFICATION_TYPES } from '../../constants/notificationConstants.js';
 import {
   extractCanonicalVersionKey,
   extractCanonicalVersionNumber,
@@ -75,6 +77,7 @@ export const taskSyncService = {
 
     const tasksToSave = {};
     const updatedPlannedTasks = [];
+    const newlyAssignedTasks = [];
 
     for (const bpTask of plannedTasks) {
       const bpTaskId = validatePathSegment(
@@ -177,6 +180,15 @@ export const taskSyncService = {
         tasksToSave[taskPathKey] = newExecutionTask;
         createdCount += 1;
 
+        if (assignedUserId && assignedUserId !== triggeredByUid) {
+          newlyAssignedTasks.push({
+            taskId: executionTaskId,
+            title: newExecutionTask.title,
+            assignedTo: assignedUserId,
+            priority: newExecutionTask.priority,
+          });
+        }
+
         updatedPlannedTasks.push({
           ...bpTask,
           id: bpTaskId,
@@ -189,6 +201,21 @@ export const taskSyncService = {
     if (Object.keys(tasksToSave).length > 0) {
       validateRtdbUpdateMap(tasksToSave, 'taskSyncService.synchronizeBlueprintTasks');
       await rtdbService.updateData('/', tasksToSave);
+
+      // Dispatch TASK_ASSIGNED notifications for newly assigned tasks
+      for (const t of newlyAssignedTasks) {
+        notificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.TASK_ASSIGNED,
+          {
+            workspaceId: validWorkspaceId,
+            taskId: t.taskId,
+            taskTitle: t.title,
+            assignedToUid: t.assignedTo,
+            priority: t.priority,
+          },
+          { uid: triggeredByUid || 'system', displayName: 'AI Blueprint Planner' }
+        ).catch((notifErr) => console.warn('[taskSyncService] Task assigned notification warning:', notifErr.message));
+      }
     }
 
     // 3. Update Blueprint document with linked convertedTaskIds

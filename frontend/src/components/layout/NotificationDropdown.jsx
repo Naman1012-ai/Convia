@@ -15,6 +15,9 @@ import {
   Info,
   Smile,
   X,
+  CheckSquare,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -124,15 +127,20 @@ export function NotificationDropdown() {
     setIsOpen(false);
 
     const notifId = notif.notificationId || notif.id;
-    if (!notif.read && notifId) {
-      await markAsRead(notifId);
-    }
 
     if (notif.actionUrl) {
       try {
         navigate(notif.actionUrl);
+        // Only mark notification as read after navigation has safely succeeded
+        if (!notif.read && notifId) {
+          await markAsRead(notifId);
+        }
       } catch (err) {
-        console.warn('[NotificationDropdown] Navigation error:', err);
+        console.warn('[NotificationDropdown] Navigation error, retaining unread state:', err);
+      }
+    } else {
+      if (!notif.read && notifId) {
+        await markAsRead(notifId);
       }
     }
   };
@@ -169,9 +177,15 @@ export function NotificationDropdown() {
           color: 'bg-primary-600',
         };
       case NOTIFICATION_TYPES.CHAT_MESSAGE:
+      case NOTIFICATION_TYPES.COMMUNITY_POST:
         return {
           icon: <MessageSquare className="h-2.5 w-2.5" />,
           color: 'bg-blue-500',
+        };
+      case NOTIFICATION_TYPES.COMMUNITY_REPLY:
+        return {
+          icon: <CornerDownRight className="h-2.5 w-2.5" />,
+          color: 'bg-indigo-500',
         };
       case NOTIFICATION_TYPES.CHAT_REACTION:
       case NOTIFICATION_TYPES.MESSAGE_REACTION:
@@ -216,6 +230,25 @@ export function NotificationDropdown() {
         return {
           icon: <HelpCircle className="h-2.5 w-2.5" />,
           color: 'bg-violet-600',
+        };
+      case NOTIFICATION_TYPES.TASK_ASSIGNED:
+      case NOTIFICATION_TYPES.TASK_COMPLETED:
+      case NOTIFICATION_TYPES.TASK_STATUS_CHANGED:
+        return {
+          icon: <CheckSquare className="h-2.5 w-2.5" />,
+          color: 'bg-teal-600',
+        };
+      case NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED:
+      case NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED:
+        return {
+          icon: <UserPlus className="h-2.5 w-2.5" />,
+          color: 'bg-emerald-600',
+        };
+      case NOTIFICATION_TYPES.WORKSPACE_MEMBER_LEFT:
+      case NOTIFICATION_TYPES.INVITATION_DECLINED:
+        return {
+          icon: <UserMinus className="h-2.5 w-2.5" />,
+          color: 'bg-slate-600',
         };
       case NOTIFICATION_TYPES.ADMIN_BROADCAST:
       default:

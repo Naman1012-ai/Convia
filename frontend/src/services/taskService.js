@@ -1,5 +1,7 @@
 import { rtdbService } from './rtdbService';
 import { getErrorMessage } from '../utils/errorMessages';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 
 /**
  * Complete Service Layer for Task Management & Project Execution Module.
@@ -39,6 +41,24 @@ export const taskService = {
 
     try {
       await rtdbService.setData(`tasks/${orgId}/${taskId}`, newTask);
+
+      // If initially assigned to another user, dispatch TASK_ASSIGNED notification + FCM push
+      if (newTask.assignedTo && newTask.assignedTo !== user.uid) {
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.TASK_ASSIGNED,
+          {
+            workspaceId: orgId,
+            taskId,
+            taskTitle: newTask.title,
+            assignedToUid: newTask.assignedTo,
+            priority: newTask.priority,
+          },
+          user
+        ).catch((err) => {
+          console.warn('[taskService] Failed to dispatch task assignment notification:', err?.message);
+        });
+      }
+
       return newTask;
     } catch (error) {
       console.error('[taskService] createTask error:', error);
@@ -63,7 +83,7 @@ export const taskService = {
   /**
    * Update task fields (Title, Description, Priority, Due Date).
    */
-  updateTask: async (orgId, taskId, updates) => {
+  updateTask: async (orgId, taskId, updates, actorUser = null) => {
     if (!orgId || !taskId) return;
     const timestamp = Date.now();
     const patch = {
@@ -78,7 +98,30 @@ export const taskService = {
     }
 
     try {
+      // Fetch existing task to check status changes for notification triggers
+      let existingTask = null;
+      if (updates.status === 'Completed' || updates.assignedTo) {
+        existingTask = await rtdbService.getData(`tasks/${orgId}/${taskId}`).catch(() => null);
+      }
+
       await rtdbService.updateData(`tasks/${orgId}/${taskId}`, patch);
+
+      // Trigger completion notification if status flipped to Completed
+      if (updates.status === 'Completed' && existingTask?.status !== 'Completed') {
+        const taskTitle = existingTask?.title || updates.title || 'Task';
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.TASK_COMPLETED,
+          {
+            workspaceId: orgId,
+            taskId,
+            taskTitle,
+            createdByUid: existingTask?.createdBy || null,
+          },
+          actorUser
+        ).catch((err) => {
+          console.warn('[taskService] Failed to dispatch task completion notification:', err?.message);
+        });
+      }
     } catch (error) {
       console.error('[taskService] updateTask error:', error);
       throw error;
@@ -88,18 +131,37 @@ export const taskService = {
   /**
    * Quick status update helper (e.g. dragging or changing status select).
    */
-  updateTaskStatus: async (orgId, taskId, newStatus) => {
-    return await taskService.updateTask(orgId, taskId, { status: newStatus });
+  updateTaskStatus: async (orgId, taskId, newStatus, actorUser = null) => {
+    return await taskService.updateTask(orgId, taskId, { status: newStatus }, actorUser);
   },
 
   /**
    * Assign or reassign a task to an organization member.
    */
-  assignTask: async (orgId, taskId, assignedToUid, assignedToName) => {
-    return await taskService.updateTask(orgId, taskId, {
+  assignTask: async (orgId, taskId, assignedToUid, assignedToName, actorUser = null) => {
+    const res = await taskService.updateTask(orgId, taskId, {
       assignedTo: assignedToUid || '',
       assignedToName: assignedToName || 'Unassigned',
-    });
+    }, actorUser);
+
+    if (assignedToUid && (!actorUser || assignedToUid !== actorUser.uid)) {
+      const taskDoc = await rtdbService.getData(`tasks/${orgId}/${taskId}`).catch(() => null);
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.TASK_ASSIGNED,
+        {
+          workspaceId: orgId,
+          taskId,
+          taskTitle: taskDoc?.title || 'Task',
+          assignedToUid,
+          priority: taskDoc?.priority || 'Medium',
+        },
+        actorUser
+      ).catch((err) => {
+        console.warn('[taskService] Failed to dispatch task assignment notification:', err?.message);
+      });
+    }
+
+    return res;
   },
 
   /**

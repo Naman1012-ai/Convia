@@ -9,6 +9,8 @@ export const NOTIFICATION_TYPES = {
   CHAT_MENTION: 'CHAT_MENTION',
   CHAT_REPLY: 'CHAT_REPLY',
   MESSAGE_REPLY: 'MESSAGE_REPLY',
+  COMMUNITY_REPLY: 'COMMUNITY_REPLY',
+  COMMUNITY_POST: 'COMMUNITY_POST',
   MENTION: 'MENTION',
   CHAT_REACTION: 'CHAT_REACTION',
   MESSAGE_REACTION: 'MESSAGE_REACTION',
@@ -40,6 +42,13 @@ export const NOTIFICATION_TYPES = {
   // 7. WORKSPACE MEMBERSHIP
   WORKSPACE_MEMBER_JOINED: 'WORKSPACE_MEMBER_JOINED',
   WORKSPACE_MEMBER_LEFT: 'WORKSPACE_MEMBER_LEFT',
+  WORKSPACE_MEMBER_INVITED: 'WORKSPACE_MEMBER_INVITED',
+  INVITATION_DECLINED: 'INVITATION_DECLINED',
+
+  // 8. TASKS & PROJECT EXECUTION
+  TASK_ASSIGNED: 'TASK_ASSIGNED',
+  TASK_COMPLETED: 'TASK_COMPLETED',
+  TASK_STATUS_CHANGED: 'TASK_STATUS_CHANGED',
 
   // SYSTEM / ADMIN
   ADMIN_BROADCAST: 'ADMIN_BROADCAST',
@@ -52,6 +61,7 @@ export const NOTIFICATION_CATEGORIES = {
   SUGGESTION: 'suggestion',
   COMMENT: 'comment',
   QUESTION: 'question',
+  TASK: 'task',
   SYSTEM: 'system',
 };
 
@@ -61,6 +71,8 @@ export function getNotificationCategory(type) {
     case NOTIFICATION_TYPES.CHAT_MENTION:
     case NOTIFICATION_TYPES.CHAT_REPLY:
     case NOTIFICATION_TYPES.MESSAGE_REPLY:
+    case NOTIFICATION_TYPES.COMMUNITY_REPLY:
+    case NOTIFICATION_TYPES.COMMUNITY_POST:
     case NOTIFICATION_TYPES.MENTION:
     case NOTIFICATION_TYPES.CHAT_REACTION:
     case NOTIFICATION_TYPES.MESSAGE_REACTION:
@@ -90,6 +102,11 @@ export function getNotificationCategory(type) {
     case NOTIFICATION_TYPES.QUESTION_ANSWERED:
       return NOTIFICATION_CATEGORIES.QUESTION;
 
+    case NOTIFICATION_TYPES.TASK_ASSIGNED:
+    case NOTIFICATION_TYPES.TASK_COMPLETED:
+    case NOTIFICATION_TYPES.TASK_STATUS_CHANGED:
+      return NOTIFICATION_CATEGORIES.TASK;
+
     case NOTIFICATION_TYPES.ADMIN_BROADCAST:
     default:
       return NOTIFICATION_CATEGORIES.SYSTEM;
@@ -106,6 +123,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES = {
   [NOTIFICATION_CATEGORIES.SUGGESTION]: true,
   [NOTIFICATION_CATEGORIES.COMMENT]: true,
   [NOTIFICATION_CATEGORIES.QUESTION]: true,
+  [NOTIFICATION_CATEGORIES.TASK]: true,
   [NOTIFICATION_CATEGORIES.SYSTEM]: true,
 };
 
@@ -147,19 +165,31 @@ export function buildNotificationActionUrl({
     case NOTIFICATION_TYPES.MESSAGE_REACTION: {
       const channel = metadata.channelId || 'general';
       const msgId = metadata.messageId || resourceId;
+      if (org === 'community' || org === 'public') {
+        return `/community?messageId=${msgId}`;
+      }
       return org
         ? `/workspaces/${org}/chat?channel=${channel}&messageId=${msgId}`
         : `/dashboard`;
     }
 
     case NOTIFICATION_TYPES.CHAT_REPLY:
-    case NOTIFICATION_TYPES.MESSAGE_REPLY: {
+    case NOTIFICATION_TYPES.MESSAGE_REPLY:
+    case NOTIFICATION_TYPES.COMMUNITY_REPLY: {
       const channel = metadata.channelId || 'general';
-      const parentId = metadata.parentMessageId;
+      const parentId = metadata.parentMessageId || metadata.threadId;
       const replyId = metadata.replyId || resourceId;
+      if (org === 'community' || org === 'public' || type === NOTIFICATION_TYPES.COMMUNITY_REPLY) {
+        return `/community?threadId=${parentId || replyId}`;
+      }
       return org
         ? `/workspaces/${org}/chat?channel=${channel}&threadId=${parentId}&replyId=${replyId}`
         : `/dashboard`;
+    }
+
+    case NOTIFICATION_TYPES.COMMUNITY_POST: {
+      const msgId = metadata.messageId || resourceId;
+      return `/community?messageId=${msgId}`;
     }
 
     case NOTIFICATION_TYPES.BLUEPRINT_COMPLETED:
@@ -205,7 +235,18 @@ export function buildNotificationActionUrl({
 
     case NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED:
     case NOTIFICATION_TYPES.WORKSPACE_MEMBER_LEFT:
+    case NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED:
+    case NOTIFICATION_TYPES.INVITATION_DECLINED:
       return org ? `/workspaces/${org}/members` : `/dashboard`;
+
+    case NOTIFICATION_TYPES.TASK_ASSIGNED:
+    case NOTIFICATION_TYPES.TASK_COMPLETED:
+    case NOTIFICATION_TYPES.TASK_STATUS_CHANGED: {
+      const taskId = metadata.taskId || resourceId;
+      return org
+        ? `/workspaces/${org}/tasks?taskId=${taskId}`
+        : `/dashboard`;
+    }
 
     case NOTIFICATION_TYPES.ADMIN_BROADCAST:
     default:

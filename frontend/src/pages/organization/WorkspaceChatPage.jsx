@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
 import { useToast } from '../../hooks/useToast';
 import { chatService } from '../../services/chatService';
+import { inAppNotificationService } from '../../services/inAppNotificationService';
 import { uploadthingService } from '../../services/uploadthingService';
 import {
   CHAT_PAGE_SIZE,
@@ -220,14 +221,30 @@ export default function WorkspaceChatPage() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Update read cursor checkpoint when viewing chat
+  // Update read cursor checkpoint and clear conversation-specific notifications when viewing chat
   useEffect(() => {
-    if (!orgId || !user?.uid || messages.length === 0) return;
-    const newest = messages[messages.length - 1];
-    if (newest?.messageId && newest?.createdAt) {
-      chatService.updateReadState(orgId, activeChannelId, user.uid, newest.messageId, newest.createdAt);
+    if (!orgId || !user?.uid) return;
+
+    // Only clear if the document/tab is currently active/visible to avoid clearing in background
+    const isDocVisible = typeof document === 'undefined' || document.visibilityState === 'visible';
+    if (!isDocVisible) return;
+
+    // 1. Mark in-app notifications belonging to this exact workspace and channel as read
+    inAppNotificationService.markNotificationsAsReadByContext(user.uid, {
+      workspaceId: orgId,
+      channelId: activeChannelId,
+    }).catch((err) => {
+      console.warn('[WorkspaceChatPage] markNotificationsAsReadByContext warning:', err);
+    });
+
+    // 2. Update chat cursor checkpoint if messages are present
+    if (messages.length > 0) {
+      const newest = messages[messages.length - 1];
+      if (newest?.messageId && newest?.createdAt) {
+        chatService.updateReadState(orgId, activeChannelId, user.uid, newest.messageId, newest.createdAt);
+      }
     }
-  }, [orgId, activeChannelId, user?.uid, messages]);
+  }, [orgId, activeChannelId, user?.uid, messages.length]);
 
   // Deep-linking from notification or URL search params
   useEffect(() => {

@@ -116,6 +116,116 @@ export const inAppNotificationService = {
   },
 
   /**
+   * Marks unread notifications matching a specific conversation or entity context as read atomically.
+   * Scopes strictly by workspaceId, channelId, or discussion/thread ID without clearing unrelated notifications.
+   *
+   * @param {string} userId - Current user Auth UID
+   * @param {Object} context - Filter criteria
+   * @param {string} [context.workspaceId] - Workspace ID (e.g., 'ws_123', 'community', or 'public')
+   * @param {string} [context.channelId] - Channel ID (e.g., 'general', 'dev')
+   * @param {string} [context.discussionId] - Community/Idea discussion ID
+   * @param {string} [context.threadId] - Parent message / thread ID
+   * @param {string} [context.messageId] - Specific message ID
+   * @param {Array<Object>} [notifications=[]] - Optional active notification list
+   * @returns {Promise<Array<string>>} List of notification IDs that were updated
+   */
+  markNotificationsAsReadByContext: async (userId, context = {}, notifications = []) => {
+    if (!userId || !context) return [];
+    try {
+      const notifRoot = getUserNotificationsRootPath(userId);
+      let list = notifications;
+
+      // If active list is not provided or empty, retrieve current notifications from RTDB
+      if (!Array.isArray(list) || list.length === 0) {
+        const rawVal = await rtdbService.getRtdbOnly(notifRoot);
+        if (!rawVal || typeof rawVal !== 'object') return [];
+        list = Object.entries(rawVal).map(([key, item]) => {
+          if (!item || typeof item !== 'object') return null;
+          return {
+            ...item,
+            id: item.id || item.notificationId || key,
+            notificationId: item.notificationId || key,
+          };
+        }).filter(Boolean);
+      }
+
+      const cleanWorkspaceId = context.workspaceId ? String(context.workspaceId).trim() : null;
+      const cleanChannelId = context.channelId ? String(context.channelId).trim().toLowerCase() : null;
+      const cleanDiscussionId = context.discussionId ? String(context.discussionId).trim() : null;
+      const cleanThreadId = context.threadId ? String(context.threadId).trim() : null;
+      const cleanMessageId = context.messageId ? String(context.messageId).trim() : null;
+
+      const updates = {};
+      const updatedNotifIds = [];
+      const now = Date.now();
+
+      list.forEach((n) => {
+        if (!n || n.read) return;
+
+        const notifWs = n.workspaceId || n.orgId || n.metadata?.workspaceId || null;
+        const notifChannel = (
+          n.channelId ||
+          n.metadata?.channelId ||
+          (n.type?.startsWith('CHAT_') ? 'general' : null)
+        );
+        const cleanNotifChannel = notifChannel ? String(notifChannel).trim().toLowerCase() : null;
+
+        // Context Matching Logic
+        let matches = false;
+
+        // 1. Workspace Chat Matching
+        if (cleanWorkspaceId && cleanWorkspaceId !== 'community' && cleanWorkspaceId !== 'public') {
+          const wsMatches = notifWs === cleanWorkspaceId;
+          if (wsMatches) {
+            if (cleanChannelId) {
+              matches = cleanNotifChannel === cleanChannelId;
+            } else {
+              matches = true;
+            }
+          }
+        }
+        // 2. Community Channel Matching
+        else if (cleanWorkspaceId === 'community' || cleanWorkspaceId === 'public' || context.isCommunity) {
+          const isCommNotif = notifWs === 'community' || notifWs === 'public';
+          if (isCommNotif) {
+            if (cleanThreadId || cleanDiscussionId) {
+              const targetThread = cleanThreadId || cleanDiscussionId;
+              const notifParent = n.secondaryEntityId || n.metadata?.parentMessageId || n.metadata?.discussionId || n.resourceId;
+              matches = notifParent === targetThread;
+            } else {
+              matches = true;
+            }
+          }
+        }
+        // 3. Direct Message / Thread Scope Matching
+        else if (cleanMessageId || cleanThreadId) {
+          const notifMsgId = n.resourceId || n.metadata?.messageId || n.metadata?.replyId;
+          const notifThreadId = n.secondaryEntityId || n.metadata?.parentMessageId;
+          matches = (cleanMessageId && notifMsgId === cleanMessageId) || (cleanThreadId && notifThreadId === cleanThreadId);
+        }
+
+        if (matches) {
+          const notifKey = n.notificationId || n.id;
+          if (notifKey) {
+            updates[`${notifKey}/read`] = true;
+            updates[`${notifKey}/readAt`] = now;
+            updatedNotifIds.push(notifKey);
+          }
+        }
+      });
+
+      if (Object.keys(updates).length > 0) {
+        await rtdbService.updateRtdbOnly(notifRoot, updates);
+      }
+
+      return updatedNotifIds;
+    } catch (e) {
+      console.warn('[inAppNotificationService] markNotificationsAsReadByContext error:', e.message);
+      return [];
+    }
+  },
+
+  /**
    * Marks a single notification as unread.
    *
    * @param {string} userId - Current user Auth UID
@@ -675,7 +785,8 @@ export const inAppNotificationService = {
         }
 
         case NOTIFICATION_TYPES.MESSAGE_REPLY:
-        case NOTIFICATION_TYPES.CHAT_REPLY: {
+        case NOTIFICATION_TYPES.CHAT_REPLY:
+        case NOTIFICATION_TYPES.COMMUNITY_REPLY: {
           const { workspaceId, channelId = 'general', parentMessageId, replyId, content, parentAuthorId, recipients = [] } = eventData;
           if (!workspaceId || !parentMessageId || !replyId) return [];
 
@@ -751,6 +862,148 @@ export const inAppNotificationService = {
             actionUrl: deepLink,
             metadata: { channelId: activeChannel, messageId, emoji, workspaceId },
             dedupeKey: `chat_react_${workspaceId}_${activeChannel}_${messageId}_${actorUid}_${emoji}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        // -------------------------------------------------------------
+        // 8. TASK & PROJECT EXECUTION EVENTS
+        // -------------------------------------------------------------
+        case NOTIFICATION_TYPES.TASK_ASSIGNED: {
+          const { workspaceId, taskId, taskTitle, assignedToUid, priority } = eventData;
+          if (!assignedToUid || assignedToUid === actorUid) return [];
+
+          const notif = await inAppNotificationService.createNotification(assignedToUid, {
+            type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'New Task Assigned to You',
+            body: `${actorName} assigned you task: "${taskTitle || 'Untitled Task'}"${priority ? ` [${priority}]` : ''}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId, priority },
+            dedupeKey: `task_assign_${workspaceId}_${taskId}_${assignedToUid}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.TASK_COMPLETED: {
+          const { workspaceId, taskId, taskTitle, createdByUid, members } = eventData;
+          // Notify workspace members or the task creator if not the actor
+          let recipients = [];
+          if (createdByUid && createdByUid !== actorUid) {
+            recipients = [createdByUid];
+          } else {
+            recipients = await inAppNotificationService.resolveWorkspaceRecipients(workspaceId, actorUid, members);
+          }
+
+          if (recipients.length === 0) return [];
+
+          return await inAppNotificationService.createNotificationsForRecipients(recipients, {
+            type: NOTIFICATION_TYPES.TASK_COMPLETED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Task Completed',
+            body: `${actorName} completed task: "${taskTitle || 'Untitled Task'}".`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId },
+            dedupeKey: `task_done_${workspaceId}_${taskId}_${Date.now()}`,
+          });
+        }
+
+        case NOTIFICATION_TYPES.TASK_STATUS_CHANGED: {
+          const { workspaceId, taskId, taskTitle, oldStatus, newStatus, targetUid } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await inAppNotificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.TASK_STATUS_CHANGED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Task Status Updated',
+            body: `${actorName} updated "${taskTitle || 'Task'}" from ${oldStatus || 'Todo'} to ${newStatus}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'task',
+            resourceId: taskId,
+            actionUrl: `/workspaces/${workspaceId}/tasks?taskId=${taskId}`,
+            metadata: { workspaceId, taskId, oldStatus, newStatus },
+            dedupeKey: `task_status_${workspaceId}_${taskId}_${newStatus}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        // -------------------------------------------------------------
+        // 9. INVITATION EVENTS
+        // -------------------------------------------------------------
+        case NOTIFICATION_TYPES.INVITATION_DECLINED: {
+          const { workspaceId, inviterUid, inviteeEmail, orgName } = eventData;
+          if (!inviterUid || inviterUid === actorUid) return [];
+
+          const notif = await inAppNotificationService.createNotification(inviterUid, {
+            type: NOTIFICATION_TYPES.INVITATION_DECLINED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Workspace Invitation Declined',
+            body: `${actorName || inviteeEmail || 'Invited user'} declined the invitation to join ${orgName || 'your workspace'}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName: actorName || inviteeEmail || 'User',
+            senderName: actorName || inviteeEmail || 'User',
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'workspace_invitation',
+            resourceId: workspaceId,
+            actionUrl: `/workspaces/${workspaceId}/members`,
+            metadata: { workspaceId, inviteeEmail },
+            dedupeKey: `invite_declined_${workspaceId}_${inviteeEmail}_${Date.now()}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED: {
+          const { workspaceId, orgName, targetUid, role } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await inAppNotificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+            workspaceId,
+            orgId: workspaceId,
+            title: `Invited to join ${orgName || 'Workspace'}`,
+            body: `${actorName} invited you to join ${orgName || 'their workspace'} as ${role || 'member'}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'workspace_invitation',
+            resourceId: workspaceId,
+            actionUrl: `/workspaces/${workspaceId}`,
+            metadata: { workspaceId, role },
+            dedupeKey: `invite_sent_${workspaceId}_${targetUid}`,
           });
 
           return notif ? [notif] : [];
