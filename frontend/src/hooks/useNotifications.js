@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { inAppNotificationService } from '../services/inAppNotificationService';
-import { setupForegroundMessageHandler } from '../services/fcmService';
+import { setupForegroundMessageHandler, syncWebPushToken } from '../services/fcmService';
 import { NotificationService } from '../services/notificationService';
 
 /**
@@ -65,6 +65,11 @@ export function useNotifications() {
         setLoading(false);
       }
     );
+
+    // Silently synchronize FCM token if permission was previously granted
+    syncWebPushToken(user.uid).catch((err) => {
+      console.warn('[useNotifications] Token sync warning:', err?.message || err);
+    });
 
     const unsubFcm = setupForegroundMessageHandler((payload) => {
       if (!isMountedRef.current) return;

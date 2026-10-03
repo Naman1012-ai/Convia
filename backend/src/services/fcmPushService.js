@@ -162,7 +162,7 @@ export const fcmPushService = {
 
     // 2. Resolve active tokens for all recipients
     const tokenEntries = []; // Array of { token, tokenKey, uid }
-    const actorId = notification.actorId || notification.senderId;
+    const actorId = notification.actorId || notification.senderId || notification.actorUid || notification.senderUid;
     for (const uid of validUids) {
       // Exclude self-notifications if actorId matches recipient
       if (actorId && actorId === uid && !notification.allowSelfNotification) {
@@ -244,22 +244,27 @@ export const fcmPushService = {
     // 5. Send multicast message
     try {
       const response = await messaging.sendEachForMulticast(messagePayload);
-      console.log(`🚀 [fcmPushService] Multicast push dispatched: ${response.successCount} succeeded, ${response.failureCount} failed out of ${uniqueTokens.length} tokens.`);
+      console.log(`🚀 [fcmPushService] Multicast push dispatched: ${response.successCount} succeeded, ${response.failureCount} failed out of ${uniqueTokens.length} tokens across ${validUids.length} recipient(s).`);
 
       // 6. Handle invalid tokens pruning
       if (response.failureCount > 0) {
         response.responses.forEach((resp, idx) => {
           if (!resp.success) {
             const errorCode = resp.error?.code || '';
+            const errorMsg = resp.error?.message || '';
             const isUnregistered =
               errorCode === 'messaging/invalid-registration-token' ||
               errorCode === 'messaging/registration-token-not-registered' ||
-              errorCode === 'messaging/mismatched-credential';
+              errorCode === 'messaging/mismatched-credential' ||
+              errorCode === 'messaging/invalid-argument' ||
+              errorMsg.includes('not registered') ||
+              errorMsg.includes('invalid registration token');
 
             if (isUnregistered) {
               const failedToken = uniqueTokens[idx];
               const entry = uniqueTokenMap.get(failedToken);
               if (entry) {
+                console.log(`🧹 [fcmPushService] Pruning invalid registration token for user ${entry.uid.slice(0, 8)}... (reason: ${errorCode || errorMsg})`);
                 fcmPushService.pruneToken(entry.uid, entry.tokenKey).catch(() => {});
               }
             }

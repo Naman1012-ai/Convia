@@ -93,14 +93,13 @@ export const notificationService = {
         await rtdbService.updateData('/', updates);
       }
 
-      // Asynchronously invoke push delivery for recipients
-      Promise.all(
-        createdList.map((notif) =>
-          pushDeliveryService.sendPushNotification(notif.recipientId, notif).catch((pushErr) => {
-            console.warn(`[notificationService] Push delivery warning for ${notif.recipientId}:`, pushErr?.message);
-          })
-        )
-      ).catch((e) => console.warn('[notificationService] Push broadcast warning:', e?.message));
+      // Asynchronously invoke batch push delivery for all recipients
+      if (createdList.length > 0) {
+        const sampleNotif = createdList[0];
+        pushDeliveryService.sendPushNotifications(validUids, sampleNotif).catch((pushErr) => {
+          console.warn('[notificationService] Batch push delivery warning:', pushErr?.message);
+        });
+      }
 
       return createdList;
     } catch (err) {

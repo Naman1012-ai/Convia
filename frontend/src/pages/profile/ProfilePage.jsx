@@ -176,10 +176,10 @@ export default function ProfilePage() {
       setIsPushSupported(supported);
       if (supported) {
         setPushPermission(getNotificationPermission());
-        setPushEnabled(isPushNotificationsEnabledLocally());
+        setPushEnabled(isPushNotificationsEnabledLocally(user?.uid));
       }
     });
-  }, []);
+  }, [user?.uid]);
 
   const handleTogglePushNotifications = async () => {
     if (pushLoading) return;
@@ -191,7 +191,7 @@ export default function ProfilePage() {
         setPushEnabled(false);
         toast.info('Browser push notifications disabled for this device.');
       } else {
-        const result = await enableWebPushNotifications();
+        const result = await enableWebPushNotifications({ currentUid: user?.uid });
         setPushPermission(result.permission);
         if (result.success) {
           setPushEnabled(true);

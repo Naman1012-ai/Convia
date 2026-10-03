@@ -18,6 +18,8 @@ export const DB_PATHS = {
   WORKSPACE_CHATS: 'workspaceChats', // Canonical root path for workspace chat system
   GLOBAL_STATS: 'globalStats',
   USER_SAVED_DISCUSSIONS: 'user_saved_discussions',
+  FCM_TOKENS: 'fcm_tokens',
+  FCM_DELIVERY_LEDGER: 'fcm_delivery_ledger',
 };
 
 /**
@@ -405,3 +407,36 @@ export const getPublicIdeasChatPinnedPath = () => `${getPublicIdeasChatRootPath(
  * publicChats/ideas/pinned
  */
 export const getPublicIdeasChatPinnedDiscussionPath = () => `${getPublicIdeasChatRootPath()}/pinned`;
+
+/**
+ * Builds the canonical RTDB root path for a user's FCM device tokens:
+ * fcm_tokens/{uid}
+ */
+export const getFcmTokensRootPath = (uid) => {
+  if (!uid || typeof uid !== 'string' || !uid.trim()) {
+    throw new Error('[databasePaths] uid is required for FCM tokens root path.');
+  }
+  return `fcm_tokens/${uid.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB path for a specific FCM device token registration:
+ * fcm_tokens/{uid}/{tokenKey}
+ */
+export const getFcmTokenPath = (uid, tokenKey) => {
+  if (!tokenKey || typeof tokenKey !== 'string' || !tokenKey.trim()) {
+    throw new Error('[databasePaths] tokenKey is required for FCM token path.');
+  }
+  return `${getFcmTokensRootPath(uid)}/${tokenKey.trim()}`;
+};
+
+/**
+ * Builds the canonical RTDB path for the authoritative push delivery ledger:
+ * fcm_delivery_ledger/{notificationId}
+ */
+export const getFcmDeliveryLedgerPath = (notifId) => {
+  if (!notifId || typeof notifId !== 'string' || !notifId.trim()) {
+    throw new Error('[databasePaths] notifId is required for FCM delivery ledger path.');
+  }
+  return `fcm_delivery_ledger/${notifId.trim()}`;
+};

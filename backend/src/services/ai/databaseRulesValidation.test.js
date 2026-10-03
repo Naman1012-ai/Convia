@@ -94,6 +94,32 @@ export function evaluateSecurityRule({ path: targetPath, operation, auth, data =
       break;
     }
 
+    case 'fcm_tokens': {
+      const uid = arg1;
+      const tokenKey = arg2;
+      if (operation === 'read') return { allowed: auth.uid === uid };
+      if (operation === 'write') {
+        if (auth.uid !== uid) return { allowed: false, reason: 'FORBIDDEN_USER_WRITE' };
+        if (newData) {
+          if (
+            !newData.token ||
+            typeof newData.token !== 'string' ||
+            newData.token.length < 10 ||
+            !newData.tokenKey ||
+            newData.tokenKey !== tokenKey
+          ) {
+            return { allowed: false, reason: 'INVALID_TOKEN_VALIDATION' };
+          }
+        }
+        return { allowed: true };
+      }
+      break;
+    }
+
+    case 'fcm_delivery_ledger': {
+      return { allowed: false, reason: 'FORBIDDEN_SERVER_ONLY' };
+    }
+
     case 'user_notifications': {
       const recipientUid = arg1;
       const notifId = arg2;
@@ -868,6 +894,110 @@ describe('🧪 CONVIA SECURITY FIX 6 — RULES VERIFICATION & ATOMIC ENFORCEMENT
         rootData: mockRootData,
       });
       assert.strictEqual(res.allowed, false, 'Validation must reject non-number savedAt');
+    });
+  });
+
+  // -------------------------------------------------------------
+  // TEST FCM: Device Token Isolation & Delivery Ledger Protection
+  // -------------------------------------------------------------
+  describe('🔍 TEST FCM: Device Token Isolation & Delivery Ledger Protection', () => {
+    const validToken = 'fcm_sample_token_for_alice_1234567890';
+    const validTokenKey = 'tokenkey_alice_device_1';
+
+    it('allows User Alice to register and read her own FCM token', () => {
+      const writeRes = evaluateSecurityRule({
+        path: `fcm_tokens/user_alice/${validTokenKey}`,
+        operation: 'write',
+        auth: userAlice,
+        newData: { token: validToken, tokenKey: validTokenKey },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(writeRes.allowed, true, 'Alice must be allowed to write her own FCM token');
+
+      const readRes = evaluateSecurityRule({
+        path: 'fcm_tokens/user_alice',
+        operation: 'read',
+        auth: userAlice,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(readRes.allowed, true, 'Alice must be allowed to read her own FCM tokens');
+    });
+
+    it('BLOCKS User Bob from reading or writing Alice FCM tokens', () => {
+      const writeRes = evaluateSecurityRule({
+        path: `fcm_tokens/user_alice/${validTokenKey}`,
+        operation: 'write',
+        auth: userBob,
+        newData: { token: validToken, tokenKey: validTokenKey },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(writeRes.allowed, false, 'Bob must NOT be allowed to write to Alice FCM tokens');
+
+      const readRes = evaluateSecurityRule({
+        path: 'fcm_tokens/user_alice',
+        operation: 'read',
+        auth: userBob,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(readRes.allowed, false, 'Bob must NOT be allowed to read Alice FCM tokens');
+    });
+
+    it('BLOCKS unauthenticated users from reading or writing FCM tokens', () => {
+      const unauthWrite = evaluateSecurityRule({
+        path: `fcm_tokens/user_alice/${validTokenKey}`,
+        operation: 'write',
+        auth: null,
+        newData: { token: validToken, tokenKey: validTokenKey },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(unauthWrite.allowed, false, 'Unauthenticated write to fcm_tokens must be blocked');
+
+      const unauthRead = evaluateSecurityRule({
+        path: 'fcm_tokens/user_alice',
+        operation: 'read',
+        auth: null,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(unauthRead.allowed, false, 'Unauthenticated read to fcm_tokens must be blocked');
+    });
+
+    it('validates that FCM token must be valid string and tokenKey must match path', () => {
+      const invalidToken = evaluateSecurityRule({
+        path: `fcm_tokens/user_alice/${validTokenKey}`,
+        operation: 'write',
+        auth: userAlice,
+        newData: { token: 'short', tokenKey: validTokenKey },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(invalidToken.allowed, false, 'Short token (<10 chars) must be rejected');
+
+      const mismatchedKey = evaluateSecurityRule({
+        path: `fcm_tokens/user_alice/${validTokenKey}`,
+        operation: 'write',
+        auth: userAlice,
+        newData: { token: validToken, tokenKey: 'mismatched_key' },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(mismatchedKey.allowed, false, 'Mismatched tokenKey must be rejected');
+    });
+
+    it('BLOCKS client writes and reads to authoritative fcm_delivery_ledger', () => {
+      const clientWrite = evaluateSecurityRule({
+        path: 'fcm_delivery_ledger/notif_123',
+        operation: 'write',
+        auth: userAlice,
+        newData: { deliveredAt: Date.now() },
+        rootData: mockRootData,
+      });
+      assert.strictEqual(clientWrite.allowed, false, 'Client write to delivery ledger must be blocked');
+
+      const clientRead = evaluateSecurityRule({
+        path: 'fcm_delivery_ledger/notif_123',
+        operation: 'read',
+        auth: userAlice,
+        rootData: mockRootData,
+      });
+      assert.strictEqual(clientRead.allowed, false, 'Client read from delivery ledger must be blocked');
     });
   });
 });

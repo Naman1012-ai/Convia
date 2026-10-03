@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { authService } from '../services/authService';
 import { dashboardService } from '../services/dashboardService';
-import { cleanupFcmOnLogout } from '../services/fcmService';
+import { cleanupFcmOnLogout, syncWebPushToken } from '../services/fcmService';
 
 export const AuthContext = createContext({
   user: null,
@@ -23,6 +23,11 @@ export function AuthProvider({ children }) {
     const unsubscribe = authService.onAuthChange((currentUser) => {
       setUser(currentUser);
       setLoading(false);
+      if (currentUser?.uid) {
+        syncWebPushToken(currentUser.uid).catch((err) => {
+          console.warn('[AuthContext] Silent push token sync warning:', err?.message || err);
+        });
+      }
     });
 
     return () => unsubscribe();

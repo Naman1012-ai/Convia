@@ -18,6 +18,9 @@ import { apiClient } from './apiClient';
 const SW_PATH = '/firebase-messaging-sw.js';
 const SW_SCOPE = '/';
 const LOCAL_STORAGE_FCM_KEY = 'convia_fcm_token';
+const LOCAL_STORAGE_FCM_UID_KEY = 'convia_fcm_uid';
+const AUTHORITATIVE_VAPID_KEY =
+  'BJibX223kK8B5hnqYA56fbfGY2UiTEDXNuCzZyLi7sULo2SkqrsCAzBiQz948CMG1G0lmSNkfIY463sCVD1gSic';
 
 let messagingInstance = null;
 let registrationPromise = null;
@@ -119,9 +122,10 @@ export async function getMessagingInstance() {
  *
  * @param {Object} [options]
  * @param {string} [options.vapidKey]
+ * @param {string} [options.currentUid]
  * @returns {Promise<{ success: boolean, token?: string, permission: string, error?: string }>}
  */
-export async function enableWebPushNotifications({ vapidKey } = {}) {
+export async function enableWebPushNotifications({ vapidKey, currentUid = null } = {}) {
   const supported = await isFcmSupported();
   if (!supported) {
     return {
@@ -178,11 +182,12 @@ export async function enableWebPushNotifications({ vapidKey } = {}) {
     };
   }
 
-  // Resolve VAPID Public Key
+  // Resolve VAPID Public Key with authoritative project fallback
   const effectiveVapidKey =
     vapidKey ||
     import.meta.env.VITE_FIREBASE_VAPID_KEY ||
-    import.meta.env.VITE_VAPID_KEY;
+    import.meta.env.VITE_VAPID_KEY ||
+    AUTHORITATIVE_VAPID_KEY;
 
   try {
     const token = await getToken(messaging, {
@@ -198,9 +203,12 @@ export async function enableWebPushNotifications({ vapidKey } = {}) {
       };
     }
 
-    // Persist token in local storage
+    // Persist token and UID in local storage
     if (typeof window !== 'undefined' && window.localStorage) {
       window.localStorage.setItem(LOCAL_STORAGE_FCM_KEY, token);
+      if (currentUid) {
+        window.localStorage.setItem(LOCAL_STORAGE_FCM_UID_KEY, String(currentUid).trim());
+      }
     }
 
     // Register token on Express backend with verified user session
@@ -223,6 +231,88 @@ export async function enableWebPushNotifications({ vapidKey } = {}) {
       success: false,
       permission: 'granted',
       error: err.message || 'Error occurred while generating push token.',
+    };
+  }
+}
+
+/**
+ * Non-intrusive lifecycle token synchronization.
+ * If permission is already granted for the browser/origin, silently registers or refreshes
+ * the token with the backend for the currently authenticated user UID.
+ * Never requests permission if permission is 'default' or 'denied' (respects browser requirement).
+ *
+ * @param {string} currentUid - Current authenticated Firebase Auth UID
+ * @param {Object} [options]
+ * @returns {Promise<{ success: boolean, token?: string, permission: string, skipped?: boolean, error?: string }>}
+ */
+export async function syncWebPushToken(currentUid, { vapidKey } = {}) {
+  if (!currentUid || typeof currentUid !== 'string') {
+    return { success: false, skipped: true, reason: 'NO_AUTHENTICATED_USER' };
+  }
+
+  const supported = await isFcmSupported();
+  if (!supported) {
+    return { success: false, skipped: true, reason: 'UNSUPPORTED' };
+  }
+
+  const permission = getNotificationPermission();
+  if (permission !== 'granted') {
+    // Silently skip if user has not already granted permission (never spam browser prompts on load)
+    return { success: false, skipped: true, permission };
+  }
+
+  try {
+    const swReg = await registerMessagingServiceWorker();
+    if (!swReg) {
+      return { success: false, permission, error: 'Failed to register service worker' };
+    }
+
+    const messaging = await getMessagingInstance();
+    if (!messaging) {
+      return { success: false, permission, error: 'Failed to get messaging instance' };
+    }
+
+    const effectiveVapidKey =
+      vapidKey ||
+      import.meta.env.VITE_FIREBASE_VAPID_KEY ||
+      import.meta.env.VITE_VAPID_KEY ||
+      AUTHORITATIVE_VAPID_KEY;
+
+    const token = await getToken(messaging, {
+      serviceWorkerRegistration: swReg,
+      vapidKey: effectiveVapidKey || undefined,
+    });
+
+    if (!token) {
+      return { success: false, permission, error: 'Failed to acquire FCM token' };
+    }
+
+    // Persist token and UID
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(LOCAL_STORAGE_FCM_KEY, token);
+      window.localStorage.setItem(LOCAL_STORAGE_FCM_UID_KEY, String(currentUid).trim());
+    }
+
+    // Register or refresh token on backend
+    await apiClient.post('/api/notifications/fcm/register', {
+      token,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      platform: typeof navigator !== 'undefined' ? navigator.platform : 'web',
+    });
+
+    console.log(`✅ [fcmService] Push token synchronized for user ${String(currentUid).slice(0, 8)}...`);
+
+    return {
+      success: true,
+      token,
+      permission: 'granted',
+    };
+  } catch (err) {
+    console.warn('[fcmService] Silent token sync warning:', err.message);
+    return {
+      success: false,
+      permission,
+      error: err.message,
     };
   }
 }
@@ -253,10 +343,11 @@ export async function disableWebPushNotifications() {
     } catch (delErr) {
       console.warn('[fcmService] Firebase deleteToken warning:', delErr.message);
     }
+  }
 
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.removeItem(LOCAL_STORAGE_FCM_KEY);
-    }
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.localStorage.removeItem(LOCAL_STORAGE_FCM_KEY);
+    window.localStorage.removeItem(LOCAL_STORAGE_FCM_UID_KEY);
   }
 
   return { success: true };
@@ -264,13 +355,57 @@ export async function disableWebPushNotifications() {
 
 /**
  * Checks whether push notifications are currently registered and enabled locally.
+ * Optionally verifies that the registered token belongs to the specified user UID.
+ *
+ * @param {string|null} [currentUid=null] - Optional user UID to match
  * @returns {boolean}
  */
-export function isPushNotificationsEnabledLocally() {
+export function isPushNotificationsEnabledLocally(currentUid = null) {
   if (typeof window === 'undefined') return false;
   const permission = getNotificationPermission();
   const token = window.localStorage ? window.localStorage.getItem(LOCAL_STORAGE_FCM_KEY) : null;
-  return permission === 'granted' && Boolean(token);
+  const cachedUid = window.localStorage ? window.localStorage.getItem(LOCAL_STORAGE_FCM_UID_KEY) : null;
+
+  if (permission !== 'granted' || !token) {
+    return false;
+  }
+
+  if (currentUid && cachedUid && cachedUid !== String(currentUid).trim()) {
+    return false; // Token was registered for another user
+  }
+
+  return true;
+}
+
+/**
+ * Checks registration status against both local storage and Express backend.
+ *
+ * @param {string|null} [currentUid=null]
+ * @returns {Promise<{ supported: boolean, permission: string, locallyEnabled: boolean, backendEnabled: boolean, tokenCount: number }>}
+ */
+export async function checkPushRegistrationStatus(currentUid = null) {
+  const localEnabled = isPushNotificationsEnabledLocally(currentUid);
+  const supported = await isFcmSupported();
+  const permission = getNotificationPermission();
+
+  try {
+    const res = await apiClient.get('/api/notifications/fcm/status');
+    return {
+      supported,
+      permission,
+      locallyEnabled: localEnabled,
+      backendEnabled: Boolean(res?.enabled),
+      tokenCount: res?.tokenCount || 0,
+    };
+  } catch {
+    return {
+      supported,
+      permission,
+      locallyEnabled: localEnabled,
+      backendEnabled: localEnabled,
+      tokenCount: localEnabled ? 1 : 0,
+    };
+  }
 }
 
 /**

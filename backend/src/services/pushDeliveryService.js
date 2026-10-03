@@ -1,20 +1,23 @@
-import { rtdbService } from './rtdbService.js';
+import { fcmPushService } from './fcmPushService.js';
 
 /**
- * Convia Phase 7: Push Delivery Service Abstraction.
+ * Convia Push Delivery Service Abstraction.
  *
  * Responsibilities:
- * - Decouples persistent database notifications from device push delivery.
- * - Dispatches background push notifications to registered device tokens/endpoints.
+ * - Bridges persistent database notifications to authoritative FCM push delivery.
+ * - Reads real device tokens from canonical RTDB schema: fcm_tokens/{recipientUid}.
+ * - Dispatches background push notifications via Firebase Admin SDK multicast.
+ * - Enforces idempotency via delivery ledger: fcm_delivery_ledger/{notificationId}.
  * - Guarantees non-blocking execution so push failures never fail database operations.
+ * - Accurately reports delivery status (never claims delivered: true without confirmed FCM acceptance).
  */
 export const pushDeliveryService = {
   /**
-   * Dispatches a push notification to all registered devices for a recipient.
+   * Dispatches a push notification to all registered devices for a single recipient.
    *
    * @param {string} recipientUid - Recipient Auth UID
    * @param {Object} notificationRecord - Canonical notification record
-   * @returns {Promise<{ delivered: boolean, recipientsCount: number, error: string|null }>}
+   * @returns {Promise<{ delivered: boolean, recipientsCount: number, error: string|null, skipped?: boolean, failedCount?: number }>}
    */
   sendPushNotification: async (recipientUid, notificationRecord) => {
     if (!recipientUid || !notificationRecord) {
@@ -22,37 +25,53 @@ export const pushDeliveryService = {
     }
 
     try {
-      // 1. Resolve registered device tokens / push subscriptions for recipient
-      const tokensPath = `user_push_subscriptions/${recipientUid}`;
-      const userTokens = await rtdbService.getData(tokensPath);
+      const cleanUid = String(recipientUid).trim();
+      const result = await fcmPushService.sendPushToRecipients([cleanUid], notificationRecord);
 
-      if (!userTokens || typeof userTokens !== 'object') {
-        // No active push device registrations for this user
-        return { delivered: false, recipientsCount: 0, error: null };
-      }
-
-      const activeEndpoints = Object.values(userTokens).filter(Boolean);
-      if (activeEndpoints.length === 0) {
-        return { delivered: false, recipientsCount: 0, error: null };
-      }
-
-      console.log(`📡 [PushDeliveryService] Dispatched push payload for ${recipientUid} to ${activeEndpoints.length} registered device endpoints.`);
-
-      // Future Extension: Integrate FCM admin.messaging().sendEachForMulticast(...) or Web Push
-      // e.g.:
-      // const fcmTokens = activeEndpoints.map(e => e.token).filter(Boolean);
-      // if (fcmTokens.length > 0) {
-      //   await admin.messaging().sendEachForMulticast({ tokens: fcmTokens, notification: { title: notificationRecord.title, body: notificationRecord.body } });
-      // }
+      const deliveredCount = typeof result.delivered === 'number' ? result.delivered : 0;
+      const isDelivered = deliveredCount > 0;
 
       return {
-        delivered: true,
-        recipientsCount: activeEndpoints.length,
-        error: null,
+        delivered: isDelivered,
+        recipientsCount: deliveredCount,
+        failedCount: result.failed || 0,
+        error: result.success ? null : (result.reason || 'Push delivery failed'),
+        skipped: Boolean(result.skipped),
       };
     } catch (err) {
-      console.warn(`⚠️ [PushDeliveryService] Background push delivery error for ${recipientUid}:`, err.message);
+      console.warn(`⚠️ [pushDeliveryService] Push delivery error for ${recipientUid}:`, err.message);
+      return { delivered: false, recipientsCount: 0, error: err.message };
+    }
+  },
+
+  /**
+   * Dispatches multicast push notifications to multiple recipients in a single batch.
+   *
+   * @param {Array<string>} recipientUids - Array of recipient Auth UIDs
+   * @param {Object} notificationRecord - Canonical notification record template
+   * @returns {Promise<{ delivered: boolean, recipientsCount: number, error: string|null, skipped?: boolean, failedCount?: number }>}
+   */
+  sendPushNotifications: async (recipientUids = [], notificationRecord = {}) => {
+    if (!Array.isArray(recipientUids) || recipientUids.length === 0 || !notificationRecord) {
+      return { delivered: false, recipientsCount: 0, error: 'Missing recipients or notification record' };
+    }
+
+    try {
+      const result = await fcmPushService.sendPushToRecipients(recipientUids, notificationRecord);
+      const deliveredCount = typeof result.delivered === 'number' ? result.delivered : 0;
+      const isDelivered = deliveredCount > 0;
+
+      return {
+        delivered: isDelivered,
+        recipientsCount: deliveredCount,
+        failedCount: result.failed || 0,
+        error: result.success ? null : (result.reason || 'Push delivery failed'),
+        skipped: Boolean(result.skipped),
+      };
+    } catch (err) {
+      console.warn('⚠️ [pushDeliveryService] Batch push delivery error:', err.message);
       return { delivered: false, recipientsCount: 0, error: err.message };
     }
   },
 };
+

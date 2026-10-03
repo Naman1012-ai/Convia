@@ -70,16 +70,16 @@ export function NotificationDropdown() {
     isFcmSupported().then((supported) => {
       setIsPushSupported(supported);
       if (supported) {
-        setPushEnabled(isPushNotificationsEnabledLocally());
+        setPushEnabled(isPushNotificationsEnabledLocally(user?.uid));
       }
     });
-  }, []);
+  }, [user?.uid]);
 
   const handleEnablePushFromDropdown = async () => {
     if (pushLoading) return;
     setPushLoading(true);
     try {
-      const res = await enableWebPushNotifications();
+      const res = await enableWebPushNotifications({ currentUid: user?.uid });
       if (res.success) {
         setPushEnabled(true);
       }

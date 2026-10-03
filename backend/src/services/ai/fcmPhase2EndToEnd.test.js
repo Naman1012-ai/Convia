@@ -190,6 +190,7 @@ async function runFcmPhase2Tests() {
 
     // Frontend service checks
     assert.ok(fcmServiceContent.includes('export async function enableWebPushNotifications'), 'enableWebPushNotifications must be exported');
+    assert.ok(fcmServiceContent.includes('export async function syncWebPushToken'), 'syncWebPushToken must be exported');
     assert.ok(fcmServiceContent.includes('export async function disableWebPushNotifications'), 'disableWebPushNotifications must be exported');
     assert.ok(fcmServiceContent.includes('export function setupForegroundMessageHandler'), 'setupForegroundMessageHandler must be exported');
     assert.ok(fcmServiceContent.includes('export async function cleanupFcmOnLogout'), 'cleanupFcmOnLogout must be exported');
@@ -197,7 +198,8 @@ async function runFcmPhase2Tests() {
     // inAppNotificationService push integration
     assert.ok(inAppNotifContent.includes('/api/notifications/fcm/send-push'), 'inAppNotificationService must dispatch push to backend');
 
-    // AuthContext logout cleanup integration
+    // AuthContext lifecycle sync & logout cleanup integration
+    assert.ok(authContextContent.includes('syncWebPushToken'), 'AuthContext must sync FCM token on auth change');
     assert.ok(authContextContent.includes('cleanupFcmOnLogout'), 'AuthContext must clean up FCM on logout');
 
     console.log('  ✔ End-to-end route contracts and client integrations verified');
@@ -210,6 +212,7 @@ async function runFcmPhase2Tests() {
   await rtdbService.removeData(`fcm_tokens/${testUidB}`).catch(() => {});
 
   console.log('\n🎉 ALL FCM PHASE 2 END-TO-END TESTS PASSED!\n');
+  process.exit(0);
 }
 
 runFcmPhase2Tests().catch((err) => {
