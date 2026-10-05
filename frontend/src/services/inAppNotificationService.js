@@ -349,17 +349,16 @@ export const inAppNotificationService = {
       await set(notifRef, canonical);
 
       // Asynchronously trigger server-side FCM push delivery (non-blocking)
-      console.log(`📨 [inAppNotificationService] Triggering push: type=${canonical.type}, recipient=${recipientUid}, notifId=${notifId}`);
       apiClient.post('/api/notifications/fcm/send-push', {
         recipientUids: [recipientUid],
         notification: canonical,
       }).catch((pushErr) => {
-        console.warn(`[inAppNotificationService] FCM push delivery skipped or failed for ${recipientUid}:`, pushErr.message);
+        console.warn('[inAppNotificationService] FCM push delivery skipped or failed:', pushErr?.message || pushErr);
       });
 
       return canonical;
     } catch (err) {
-      console.warn(`[inAppNotificationService] createNotification to ${recipientUid} failed:`, err.message);
+      console.warn('[inAppNotificationService] createNotification failed:', err?.message || err);
       return null;
     }
   },
@@ -412,12 +411,11 @@ export const inAppNotificationService = {
       // Asynchronously trigger server-side FCM push delivery for all recipients (non-blocking)
       if (createdList.length > 0) {
         const sampleCanonical = createdList[0];
-        console.log(`📨 [inAppNotificationService] Triggering bulk push: type=${sampleCanonical.type}, recipientCount=${validUids.length}, notifId=${sampleCanonical.notificationId}`);
         apiClient.post('/api/notifications/fcm/send-push', {
           recipientUids: validUids,
           notification: sampleCanonical,
         }).catch((pushErr) => {
-          console.warn('[inAppNotificationService] Bulk FCM push delivery skipped or failed:', pushErr.message);
+          console.warn('[inAppNotificationService] Bulk FCM push delivery skipped or failed:', pushErr?.message || pushErr);
         });
       }
 

@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserProvider } from './contexts/UserContext';
 import { UserProfileSyncProvider } from './contexts/UserProfileSyncContext';
@@ -26,6 +26,15 @@ function RouteCleanup() {
   }, [location.pathname]);
 
   return null;
+}
+
+/**
+ * LegacyOrgRedirect: Preserves workspace ID and nested paths for historical /org/:orgId routes.
+ */
+function LegacyOrgRedirect() {
+  const { orgId, '*': splat } = useParams();
+  const target = splat ? `/workspaces/${orgId}/${splat}` : `/workspaces/${orgId}`;
+  return <Navigate to={target} replace />;
 }
 
 // Route Code Splitting (Lazy Loading)
@@ -81,7 +90,12 @@ export function App() {
         <UserProvider>
           <UserProfileSyncProvider>
             <PlatformSettingsProvider>
-              <BrowserRouter>
+              <BrowserRouter
+                future={{
+                  v7_startTransition: true,
+                  v7_relativeSplatPath: true,
+                }}
+              >
                 <RouteCleanup />
                 <Suspense
             fallback={
@@ -125,7 +139,11 @@ export function App() {
                 {/* Legacy Organization/Workspace Route Redirect */}
                 <Route
                   path="/org/:orgId"
-                  element={<Navigate to="/workspaces/:orgId" replace />}
+                  element={<LegacyOrgRedirect />}
+                />
+                <Route
+                  path="/org/:orgId/*"
+                  element={<LegacyOrgRedirect />}
                 />
 
                 <Route path="/workspaces/:orgId" element={<ErrorBoundary><OrgLayout /></ErrorBoundary>}>

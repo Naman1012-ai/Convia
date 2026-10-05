@@ -220,15 +220,13 @@ export async function enableWebPushNotifications({ vapidKey, currentUid = null }
       platform: typeof navigator !== 'undefined' ? navigator.platform : 'web',
     });
 
-    console.log('✅ [fcmService] Push notifications enabled and token registered successfully.');
-
     return {
       success: true,
       token,
       permission: 'granted',
     };
   } catch (err) {
-    console.error('🚨 [fcmService] Failed to acquire or register FCM token:', err);
+    console.error('[fcmService] Failed to acquire or register push token:', err?.message || err);
     return {
       success: false,
       permission: 'granted',
@@ -301,8 +299,6 @@ export async function syncWebPushToken(currentUid, { vapidKey } = {}) {
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
       platform: typeof navigator !== 'undefined' ? navigator.platform : 'web',
     });
-
-    console.log(`✅ [fcmService] Push token synchronized for user ${String(currentUid).slice(0, 8)}...`);
 
     return {
       success: true,
@@ -429,13 +425,12 @@ export function setupForegroundMessageHandler(onMessageReceived) {
     if (!messaging || !active) return;
     try {
       foregroundListenerUnsubscribe = onMessage(messaging, (payload) => {
-        console.log('[fcmService] Foreground message received:', payload);
         if (typeof onMessageReceived === 'function') {
           onMessageReceived(payload);
         }
       });
     } catch (err) {
-      console.warn('[fcmService] Failed to attach onMessage listener:', err);
+      console.warn('[fcmService] Failed to attach onMessage listener:', err?.message || err);
     }
   });
 

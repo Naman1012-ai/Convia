@@ -50,8 +50,6 @@ self.addEventListener('activate', (event) => {
 
 // 6. Handle Background Push Messages (data-only payloads)
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message:', payload);
-
   const data = (payload && payload.data) || {};
   const notifPayload = (payload && payload.notification) || {};
 
