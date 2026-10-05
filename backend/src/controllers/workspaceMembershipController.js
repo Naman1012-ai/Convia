@@ -484,6 +484,7 @@ export const workspaceMembershipController = {
     // 4. Atomic Multi-Location RTDB Updates
     const atomicUpdates = {
       [`organizations/${workspaceId}/ownerId`]: newOwnerUid,
+      [`organizations/${workspaceId}/ownerUid`]: newOwnerUid,
       [`organizations/${workspaceId}/ownerName`]: newOwnerName,
       [`organizations/${workspaceId}/updatedAt`]: timestamp,
       [`organization_members/${workspaceId}/${newOwnerUid}`]: {
@@ -509,6 +510,7 @@ export const workspaceMembershipController = {
     const wsAlias = await rtdbService.getData(`workspaces/${workspaceId}`);
     if (wsAlias) {
       atomicUpdates[`workspaces/${workspaceId}/ownerId`] = newOwnerUid;
+      atomicUpdates[`workspaces/${workspaceId}/ownerUid`] = newOwnerUid;
       atomicUpdates[`workspaces/${workspaceId}/ownerName`] = newOwnerName;
       atomicUpdates[`workspaces/${workspaceId}/updatedAt`] = timestamp;
     }

@@ -16,6 +16,7 @@ import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { formatTimestamp, formatWorkspaceJoinDate } from '../../utils/formatting';
+import { getWorkspaceMemberHistory } from '../../utils/workspaceMemberHistory';
 import {
   validateWorkspaceName,
   validateProjectType,
@@ -1046,8 +1047,9 @@ export default function SettingsPage() {
         <div className="divide-y divide-slate-100">
           {members.map((member) => {
             const memberUid = member.uid || member.id;
-            const isMemberOwner = memberUid === org?.ownerId || memberUid === org?.ownerUid || member.role === 'owner';
-            const isCaptain = !isMemberOwner && (member.isTeamCaptain || member.role === 'team_captain' || member.isSecondOwner || member.role === 'second_owner');
+            const history = getWorkspaceMemberHistory(member, org);
+            const isMemberOwner = history.isOwner;
+            const isCaptain = history.isCaptain;
             const isSelf = memberUid === user?.uid;
             const isUpdatingThisMember = updatingRoleMemberUid === memberUid;
 
@@ -1068,10 +1070,15 @@ export default function SettingsPage() {
                           You
                         </span>
                       )}
+                      {history.isOriginalCreator && !history.isOwner && (
+                        <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded border border-slate-200">
+                          Original Creator
+                        </span>
+                      )}
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">{member.email}</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      {formatWorkspaceJoinDate(member.joinedAt)}
+                      {history.dateText}
                     </p>
                   </div>
                 </div>

@@ -1021,12 +1021,15 @@ export const adminService = {
       const memberUids = orgData.members ? Object.keys(orgData.members) : [orgData.ownerId];
       const membersList = memberUids.map((uid) => {
         const uProfile = userMap[uid] || {};
+        const isCreator = uid === (orgData.createdBy || orgData.ownerId);
+        const memberRecord = orgData.members?.[uid] || {};
         return {
           uid,
           displayName: uProfile.displayName || uProfile.email?.split('@')[0] || 'Member',
           email: uProfile.email || 'N/A',
-          role: orgData.members?.[uid]?.role || (uid === orgData.ownerId ? 'owner' : 'member'),
-          joinedAt: orgData.members?.[uid]?.joinedAt || orgData.createdAt,
+          role: memberRecord.role || (uid === orgData.ownerId ? 'owner' : 'member'),
+          joinedAt: isCreator ? orgData.createdAt : (memberRecord.joinedAt || null),
+          workspaceJoinedAt: isCreator ? orgData.createdAt : (memberRecord.joinedAt || null),
           onlineStatus: uProfile.onlineStatus || 'offline',
         };
       });
@@ -1306,7 +1309,11 @@ export const adminService = {
         timeline.push({ id: `t_join`, type: 'registered', title: 'User Account Created', timestamp: userData.joinedAt });
       }
       userWorkspaces.forEach((w) => {
-        timeline.push({ id: `t_w_${w.orgId}`, type: 'workspace_joined', title: `Joined Workspace "${w.name}"`, timestamp: w.createdAt });
+        const isCreator = userId === (w.createdBy || w.ownerId);
+        const memberJoined = w.members?.[userId]?.joinedAt;
+        const wsTimestamp = isCreator ? w.createdAt : (memberJoined || w.createdAt);
+        const title = isCreator ? `Created Workspace "${w.name}"` : `Joined Workspace "${w.name}"`;
+        timeline.push({ id: `t_w_${w.orgId}`, type: isCreator ? 'workspace_created' : 'workspace_joined', title, timestamp: wsTimestamp });
       });
       userIdeas.forEach((i) => {
         timeline.push({ id: `t_i_${i.ideaId}`, type: i.isSelected ? 'mvp_selected' : 'idea_posted', title: i.isSelected ? `MVP Selected: "${i.title}"` : `Proposed Idea: "${i.title}"`, timestamp: i.createdAt });

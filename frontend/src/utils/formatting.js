@@ -78,6 +78,22 @@ export function formatWorkspaceJoinDate(timestamp) {
 }
 
 /**
+ * Formats a workspace creation timestamp for the original workspace creator.
+ * Example output: "Workspace created Sep 12, 2026" or fallback "Workspace creation date unavailable".
+ */
+export function formatWorkspaceCreatedDate(timestamp) {
+  const date = parseDate(timestamp);
+  if (!date) return 'Workspace creation date unavailable';
+
+  const formatted = date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Workspace created ${formatted}`;
+}
+
+/**
  * Formats a platform user registration / first sign-in timestamp.
  * Example output: "Joined Convia Sep 12, 2026" or fallback "Join date unavailable".
  */

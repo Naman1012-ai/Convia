@@ -80,14 +80,27 @@ export function OrgProvider({ orgId, children }) {
     return rawMembers.map((member) => {
       const uid = member.uid || member.id;
       const liveProfile = profiles[uid];
-      if (!liveProfile) return member;
+      const workspaceJoinedAt = member.joinedAt ?? member.membershipCreatedAt ?? null;
+
+      if (!liveProfile) {
+        return {
+          ...member,
+          joinedAt: workspaceJoinedAt,
+          workspaceJoinedAt,
+        };
+      }
 
       const liveName = resolveMemberDisplayName(liveProfile);
       const liveAvatar = liveProfile.photoURL || liveProfile.avatar;
+      const platformJoinedAt = liveProfile.firstSignedInAt ?? liveProfile.joinedAt ?? liveProfile.createdAt ?? null;
 
       return {
         ...member,
         ...liveProfile,
+        // Critical: Never allow global platform account timestamps to overwrite workspace membership timestamps
+        joinedAt: workspaceJoinedAt,
+        workspaceJoinedAt,
+        platformJoinedAt,
         name: liveName || member.name || member.displayName || 'Member',
         displayName: liveName || member.displayName || member.name || 'Member',
         avatar: liveAvatar || member.avatar || member.photoURL || '',

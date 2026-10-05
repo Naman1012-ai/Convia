@@ -4,7 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useOrg } from '../../hooks/useOrg';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
-import { formatWorkspaceJoinDate } from '../../utils/formatting';
+import { getWorkspaceMemberHistory } from '../../utils/workspaceMemberHistory';
 
 export function OrgMemberList({ onToast = () => {} }) {
   const { user } = useAuth();
@@ -16,14 +16,7 @@ export function OrgMemberList({ onToast = () => {} }) {
       <div className="divide-y divide-slate-100">
         {members.map((member) => {
           const memberUid = member.uid || member.id;
-          const isMemberOwner =
-            memberUid === org?.ownerId || memberUid === org?.ownerUid || member.role === 'owner';
-          const isCaptain =
-            !isMemberOwner &&
-            (member.isTeamCaptain ||
-              member.role === 'team_captain' ||
-              member.isSecondOwner ||
-              member.role === 'second_owner');
+          const history = getWorkspaceMemberHistory(member, org);
           const isSelf = memberUid === user?.uid;
           const isOnline = member.onlineStatus === 'online';
 
@@ -45,26 +38,18 @@ export function OrgMemberList({ onToast = () => {} }) {
                   </div>
                   <p className="text-xs text-slate-500 truncate">{member.email}</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {formatWorkspaceJoinDate(member.joinedAt)}
+                    {history.dateText}
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                {/* Read-Only Role Display Badges */}
-                {isMemberOwner ? (
-                  <Badge variant="warning" className="font-bold flex items-center gap-1">
-                    👑 Owner
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                {/* Authoritative Role Badges (Owner, Captain, Member + Original Creator if applicable) */}
+                {history.badges.map((b, idx) => (
+                  <Badge key={idx} variant={b.variant} className="font-bold flex items-center gap-1">
+                    {b.label}
                   </Badge>
-                ) : isCaptain ? (
-                  <Badge variant="primary" className="font-bold flex items-center gap-1">
-                    ⚡ Team Captain
-                  </Badge>
-                ) : (
-                  <Badge variant="default" className="font-semibold">
-                    Member
-                  </Badge>
-                )}
+                ))}
               </div>
             </div>
           );

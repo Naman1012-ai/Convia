@@ -724,6 +724,7 @@ adminRouter.post('/workspaces/:workspaceId/transfer-ownership', async (req, res)
     const timestamp = Date.now();
     await rtdbService.updateData(`organizations/${workspaceId}`, {
       ownerId: newOwnerUid,
+      ownerUid: newOwnerUid,
       ownerName: newOwnerName || 'Owner',
       updatedAt: timestamp,
     });

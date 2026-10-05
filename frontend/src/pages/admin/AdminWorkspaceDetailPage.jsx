@@ -10,8 +10,8 @@ import { Avatar } from '../../components/ui/Avatar';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Select } from '../../components/ui/Select';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
-import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { formatTimestamp } from '../../utils/formatting';
+import { getWorkspaceMemberHistory } from '../../utils/workspaceMemberHistory';
 import {
   Briefcase,
   ArrowLeft,
@@ -398,22 +398,29 @@ export default function AdminWorkspaceDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">
-                {members.map((m) => (
-                  <tr key={m.uid} className="hover:bg-slate-850 transition-colors">
-                    <td className="p-3 flex items-center gap-2.5 font-bold text-white">
-                      <Avatar name={m.displayName || m.email} size="sm" />
-                      <span>{m.displayName}</span>
-                    </td>
-                    <td className="p-3 font-mono text-slate-400">{m.email}</td>
-                    <td className="p-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
-                        m.uid === workspace.ownerId ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        {m.uid === workspace.ownerId ? '👑 LEADER' : 'MEMBER'}
-                      </span>
-                    </td>
-                    <td className="p-3 font-mono text-slate-400">{formatTimestamp(m.joinedAt)}</td>
-                    <td className="p-3 text-right">
+                {members.map((m) => {
+                  const history = getWorkspaceMemberHistory(m, workspace);
+                  return (
+                    <tr key={m.uid} className="hover:bg-slate-850 transition-colors">
+                      <td className="p-3 flex items-center gap-2.5 font-bold text-white">
+                        <Avatar name={m.displayName || m.email} size="sm" />
+                        <span>{m.displayName}</span>
+                        {history.isOriginalCreator && !history.isOwner && (
+                          <span className="text-[10px] bg-slate-800 text-slate-400 font-bold px-1.5 py-0.5 rounded border border-slate-700">
+                            Creator
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 font-mono text-slate-400">{m.email}</td>
+                      <td className="p-3">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                          history.isOwner ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-slate-800 text-slate-300'
+                        }`}>
+                          {history.isOwner ? '👑 LEADER' : history.isCaptain ? '⚡ CAPTAIN' : 'MEMBER'}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono text-slate-400">{history.dateText}</td>
+                      <td className="p-3 text-right">
                       <Button
                         variant="secondary"
                         size="sm"
@@ -424,7 +431,8 @@ export default function AdminWorkspaceDetailPage() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
