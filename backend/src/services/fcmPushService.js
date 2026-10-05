@@ -221,6 +221,10 @@ export const fcmPushService = {
 
     const messagePayload = {
       tokens: uniqueTokens,
+      notification: {
+        title: String(title),
+        body: String(body),
+      },
       data: {
         notificationId: String(notifId),
         type: String(notification.type || 'GENERAL'),
@@ -234,6 +238,13 @@ export const fcmPushService = {
       webpush: {
         headers: {
           Urgency: 'high',
+        },
+        notification: {
+          title: String(title),
+          body: String(body),
+          icon: '/convia-logo.png',
+          badge: '/favicon.png',
+          tag: notifId ? `convia-${notifId}` : `convia-${Date.now()}`,
         },
         fcmOptions: {
           link: targetUrl,

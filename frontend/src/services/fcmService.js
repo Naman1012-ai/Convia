@@ -88,6 +88,8 @@ export async function registerMessagingServiceWorker(configOverride = null) {
         scope: SW_SCOPE,
         updateViaCache: 'none',
       });
+      // Wait for the service worker to be fully activated and ready to handle push events
+      await navigator.serviceWorker.ready;
       return registration;
     } catch (error) {
       console.warn('[fcmService] Service worker registration failed:', error.message || error);
