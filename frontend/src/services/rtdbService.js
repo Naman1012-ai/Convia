@@ -7,7 +7,7 @@ import {
   off,
   serverTimestamp,
 } from 'firebase/database';
-import { rtdb, auth } from '../config/firebase';
+import { rtdb } from '../config/firebase';
 
 // Helper to prevent hanging RTDB socket calls from blocking execution
 function withRtdbTimeout(promise, ms = 2000) {
@@ -15,24 +15,6 @@ function withRtdbTimeout(promise, ms = 2000) {
     promise,
     new Promise((resolve) => setTimeout(() => resolve('RTDB_TIMEOUT'), ms)),
   ]);
-}
-
-// Developer Debug Logging Helper
-function debugLog(operation, path, payload = null, success = true, error = null) {
-  const userUid = auth.currentUser ? auth.currentUser.uid : 'UNAUTHENTICATED';
-  const timestamp = new Date().toISOString();
-
-  if (success) {
-    console.log(
-      `🔥 [Firebase Debug Success] ${timestamp} | Op: ${operation} | Path: "${path}" | User: ${userUid}`,
-      payload ? { payload } : ''
-    );
-  } else {
-    console.error(
-      `🚨 [Firebase Debug Failure] ${timestamp} | Op: ${operation} | Path: "${path}" | User: ${userUid} | Error:`,
-      error
-    );
-  }
 }
 
 /**
@@ -79,7 +61,6 @@ export const rtdbService = {
    * Fetch data snapshot once from Firebase Realtime Database.
    */
   getData: async (path) => {
-    const startTime = performance.now();
     try {
       const isRefOrQuery = path && typeof path === 'object';
       const cleanPath = !isRefOrQuery ? String(path || '').replace(/^\/|\/$/g, '') : (path.key || 'query');
@@ -89,14 +70,12 @@ export const rtdbService = {
       const snapshot = await withRtdbTimeout(rtdbPromise, 2500);
 
       if (snapshot && snapshot !== 'RTDB_TIMEOUT' && snapshot.exists()) {
-        const val = snapshot.val();
-        debugLog(`getData [RTDB] (${Math.round(performance.now() - startTime)}ms)`, cleanPath, val, true);
-        return val;
+        return snapshot.val();
       }
 
       return null;
     } catch (error) {
-      debugLog('getData', path, null, false, error);
+      console.error('[rtdbService] getData error:', error?.message || error);
       return null;
     }
   },
@@ -105,7 +84,6 @@ export const rtdbService = {
    * Set data at target path in Firebase Realtime Database.
    */
   setData: async (path, data) => {
-    const startTime = performance.now();
     try {
       const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
       const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
@@ -115,10 +93,9 @@ export const rtdbService = {
         console.warn('[RTDB Set Warning]', e)
       );
 
-      debugLog(`setData (${Math.round(performance.now() - startTime)}ms)`, path, sanitizedData, true);
       return true;
     } catch (error) {
-      debugLog('setData', path, data, false, error);
+      console.error('[rtdbService] setData error:', error?.message || error);
       const errMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
       throw new Error(errMessage);
     }
@@ -128,7 +105,6 @@ export const rtdbService = {
    * Update specific keys at target path in Firebase Realtime Database.
    */
   updateData: async (path, updates) => {
-    const startTime = performance.now();
     try {
       const cleanPath = String(path || '').replace(/^\/|\/$/g, '');
       const dbRef = cleanPath ? ref(rtdb, cleanPath) : ref(rtdb);
@@ -138,10 +114,9 @@ export const rtdbService = {
         console.warn('[RTDB Update Warning]', e)
       );
 
-      debugLog(`updateData (${Math.round(performance.now() - startTime)}ms)`, path, sanitizedUpdates, true);
       return true;
     } catch (error) {
-      debugLog('updateData', path, updates, false, error);
+      console.error('[rtdbService] updateData error:', error?.message || error);
       const errMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
       throw new Error(errMessage);
     }
@@ -160,11 +135,10 @@ export const rtdbService = {
         dbRef,
         (snapshot) => {
           const val = snapshot.exists() ? snapshot.val() : null;
-          debugLog('subscribe [RTDB Stream]', cleanPath, val, true);
           callback(val, null);
         },
         (error) => {
-          debugLog('subscribe [RTDB Err]', cleanPath, null, false, error);
+          console.error('[rtdbService] subscribe error:', error?.message || error);
           try {
             callback(null, error);
           } catch (e) {
@@ -183,7 +157,7 @@ export const rtdbService = {
         }
       };
     } catch (error) {
-      debugLog('subscribe', path, null, false, error);
+      console.error('[rtdbService] subscribe error:', error?.message || error);
       if (typeof callback === 'function') {
         callback(null, error);
       }
