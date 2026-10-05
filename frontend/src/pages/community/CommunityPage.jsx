@@ -26,6 +26,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
 import { useUserProfiles } from '../../hooks/useUserProfile';
 import { useToast } from '../../hooks/useToast';
+import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 import { chatService } from '../../services/chatService';
 import { inAppNotificationService } from '../../services/inAppNotificationService';
 import { Button } from '../../components/ui/Button';
@@ -116,7 +117,10 @@ export default function CommunityPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Layout & Collapsible Panel States
-  const [isLeftNavCollapsed, setIsLeftNavCollapsed] = useState(false);
+  const [isLeftNavCollapsed, toggleLeftNavCollapse] = useSidebarCollapse(
+    'convia_sidebar_community_collapsed',
+    false
+  );
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
   // Mobile / Responsive Sheets
@@ -830,7 +834,7 @@ export default function CommunityPage() {
             activityCounts={activityCounts}
             isAuthenticated={Boolean(effectiveUser)}
             isCollapsed={isLeftNavCollapsed}
-            onToggleCollapse={() => setIsLeftNavCollapsed((prev) => !prev)}
+            onToggleCollapse={toggleLeftNavCollapse}
           />
         </aside>
 

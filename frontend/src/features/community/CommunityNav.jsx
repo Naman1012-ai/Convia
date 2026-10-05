@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { COMMUNITY_POST_TYPES } from '../../constants/chatSchema';
+import { cn } from '../../utils/cn';
 
 export function CommunityNav({
   activeFilter = 'all',
@@ -108,16 +109,35 @@ export function CommunityNav({
         {typeof onToggleCollapse === 'function' && (
           <button
             type="button"
-            onClick={onToggleCollapse}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCollapse(e);
+            }}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-primary-500 relative flex items-center justify-center shrink-0 w-8 h-8"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!isCollapsed}
           >
-            {isCollapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
+            <span className="relative w-4 h-4 flex items-center justify-center overflow-hidden">
+              <PanelLeftClose
+                className={cn(
+                  'h-4 w-4 absolute transition-all duration-200 ease-in-out motion-reduce:transition-none',
+                  isCollapsed
+                    ? 'opacity-0 scale-75 rotate-90 pointer-events-none'
+                    : 'opacity-100 scale-100 rotate-0'
+                )}
+                aria-hidden="true"
+              />
+              <PanelLeftOpen
+                className={cn(
+                  'h-4 w-4 absolute transition-all duration-200 ease-in-out motion-reduce:transition-none',
+                  isCollapsed
+                    ? 'opacity-100 scale-100 rotate-0'
+                    : 'opacity-0 scale-75 -rotate-90 pointer-events-none'
+                )}
+                aria-hidden="true"
+              />
+            </span>
           </button>
         )}
       </div>
@@ -177,6 +197,17 @@ export function CommunityNav({
                 {isCollapsed && chan.count > 0 && (
                   <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-emerald-500" />
                 )}
+
+                {isCollapsed && (
+                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center z-50 pointer-events-none">
+                    <div className="bg-slate-800 text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap flex items-center gap-1.5 border border-slate-700">
+                      <span>{chan.label}</span>
+                      {chan.count > 0 && (
+                        <span className="text-[10px] font-mono text-emerald-400">({chan.count})</span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </button>
             );
           })}
@@ -234,6 +265,17 @@ export function CommunityNav({
                     >
                       {act.count}
                     </span>
+                  )}
+
+                  {isCollapsed && (
+                    <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center z-50 pointer-events-none">
+                      <div className="bg-slate-800 text-white text-xs font-semibold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap flex items-center gap-1.5 border border-slate-700">
+                        <span>{act.label}</span>
+                        {act.count > 0 && (
+                          <span className="text-[10px] font-mono text-emerald-400">({act.count})</span>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </button>
               );

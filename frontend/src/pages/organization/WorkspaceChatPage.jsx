@@ -678,6 +678,7 @@ export default function WorkspaceChatPage() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 <ChatChannelSidebar
+                  forceExpanded={true}
                   workspaceId={orgId}
                   currentUserId={user?.uid}
                   activeChannelId={activeChannelId}

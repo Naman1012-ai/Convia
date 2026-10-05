@@ -19,13 +19,16 @@ import {
   Flag,
   ShieldCheck,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
+import { cn } from '../../utils/cn';
 import { ReportIssueModal } from '../../features/reports/ReportIssueModal';
 import { NotificationDropdown } from './NotificationDropdown';
 
 const NOOP_TOGGLE = () => {};
 
-export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE }) {
+export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false }) {
   const { user, signOut } = useAuth();
   const { userProfile } = useUser();
   const { toast } = useToast();
@@ -121,11 +124,54 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE }) {
         {/* Brand Logo & Mobile Toggle */}
         <div className="flex items-center gap-4">
           <button
+            type="button"
             onClick={handleMobileMenuToggle}
-            className="rounded-lg p-1.5 text-slate-600 hover:bg-primary-50/70 hover:text-primary-700 sm:hidden focus:outline-none focus:ring-2 focus:ring-primary-500"
-            aria-label="Toggle Navigation Menu"
+            className="rounded-lg p-1.5 text-slate-600 hover:bg-primary-50/70 hover:text-primary-700 sm:hidden focus:outline-none focus:ring-2 focus:ring-primary-500 relative flex items-center justify-center shrink-0 w-9 h-9 cursor-pointer"
+            title={
+              hasExternalMobileToggle
+                ? isSidebarOpen
+                  ? 'Collapse sidebar'
+                  : 'Expand sidebar'
+                : isMobileMenuOpen
+                ? 'Close menu'
+                : 'Toggle Navigation Menu'
+            }
+            aria-label={
+              hasExternalMobileToggle
+                ? isSidebarOpen
+                  ? 'Collapse sidebar'
+                  : 'Expand sidebar'
+                : isMobileMenuOpen
+                ? 'Close menu'
+                : 'Toggle Navigation Menu'
+            }
+            aria-expanded={hasExternalMobileToggle ? isSidebarOpen : isMobileMenuOpen}
+            aria-controls={hasExternalMobileToggle ? 'convia-sidebar' : undefined}
           >
-            <Menu className="h-6 w-6" />
+            {hasExternalMobileToggle ? (
+              <span className="relative w-5 h-5 flex items-center justify-center overflow-hidden">
+                <PanelLeftClose
+                  className={cn(
+                    'h-5 w-5 absolute transition-all duration-200 ease-in-out motion-reduce:transition-none',
+                    isSidebarOpen
+                      ? 'opacity-100 scale-100 rotate-0'
+                      : 'opacity-0 scale-75 rotate-90 pointer-events-none'
+                  )}
+                  aria-hidden="true"
+                />
+                <PanelLeftOpen
+                  className={cn(
+                    'h-5 w-5 absolute transition-all duration-200 ease-in-out motion-reduce:transition-none',
+                    isSidebarOpen
+                      ? 'opacity-0 scale-75 -rotate-90 pointer-events-none'
+                      : 'opacity-100 scale-100 rotate-0'
+                  )}
+                  aria-hidden="true"
+                />
+              </span>
+            ) : (
+              <Menu className="h-6 w-6" aria-hidden="true" />
+            )}
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2.5">
@@ -448,4 +494,5 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE }) {
 
 Navbar.propTypes = {
   onMobileMenuToggle: PropTypes.func,
+  isSidebarOpen: PropTypes.bool,
 };

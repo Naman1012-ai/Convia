@@ -174,14 +174,17 @@ function OrgLayoutContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-lavender-surface text-slate-900">
-      <Navbar onMobileMenuToggle={() => setIsMobileOpen((prev) => !prev)} />
+      <Navbar
+        isSidebarOpen={isMobileOpen}
+        onMobileMenuToggle={() => setIsMobileOpen((prev) => !prev)}
+      />
       <div className="flex flex-1">
         <Sidebar
           status={org.status}
           isMobileOpen={isMobileOpen}
           onCloseMobile={() => setIsMobileOpen(false)}
         />
-        <main className="flex-1 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6">
+        <main className="flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6 transition-all duration-200">
           {/* Centralized Workspace Top Navigation Header */}
           <div className="border-b border-lavender-border pb-5 space-y-3.5">
             {/* Single Breadcrumb System */}
