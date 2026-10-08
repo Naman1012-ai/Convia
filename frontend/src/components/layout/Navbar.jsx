@@ -23,6 +23,7 @@ import {
   PanelLeftOpen,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { resolveUserDisplayName } from '../../utils/memberIdentity';
 import { ReportIssueModal } from '../../features/reports/ReportIssueModal';
 import { NotificationDropdown } from './NotificationDropdown';
 
@@ -39,6 +40,7 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
 
+  const userName = resolveUserDisplayName(userProfile, user);
   const adminEnvEmail = (import.meta.env.VITE_ADMIN_EMAIL || 'admin@convia.dev').toLowerCase().trim();
   const userEmail = (user?.email || '').toLowerCase().trim();
   const isAdmin = Boolean(
@@ -259,9 +261,9 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
                   className="flex items-center gap-2.5 rounded-full p-1 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   aria-label="User profile menu"
                 >
-                  <Avatar name={userProfile?.displayName || user?.displayName || user?.email} size="sm" />
+                  <Avatar src={userProfile?.photoURL || user?.photoURL} name={userName} size="sm" />
                   <span className="hidden sm:inline-block text-sm font-semibold text-slate-700 max-w-[120px] truncate">
-                    {userProfile?.displayName || user?.displayName || user?.email.split('@')[0]}
+                    {userName}
                   </span>
                 </button>
 
@@ -271,7 +273,7 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
                     <div className="px-3 py-2 border-b border-slate-100">
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-bold text-slate-900 truncate">
-                          {userProfile?.displayName || user?.displayName || 'User'}
+                          {userName}
                         </p>
                         {isAdmin && (
                           <span className="text-[9px] font-mono font-bold uppercase bg-primary-100 text-primary-800 px-1.5 py-0.5 rounded">

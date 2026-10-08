@@ -2,10 +2,10 @@ import React from 'react';
 import { Briefcase, Zap, Activity, Clock, CheckCircle, ArrowRight } from 'lucide-react';
 
 const RECENT_ACTIVITIES = [
-  { type: 'workspace', text: 'Hackathon Alpha Team created a new workspace', time: '2m ago' },
+  { type: 'workspace', text: 'Engineering Alpha Team created a new workspace', time: '2m ago' },
   { type: 'blueprint', text: 'Generated AI Blueprint for "Zero-Knowledge Vault"', time: '8m ago' },
   { type: 'mvp', text: 'Quantum Innovators locked "Real-Time Code Synthesizer" as MVP', time: '14m ago' },
-  { type: 'vote', text: 'Alex Chen upvoted "Decentralized Ledger"', time: '22m ago' },
+  { type: 'vote', text: 'Alex C. upvoted "Decentralized Ledger"', time: '22m ago' },
 ];
 
 export function CommunityHighlightsSection() {
@@ -40,7 +40,7 @@ export function CommunityHighlightsSection() {
             </div>
 
             <div className="space-y-3 font-mono text-xs">
-              {['Hackathon Alpha Team (4 Members)', 'Quantum Innovators (5 Members)', 'DevLabs Open Source (6 Members)'].map((ws) => (
+              {['Engineering Alpha Team (4 Members)', 'Quantum Innovators (5 Members)', 'DevLabs Open Source (6 Members)'].map((ws) => (
                 <div key={ws} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-200">
                   <span>{ws}</span>
                   <span className="text-primary-300 font-bold text-[10px] px-2 py-0.5 rounded bg-primary-500/10 border border-primary-500/20">

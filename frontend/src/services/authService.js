@@ -16,6 +16,7 @@ import { auth, googleProvider } from '../config/firebase';
 import { getErrorMessage } from '../utils/errorMessages';
 import { rtdbService } from './rtdbService';
 import { orgService } from './orgService';
+import { profileService } from './profileService';
 import { apiClient } from './apiClient';
 
 /**
@@ -24,17 +25,43 @@ import { apiClient } from './apiClient';
  */
 export const authService = {
   /**
-   * Register a new user with email, password, and display name.
+   * Register a new user with email, password, and public username.
    */
-  signUp: async (email, password, displayName) => {
+  signUp: async (email, password, username) => {
     try {
+      const sanitizedUsername = typeof username === 'string' ? username.trim().toLowerCase().replace(/^@/, '') : '';
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      if (displayName) {
-        await updateProfile(userCredential.user, { displayName });
+
+      // 1. Immediately update Firebase Auth displayName with the public username
+      if (sanitizedUsername) {
+        await updateProfile(userCredential.user, { displayName: sanitizedUsername });
       }
-      // Send verification email on sign up
+
+      // 2. Immediately ensure canonical profile is created in RTDB with the exact username
+      if (userCredential?.user?.uid) {
+        await profileService.createUserProfile(userCredential.user, {
+          username: sanitizedUsername,
+          displayName: sanitizedUsername,
+        }).catch((profileErr) => {
+          console.warn('[authService] Error initializing profile in signUp:', profileErr);
+        });
+
+        // If profile was provisioned concurrently, ensure RTDB has the exact username and synchronized displayName
+        if (sanitizedUsername) {
+          await rtdbService.updateData(`users/${userCredential.user.uid}`, {
+            username: sanitizedUsername,
+            displayName: sanitizedUsername,
+            updatedAt: rtdbService.getTimestamp(),
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Send verification email on sign up
       await authService.sendVerificationEmail().catch(() => {});
-      return userCredential.user;
+
+      // 4. Force reload user so auth.currentUser contains updated displayName
+      await userCredential.user.reload().catch(() => {});
+      return auth.currentUser || userCredential.user;
     } catch (error) {
       throw new Error(getErrorMessage(error.code));
     }
@@ -46,6 +73,13 @@ export const authService = {
   signIn: async (email, password) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (userCredential?.user?.uid) {
+        const now = Date.now();
+        await rtdbService.updateData(`users/${userCredential.user.uid}`, {
+          lastLoginAt: now,
+          updatedAt: now,
+        }).catch((err) => console.warn('[authService] Failed to persist lastLoginAt:', err.message));
+      }
       return userCredential.user;
     } catch (error) {
       throw new Error(getErrorMessage(error.code));
@@ -58,7 +92,25 @@ export const authService = {
   signInWithGoogle: async () => {
     try {
       const userCredential = await signInWithPopup(auth, googleProvider);
-      return userCredential.user;
+      if (userCredential?.user?.uid) {
+        const now = Date.now();
+        const googleUser = userCredential.user;
+        const googleDisplayName = (googleUser.displayName || '').trim();
+        const googlePhotoURL = googleUser.photoURL || null;
+
+        // Ensure profile exists in RTDB and is synced with Google credentials
+        await profileService.createUserProfile(googleUser, {
+          ...(googleDisplayName ? { displayName: googleDisplayName } : {}),
+          ...(googlePhotoURL ? { photoURL: googlePhotoURL } : {}),
+        }).catch((err) => console.warn('[authService] createUserProfile on Google login:', err));
+
+        await rtdbService.updateData(`users/${googleUser.uid}`, {
+          lastLoginAt: now,
+          updatedAt: now,
+          ...(googleDisplayName ? { displayName: googleDisplayName } : {}),
+        }).catch((err) => console.warn('[authService] Failed to persist lastLoginAt on Google login:', err.message));
+      }
+      return userCredential ? userCredential.user : null;
     } catch (error) {
       if (error.code === 'auth/popup-closed-by-user') {
         return null;
@@ -107,6 +159,7 @@ export const authService = {
     if (!user) return null;
     try {
       await user.reload();
+      await user.getIdToken(true).catch(() => {});
       return auth.currentUser;
     } catch (error) {
       console.error('[authService] reloadUser error:', error);

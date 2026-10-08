@@ -2,11 +2,11 @@ import React from 'react';
 import { Rocket, GraduationCap, Zap, Code2, Building2, Users, Flame, BookOpen } from 'lucide-react';
 
 const EXPANDED_USE_CASES = [
-  { title: 'Hackathons', icon: Rocket, scenario: '24-Hour Weekend Sprint', desc: 'Lock in your winning proposal before midnight Friday and ship code with zero architectural confusion.', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
+  { title: 'Rapid Sprints', icon: Rocket, scenario: 'Sprint Planning', desc: 'Lock in your project proposal rapidly and ship code with clear architectural specifications.', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
   { title: 'College Projects', icon: GraduationCap, scenario: 'Semester Capstone', desc: 'Organize team proposals fairly with transparent contribution tracking and clear task ownership.', color: 'border-primary-500/30 text-primary-400 bg-primary-500/10' },
   { title: 'Startup Teams', icon: Zap, scenario: 'MVP Product Validation', desc: 'Test feature ideas with co-founders, generate technical blueprints, and maintain sprint velocity.', color: 'border-primary-500/30 text-primary-300 bg-primary-500/10' },
   { title: 'Open Source', icon: Code2, scenario: 'Community Feature Sprints', desc: 'Gather feature proposals from community contributors, upvote priorities, and assign tasks.', color: 'border-sky-500/30 text-sky-400 bg-sky-500/10' },
-  { title: 'Innovation Labs', icon: Building2, scenario: 'Corporate Hack-Weeks', desc: 'Run internal company hackathons with secure workspace privacy and administrative audit logs.', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' },
+  { title: 'Innovation Labs', icon: Building2, scenario: 'Internal Sprints', desc: 'Run internal team innovation sprints with secure workspace privacy and administrative audit logs.', color: 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' },
   { title: 'Student Clubs', icon: Users, scenario: 'Developer Society Sprints', desc: 'Host internal coding competitions and collaborative project builds across student chapters.', color: 'border-rose-500/30 text-rose-400 bg-rose-500/10' },
   { title: 'Accelerators', icon: Flame, scenario: 'Incubator Cohorts', desc: 'Help early-stage founders turn raw pitch ideas into structured technical execution plans.', color: 'border-amber-500/30 text-amber-400 bg-amber-500/10' },
   { title: 'Research Groups', icon: BookOpen, scenario: 'Academic Collaborations', desc: 'Structure technical research hypotheses, peer refinements, and multi-contributor paper roadmaps.', color: 'border-primary-500/30 text-primary-400 bg-primary-500/10' },
@@ -26,7 +26,7 @@ export function ExpandedUseCasesSection() {
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Whether you are competing in a 24-hour hackathon or launching an open-source project, Convia keeps everyone aligned.
+            Whether you are running an engineering sprint or launching an open-source project, Convia keeps everyone aligned.
           </p>
         </div>
 

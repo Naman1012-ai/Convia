@@ -123,3 +123,10 @@ export function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Resolves user organization with backward compatibility for legacy college field.
+ */
+export function resolveOrganization(profile) {
+  return (profile?.organization || profile?.college || '').trim();
+}
+

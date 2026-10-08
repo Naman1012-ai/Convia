@@ -1,34 +1,30 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Quote, Sparkles, GraduationCap, Award } from 'lucide-react';
-import { Avatar } from '../../components/ui/Avatar';
+import { ChevronLeft, ChevronRight, Quote, Sparkles, Compass, Cpu, Layers } from 'lucide-react';
 
-const TESTIMONIALS_DATA = [
+const PRINCIPLES_DATA = [
   {
     id: 1,
-    name: 'Alex Chen',
-    role: 'Full Stack Lead',
-    university: 'Stanford University',
-    hackathon: 'TreeHacks 2026 Winner',
-    photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
-    review: 'Convia eliminated our usual 3-hour debate on Friday night. We locked our MVP in 15 minutes, generated our AI Blueprint, and had initial commits pushed before midnight.',
+    theme: 'Structured Consensus',
+    pillar: 'Clarity Over Circular Debate',
+    icon: Compass,
+    tag: 'Decision Architecture',
+    statement: 'Unstructured chat channels create circular arguments and lost context. Structured proposal cards and democratic upvoting align team energy on what to build.',
   },
   {
     id: 2,
-    name: 'Sarah Jenkins',
-    role: 'AI / ML Engineer',
-    university: 'MIT',
-    hackathon: 'HackMIT 2026 Finalist',
-    photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    review: 'The AI Technical PRD generator is unreal. Having database schemas and API endpoints auto-populated directly into Kanban tasks saved us hours of architectural planning.',
+    theme: 'Automated Blueprinting',
+    pillar: 'Seconds From Idea to Architecture',
+    icon: Cpu,
+    tag: 'AI Technical Engine',
+    statement: 'The transition from an agreed MVP to an engineering backlog should be seamless. Convia generates database models, REST contracts, and Kanban backlogs automatically.',
   },
   {
     id: 3,
-    name: 'Marcus Vance',
-    role: 'Backend Architect',
-    university: 'UC Berkeley',
-    hackathon: 'CalHacks 2026 Grand Prize',
-    photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus',
-    review: 'Convia keeps technical discussions organized. No more digging through 200 Discord messages to find what feature we agreed to build.',
+    theme: 'Sprint Traceability',
+    pillar: 'Deterministic Task Alignment',
+    icon: Layers,
+    tag: 'Execution Engine',
+    statement: 'Every sprint card traces directly back to an architectural specification. Team members work with complete context, clear requirements, and shared ownership.',
   },
 ];
 
@@ -36,14 +32,15 @@ export function TestimonialsCarousel() {
   const [currentIdx, setCurrentIdx] = useState(0);
 
   const prevSlide = () => {
-    setCurrentIdx((prev) => (prev === 0 ? TESTIMONIALS_DATA.length - 1 : prev - 1));
+    setCurrentIdx((prev) => (prev === 0 ? PRINCIPLES_DATA.length - 1 : prev - 1));
   };
 
   const nextSlide = () => {
-    setCurrentIdx((prev) => (prev === TESTIMONIALS_DATA.length - 1 ? 0 : prev + 1));
+    setCurrentIdx((prev) => (prev === PRINCIPLES_DATA.length - 1 ? 0 : prev + 1));
   };
 
-  const item = TESTIMONIALS_DATA[currentIdx];
+  const item = PRINCIPLES_DATA[currentIdx];
+  const IconComp = item.icon;
 
   return (
     <section className="py-24 bg-slate-950/95 border-b border-slate-800/80 relative overflow-hidden">
@@ -52,18 +49,15 @@ export function TestimonialsCarousel() {
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-primary-500/10 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Community Wall of Fame</span>
-            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              Coming Soon
-            </span>
+            <span>Platform Philosophy</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            Loved By Hackathon Winners
+            Built for Technical Execution
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Hear how student teams and builders use Convia to ship winning projects under pressure.
+            How Convia is architected to eliminate noise, accelerate decisions, and drive team velocity.
           </p>
         </div>
 
@@ -76,29 +70,26 @@ export function TestimonialsCarousel() {
               </div>
               <div>
                 <span className="text-xs font-mono font-extrabold text-primary-400">
-                  {item.hackathon}
+                  {item.theme}
                 </span>
-                <h4 className="text-lg font-extrabold text-white">{item.name}</h4>
+                <h4 className="text-lg font-extrabold text-white">{item.pillar}</h4>
               </div>
             </div>
 
             <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <GraduationCap className="h-4 w-4 text-primary-400" />
-              <span>{item.university}</span>
+              <IconComp className="h-4 w-4 text-primary-400" />
+              <span>{item.tag}</span>
             </div>
           </div>
 
           <p className="text-base sm:text-lg text-slate-200 leading-relaxed font-medium italic">
-            &ldquo;{item.review}&rdquo;
+            &ldquo;{item.statement}&rdquo;
           </p>
 
           <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-            <div className="flex items-center gap-2">
-              <Avatar src={item.photo} alt={item.name} size="sm" fallback={item.name.charAt(0)} />
-              <div>
-                <p className="text-xs font-extrabold text-white">{item.name}</p>
-                <p className="text-[11px] text-slate-400 font-medium">{item.role}</p>
-              </div>
+            <div className="flex items-center gap-2 font-mono text-xs text-slate-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              <span>Core Design Tenet</span>
             </div>
 
             {/* Stepper Controls */}
@@ -106,19 +97,19 @@ export function TestimonialsCarousel() {
               <button
                 onClick={prevSlide}
                 className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-primary-500/40 transition-colors"
-                aria-label="Previous Testimonial"
+                aria-label="Previous Principle"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
 
               <span className="text-xs font-mono text-slate-500">
-                {currentIdx + 1} / {TESTIMONIALS_DATA.length}
+                {currentIdx + 1} / {PRINCIPLES_DATA.length}
               </span>
 
               <button
                 onClick={nextSlide}
                 className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-300 hover:text-white hover:border-primary-500/40 transition-colors"
-                aria-label="Next Testimonial"
+                aria-label="Next Principle"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -129,3 +120,4 @@ export function TestimonialsCarousel() {
     </section>
   );
 }
+

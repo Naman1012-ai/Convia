@@ -1,6 +1,7 @@
 import express from 'express';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { fcmPushService } from '../services/fcmPushService.js';
+import { isPushNotificationAllowed } from '../constants/notificationConstants.js';
 
 export const fcmRouter = express.Router();
 
@@ -139,6 +140,19 @@ fcmRouter.post('/send-push', async (req, res) => {
         error: {
           code: 'INVALID_NOTIFICATION',
           message: 'A valid notification object with notificationId is required.',
+        },
+      });
+    }
+
+    if (!isPushNotificationAllowed(notification.type)) {
+      console.log(`📨 [fcmRoutes] /send-push skipped for non-push-eligible type: ${notification.type}`);
+      return res.status(200).json({
+        success: true,
+        data: {
+          success: true,
+          delivered: 0,
+          skipped: true,
+          reason: 'TYPE_NOT_PUSH_ELIGIBLE',
         },
       });
     }

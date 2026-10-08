@@ -5,7 +5,7 @@ import { useToast } from '../../hooks/useToast';
 import { AlertTriangle, Mail, RefreshCw, CheckCircle } from 'lucide-react';
 
 export function EmailVerificationBanner() {
-  const { user } = useAuth();
+  const { user, reloadUser } = useAuth();
   const { toast } = useToast();
 
   const [isSending, setIsSending] = useState(false);
@@ -30,7 +30,7 @@ export function EmailVerificationBanner() {
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
-      const reloadedUser = await authService.reloadUser();
+      const reloadedUser = await reloadUser();
       if (reloadedUser?.emailVerified) {
         toast.success('🎉 Email verified! Full workspace features unlocked.');
       } else {

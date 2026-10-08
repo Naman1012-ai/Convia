@@ -33,12 +33,63 @@ export const profileService = {
       if (exists) {
         // Profile already exists; update role if email matches admin email
         const existingProfile = await profileService.getUserProfile(user.uid);
+
+        // If existing profile has missing username/displayName or has premature 'User' fallback, update it
+        const incomingUsername = (additionalData?.username || '').trim().toLowerCase().replace(/^@/, '');
+        const incomingName = (additionalData?.displayName || user?.displayName || incomingUsername || '').trim();
+        const updates = {};
+
+        if (
+          incomingUsername &&
+          incomingUsername !== 'user' &&
+          (!existingProfile?.username || existingProfile.username === 'User')
+        ) {
+          updates.username = incomingUsername;
+          existingProfile.username = incomingUsername;
+        } else if (!existingProfile?.username && existingProfile?.displayName && existingProfile.displayName !== 'User') {
+          // Migration: populate username from existing displayName
+          updates.username = existingProfile.displayName.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+          existingProfile.username = updates.username;
+        }
+
+        if (
+          incomingName &&
+          incomingName !== 'User' &&
+          (!existingProfile?.displayName || existingProfile.displayName === 'User')
+        ) {
+          updates.displayName = incomingName;
+          existingProfile.displayName = incomingName;
+        }
+
+        if (additionalData?.fullName && !existingProfile?.fullName) {
+          updates.fullName = additionalData.fullName.trim();
+          existingProfile.fullName = updates.fullName;
+        }
+
+        // If additional photoURL is provided and existing profile lacks photoURL, update it
+        const incomingPhoto = (additionalData?.photoURL || user?.photoURL || '').trim();
+        if (incomingPhoto && !existingProfile?.photoURL) {
+          updates.photoURL = incomingPhoto;
+          existingProfile.photoURL = incomingPhoto;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          updates.updatedAt = rtdbService.getTimestamp();
+          await rtdbService.updateData(`users/${user.uid}`, updates);
+        }
+
         // Ensure firstSignedInAt exists and is immutable
         if (!existingProfile?.firstSignedInAt) {
           const authCreatedTime = user.metadata?.creationTime ? new Date(user.metadata.creationTime).getTime() : null;
           const fallbackSignedTime = existingProfile?.firstSignedInAt || existingProfile?.createdAt || existingProfile?.joinedAt || authCreatedTime || rtdbService.getTimestamp();
           await rtdbService.updateData(`users/${user.uid}`, { firstSignedInAt: fallbackSignedTime });
           existingProfile.firstSignedInAt = fallbackSignedTime;
+        }
+
+        if (!existingProfile?.lastLoginAt) {
+          const now = Date.now();
+          await rtdbService.updateData(`users/${user.uid}`, { lastLoginAt: now });
+          existingProfile.lastLoginAt = now;
         }
 
         if (isAdminEmail && (!existingProfile?.isAdmin || existingProfile?.role !== 'superadmin')) {
@@ -56,17 +107,30 @@ export const profileService = {
         ? new Date(user.metadata.creationTime).getTime()
         : rtdbService.getTimestamp();
 
+      const explicitUsername = (additionalData?.username || '').trim().toLowerCase().replace(/^@/, '');
+      const explicitName = (additionalData?.displayName || user?.displayName || '').trim();
+      const resolvedUsername =
+        explicitUsername ||
+        (explicitName && explicitName !== 'User' ? explicitName.toLowerCase().replace(/[^a-z0-9_]/g, '') : '') ||
+        (isAdminEmail ? 'admin' : (user?.email ? user.email.split('@')[0] : 'user'));
+      const resolvedDisplayName = explicitName || resolvedUsername;
+
       const profileData = {
         uid: user.uid,
-        displayName: user.displayName || additionalData.displayName || (isAdminEmail ? 'Super Admin' : 'User'),
+        username: resolvedUsername,
+        displayName: resolvedDisplayName,
+        fullName: (additionalData?.fullName || '').trim() || null,
         email: user.email || '',
-        photoURL: user.photoURL || null,
+        photoURL: user.photoURL || additionalData.photoURL || null,
         firstSignedInAt: platformFirstSignIn,
         joinedAt: platformFirstSignIn,
+        lastLoginAt: Date.now(),
         createdAt: rtdbService.getTimestamp(),
         updatedAt: rtdbService.getTimestamp(),
         organizationId: null,
-        profileCompleted: true,
+        profileCompleted: false,
+        primaryRole: additionalData.primaryRole || null,
+        experienceLevel: additionalData.experienceLevel || null,
         onlineStatus: 'online',
         role: isAdminEmail ? 'superadmin' : 'user',
         isAdmin: isAdminEmail,
@@ -155,3 +219,10 @@ export const profileService = {
     return unsubscribeConnected;
   },
 };
+
+/**
+ * Helper to resolve organization with backward compatibility for legacy college field.
+ */
+export function resolveOrganization(profile) {
+  return (profile?.organization || profile?.college || '').trim();
+}

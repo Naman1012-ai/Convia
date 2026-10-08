@@ -5,7 +5,7 @@ const DEMO_TASKS = [
   { id: 1, title: 'Setup Firebase Auth Guard & Rules', status: 'Completed', tag: 'Backend', assignee: 'Alex' },
   { id: 2, title: 'Build Real-Time Discussion Panel', status: 'In Progress', tag: 'Frontend', assignee: 'Sarah' },
   { id: 3, title: 'Integrate Dashboard Telemetry KPIs', status: 'Review', tag: 'Analytics', assignee: 'Marcus' },
-  { id: 4, title: 'Implement AI Blueprint Generator', status: 'Todo', tag: 'AI Engine', assignee: 'Naman' },
+  { id: 4, title: 'Implement AI Blueprint Generator', status: 'Todo', tag: 'AI Engine', assignee: 'Lead' },
 ];
 
 export function TasksPreview() {

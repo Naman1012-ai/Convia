@@ -30,6 +30,12 @@ export const ACTIVITY_EVENT_TYPES = Object.freeze({
   BLUEPRINT_GENERATION_FAILED: 'blueprint.generation_failed',
   BLUEPRINT_VERSION_APPROVED: 'blueprint.version_approved',
 
+  // Task events
+  TASK_CREATED: 'task.created',
+  TASK_UPDATED: 'task.updated',
+  TASK_COMPLETED: 'task.completed',
+  TASK_ASSIGNED: 'task.assigned',
+
   // Chat events
   CHAT_MESSAGE: 'chat.message',
 });
@@ -41,6 +47,7 @@ export const ACTIVITY_CATEGORIES = Object.freeze({
   COMMENT: 'comment',
   QUESTION: 'question',
   BLUEPRINT: 'blueprint',
+  TASK: 'task',
   CHAT: 'chat',
   OTHER: 'other',
 });
@@ -132,6 +139,14 @@ export function formatActivitySummary({ eventType, actorName = 'Someone', resour
       return `AI Blueprint generation could not be completed for ${targetTitle}`;
     case ACTIVITY_EVENT_TYPES.BLUEPRINT_VERSION_APPROVED:
       return `${name} approved & activated Blueprint ${metadata?.version ? `v${metadata.version}` : ''} for execution`;
+    case ACTIVITY_EVENT_TYPES.TASK_CREATED:
+      return `${name} created task ${targetTitle}`;
+    case ACTIVITY_EVENT_TYPES.TASK_COMPLETED:
+      return `${name} completed task ${targetTitle}`;
+    case ACTIVITY_EVENT_TYPES.TASK_ASSIGNED:
+      return `${name} assigned task ${targetTitle}${metadata?.assigneeName ? ` to ${metadata.assigneeName}` : ''}`;
+    case ACTIVITY_EVENT_TYPES.TASK_UPDATED:
+      return `${name} updated task ${targetTitle}`;
     case ACTIVITY_EVENT_TYPES.CHAT_MESSAGE:
       return `${name} shared a key message in chat`;
     default:
@@ -155,6 +170,8 @@ export function buildActivityActionUrl({ workspaceId, resourceType, resourceId, 
       return `${base}/ideas/${parentResourceId || resourceId}?tab=comments&discussionId=${resourceId}`;
     case 'question':
       return `${base}/ideas/${parentResourceId || resourceId}?tab=questions&discussionId=${resourceId}`;
+    case 'task':
+      return `${base}/tasks`;
     case 'blueprint':
       return `${base}/blueprint`;
     case 'chat':

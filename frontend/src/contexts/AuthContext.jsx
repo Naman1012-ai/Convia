@@ -13,6 +13,7 @@ export const AuthContext = createContext({
   signOut: async () => {},
   resetPassword: async () => {},
   updateCurrentUserProfile: async () => {},
+  reloadUser: async () => {},
 });
 
 export function AuthProvider({ children }) {
@@ -35,8 +36,9 @@ export function AuthProvider({ children }) {
 
   const signUp = useCallback(async (email, password, displayName) => {
     const newUser = await authService.signUp(email, password, displayName);
-    setUser(newUser);
-    return newUser;
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser ? { ...currentUser } : newUser);
+    return currentUser || newUser;
   }, []);
 
   const signIn = useCallback(async (email, password) => {
@@ -48,7 +50,8 @@ export function AuthProvider({ children }) {
   const signInWithGoogle = useCallback(async () => {
     const googleUser = await authService.signInWithGoogle();
     if (googleUser) {
-      setUser(googleUser);
+      const currentUser = authService.getCurrentUser();
+      setUser(currentUser ? { ...currentUser } : googleUser);
     }
     return googleUser;
   }, []);
@@ -82,6 +85,22 @@ export function AuthProvider({ children }) {
     return updated;
   }, []);
 
+  const reloadUser = useCallback(async () => {
+    const reloaded = await authService.reloadUser();
+    if (reloaded) {
+      const clone = Object.assign(Object.create(Object.getPrototypeOf(reloaded)), reloaded);
+      Object.defineProperty(clone, 'emailVerified', {
+        value: Boolean(reloaded.emailVerified),
+        writable: true,
+        configurable: true,
+        enumerable: true,
+      });
+      setUser(clone);
+      return clone;
+    }
+    return null;
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -93,6 +112,7 @@ export function AuthProvider({ children }) {
         signOut,
         resetPassword,
         updateCurrentUserProfile,
+        reloadUser,
       }}
     >
       {children}

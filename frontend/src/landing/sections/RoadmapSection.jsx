@@ -45,7 +45,7 @@ export function RoadmapSection() {
             Product Roadmap
           </h2>
           <p className="text-base text-slate-400 font-medium">
-            Here is a glimpse of what we are building next to make hackathons even faster.
+            Here is a glimpse of what we are building next to make technical execution even faster.
           </p>
         </div>
 

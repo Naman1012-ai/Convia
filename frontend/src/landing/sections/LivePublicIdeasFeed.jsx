@@ -37,7 +37,7 @@ const DEMO_FALLBACK_IDEAS = [
   {
     ideaId: 'demo-3',
     title: 'Zero-Knowledge Identity & Credential Vault',
-    description: 'Cryptographic identity verification platform for university hackathons, allowing students to verify credentials without exposing personal PII.',
+    description: 'Cryptographic identity verification platform for developer communities, allowing engineers to verify credentials without exposing personal PII.',
     category: 'Cybersecurity',
     tags: ['Rust', 'Wasm', 'Cryptography'],
     voteCount: 42,

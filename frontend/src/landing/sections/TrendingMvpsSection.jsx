@@ -3,7 +3,7 @@ import { Trophy, CheckCircle2, ThumbsUp, Zap, Sparkles } from 'lucide-react';
 
 const DEMO_TRENDING_MVPS = [
   {
-    workspace: 'Hackathon Alpha Team',
+    workspace: 'Core Engineering Team',
     ideaName: 'Real-Time AI Code Synthesizer',
     selectionDate: 'July 24, 2026',
     votes: 48,

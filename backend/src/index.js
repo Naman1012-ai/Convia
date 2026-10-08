@@ -12,6 +12,9 @@ import { workspaceDashboardRouter } from './routes/workspaceDashboardRoutes.js';
 import { workspaceInvitationRouter } from './routes/workspaceInvitationRoutes.js';
 import { uploadthingExpressHandler } from './routes/uploadthingRouter.js';
 import { fcmRouter } from './routes/fcmRoutes.js';
+import { publicIdeaRouter } from './routes/publicIdeaRoutes.js';
+import { chatRouter } from './routes/chatRoutes.js';
+import { taskRouter } from './routes/taskRoutes.js';
 import { globalStatsService } from './services/globalStatsService.js';
 
 // Resolve current directory for ES modules
@@ -95,6 +98,11 @@ app.use('/api/workspace', workspaceDashboardRouter);
 app.use('/api/invitations', workspaceInvitationRouter);
 app.use('/api/uploadthing', uploadthingExpressHandler);
 app.use('/api/notifications/fcm', fcmRouter);
+app.use('/api/public-ideas', publicIdeaRouter);
+app.use('/api/workspaces/:workspaceId/chat', chatRouter);
+app.use('/api/workspace/:workspaceId/chat', chatRouter);
+app.use('/api/workspaces/:workspaceId/tasks', taskRouter);
+app.use('/api/workspace/:workspaceId/tasks', taskRouter);
 
 // Safe Production Error Handler (Masks stack traces and internal secrets)
 app.use((err, req, res, next) => {

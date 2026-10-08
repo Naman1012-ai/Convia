@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { GoogleSignInButton } from './GoogleSignInButton';
 import {
-  validateDisplayName,
+  validateUsername,
   validateEmail,
   validateString,
 } from '../../utils/validation';
@@ -21,7 +21,7 @@ export function SignUpForm() {
   const hasPendingInvitation = Boolean(sessionStorage.getItem('pendingInvitationCode'));
   const prefillEmail = sessionStorage.getItem('prefillAuthEmail') || '';
 
-  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState('');
 
@@ -33,20 +33,20 @@ export function SignUpForm() {
     ? '/join'
     : searchParams.get('returnUrl')
     ? decodeURIComponent(searchParams.get('returnUrl'))
-    : '/dashboard';
+    : '/setup-profile';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
 
     // Form Validation
-    const nameVal = validateDisplayName(displayName);
+    const userVal = validateUsername(username, true);
     const emailVal = validateEmail(email);
     const passVal = validateString(password, 100, true, 'Password');
 
-    if (!nameVal.valid || !emailVal.valid || !passVal.valid) {
+    if (!userVal.valid || !emailVal.valid || !passVal.valid) {
       setErrors({
-        displayName: nameVal.error,
+        username: userVal.error,
         email: emailVal.error,
         password: passVal.error,
       });
@@ -62,7 +62,8 @@ export function SignUpForm() {
     setIsSubmitting(true);
 
     try {
-      await signUp(email, password, displayName);
+      const cleanUsername = userVal.value || username.trim().toLowerCase().replace(/^@/, '');
+      await signUp(email.trim(), password, cleanUsername);
       toast.success('Account created successfully! Welcome to Convia.');
       navigate(redirectTarget, { replace: true });
     } catch (err) {
@@ -96,7 +97,7 @@ export function SignUpForm() {
     <div className="space-y-4">
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-slate-900">Create your account</h2>
-        <p className="text-sm text-slate-500 mt-1">Start organizing your hackathon team</p>
+        <p className="text-sm text-slate-500 mt-1">Turn ideas into projects and move them forward with Convia.</p>
       </div>
 
       {serverError && (
@@ -106,14 +107,18 @@ export function SignUpForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="Display Name"
-          placeholder="Your name"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          error={errors.displayName}
-          required
-        />
+        <div>
+          <Input
+            label="Username"
+            placeholder="e.g. alexj"
+            value={username}
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            error={errors.username}
+            required
+            maxLength={30}
+          />
+          <p className="text-[11px] text-slate-500 mt-1">Your public identity on Convia.</p>
+        </div>
         <Input
           label="Email Address"
           type="email"

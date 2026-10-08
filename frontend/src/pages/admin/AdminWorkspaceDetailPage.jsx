@@ -10,6 +10,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Select } from '../../components/ui/Select';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
+import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { formatTimestamp } from '../../utils/formatting';
 import { getWorkspaceMemberHistory } from '../../utils/workspaceMemberHistory';
 import {

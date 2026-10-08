@@ -3,10 +3,10 @@ import { Rocket, GraduationCap, Zap, Code2, CheckCircle } from 'lucide-react';
 
 const USE_CASES = [
   {
-    title: 'Hackathons & Datathons',
+    title: 'Rapid Prototyping Sprints',
     icon: Rocket,
-    tag: '24-48 HR SPRINTS',
-    description: 'Eliminate 3 hours of arguments on Friday night. Move from idea to technical spec and initial commit before midnight.',
+    tag: 'FAST ITERATION',
+    description: 'Eliminate hours of circular arguments. Move from idea to technical spec and initial task assignments rapidly.',
     benefits: ['Fast consensus upvoting', 'Automated PRD generation', 'Zero setup overhead'],
     color: 'border-amber-500/30 text-amber-400 bg-amber-500/10',
   },
@@ -48,7 +48,7 @@ export function UseCasesSection() {
             Tailored For Every High-Velocity Team
           </h2>
           <p className="text-base text-slate-400 font-medium">
-            Whether you are competing in a 24-hour hackathon or building an open-source project, Convia keeps everyone aligned.
+            Whether you are running an agile sprint or building an open-source project, Convia keeps everyone aligned.
           </p>
         </div>
 

@@ -2,20 +2,25 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
+import { Avatar } from '../../components/ui/Avatar';
 import { useUser } from '../../hooks/useUser';
 import { useToast } from '../../hooks/useToast';
-import { validateDisplayName } from '../../utils/validation';
+import { PRIMARY_ROLES, EXPERIENCE_LEVELS } from '../../config/constants';
+import { validateUsername, validateProjectUrl } from '../../utils/validation';
 
 export function EditProfileModal({ isOpen, onClose, onSuccess }) {
   const { userProfile, updateProfile } = useUser();
   const { toast } = useToast();
 
-  const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  const [primaryRole, setPrimaryRole] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('');
   const [bio, setBio] = useState('');
-  const [college, setCollege] = useState('');
   const [skills, setSkills] = useState('');
   const [techStack, setTechStack] = useState('');
   const [interests, setInterests] = useState('');
@@ -23,44 +28,81 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
   const [linkedin, setLinkedin] = useState('');
   const [portfolio, setPortfolio] = useState('');
 
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (userProfile && isOpen) {
-      setDisplayName(userProfile.displayName || '');
-      setUsername(userProfile.username || '');
+      setUsername(userProfile.username || userProfile.displayName || '');
+      setFullName(userProfile.fullName || '');
+      setPhotoURL(userProfile.photoURL || '');
+      setPrimaryRole(userProfile.primaryRole || '');
+      setExperienceLevel(userProfile.experienceLevel || '');
       setBio(userProfile.bio || '');
-      setCollege(userProfile.college || '');
       setSkills(userProfile.skills || '');
       setTechStack(userProfile.techStack || '');
       setInterests(userProfile.interests || '');
       setGithub(userProfile.github || '');
       setLinkedin(userProfile.linkedin || '');
       setPortfolio(userProfile.portfolio || '');
+      setErrors({});
+      setServerError('');
     }
   }, [userProfile, isOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
+    const formErrors = {};
 
-    const val = validateDisplayName(displayName);
-    if (!val.valid) {
-      setError(val.error);
+    const userVal = validateUsername(username, true);
+    if (!userVal.valid) {
+      formErrors.username = userVal.error;
+    }
+
+    if (fullName.trim().length > 100) {
+      formErrors.fullName = 'Full Name must be at most 100 characters.';
+    }
+
+    if (photoURL.trim()) {
+      const pVal = validateProjectUrl(photoURL, 'Photo URL');
+      if (!pVal.valid) formErrors.photoURL = pVal.error;
+    }
+
+    if (github.trim()) {
+      const gVal = validateProjectUrl(github, 'GitHub URL');
+      if (!gVal.valid) formErrors.github = gVal.error;
+    }
+
+    if (linkedin.trim()) {
+      const lVal = validateProjectUrl(linkedin, 'LinkedIn URL');
+      if (!lVal.valid) formErrors.linkedin = lVal.error;
+    }
+
+    if (portfolio.trim()) {
+      const pfVal = validateProjectUrl(portfolio, 'Portfolio URL');
+      if (!pfVal.valid) formErrors.portfolio = pfVal.error;
+    }
+
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
       return;
     }
 
-    setError('');
+    setErrors({});
     setIsSubmitting(true);
 
     try {
+      const cleanUsername = username.trim().toLowerCase().replace(/^@/, '');
       await updateProfile({
-        displayName: displayName.trim(),
-        username: username.trim().replace(/^@/, ''),
+        username: cleanUsername,
+        displayName: cleanUsername,
+        fullName: fullName.trim() || null,
+        photoURL: photoURL.trim() || null,
+        primaryRole: primaryRole || null,
+        experienceLevel: experienceLevel || null,
         bio: bio.trim(),
-        college: college.trim(),
         skills: skills.trim(),
         techStack: techStack.trim(),
         interests: interests.trim(),
@@ -68,6 +110,7 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
         linkedin: linkedin.trim(),
         portfolio: portfolio.trim(),
       });
+
       toast.success('Profile updated successfully!');
       if (onSuccess) {
         onSuccess('Profile updated successfully!');
@@ -83,105 +126,176 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
+  const roleOptions = [
+    { value: '', label: 'Select role...' },
+    ...PRIMARY_ROLES.map((r) => ({ value: r, label: r })),
+  ];
+
+  const experienceOptions = [
+    { value: '', label: 'Select experience...' },
+    ...EXPERIENCE_LEVELS.map((lvl) => ({ value: lvl, label: lvl })),
+  ];
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Edit User Profile" size="lg">
-      <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+      <form onSubmit={handleSubmit} className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
         {serverError && (
           <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 font-medium">
             {serverError}
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Display Name"
-            placeholder="e.g. Alex Johnson"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            error={error}
-            maxLength={50}
-            required
-          />
+        {/* 1. Identity & Avatar */}
+        <div className="space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Identity & Avatar
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Input
+                label="Username"
+                placeholder="e.g. alexj"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                error={errors.username}
+                maxLength={30}
+                required
+              />
+              <p className="text-[11px] text-slate-500 mt-1">Your public identity on Convia.</p>
+            </div>
 
-          <Input
-            label="Username"
-            placeholder="e.g. alexj"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            maxLength={30}
-          />
+            <div>
+              <Input
+                label="Full Name"
+                placeholder="e.g. Alex Johnson"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                error={errors.fullName}
+                maxLength={100}
+              />
+              <p className="text-[11px] text-slate-500 mt-1">Only visible to you.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <Avatar
+              src={photoURL}
+              name={username || 'User'}
+              size="md"
+              className="h-12 w-12 text-base shrink-0 border border-primary-200"
+            />
+            <div className="flex-1">
+              <Input
+                label="Profile Photo URL"
+                placeholder="https://example.com/avatar.jpg"
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                error={errors.photoURL}
+              />
+            </div>
+          </div>
         </div>
 
-        <Textarea
-          label="Bio"
-          placeholder="Tell the community about yourself, your background, and what you love building..."
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          maxLength={300}
-          rows={3}
-        />
+        {/* 2. Professional Details */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Role & Background
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              label="Primary Role"
+              options={roleOptions}
+              value={primaryRole}
+              onChange={(e) => setPrimaryRole(e.target.value)}
+            />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="College / Organization"
-            placeholder="e.g. Stanford University"
-            value={college}
-            onChange={(e) => setCollege(e.target.value)}
-            maxLength={80}
+            <Select
+              label="Experience Level"
+              options={experienceOptions}
+              value={experienceLevel}
+              onChange={(e) => setExperienceLevel(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* 3. Biography */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Biography
+          </span>
+          <Textarea
+            placeholder="Tell the community about yourself, what you build, and your engineering interests..."
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            maxLength={300}
+            rows={3}
           />
+          <div className="flex justify-end text-[11px] text-slate-400 -mt-1">
+            <span>{bio.length} / 300</span>
+          </div>
+        </div>
+
+        {/* 4. Skills, Stack & Interests */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Skills & Interests
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Skills (Comma-separated)"
+              placeholder="React, TypeScript, Python, UI/UX"
+              value={skills}
+              onChange={(e) => setSkills(e.target.value)}
+              maxLength={150}
+            />
+
+            <Input
+              label="Preferred Tech Stack"
+              placeholder="Next.js, Firebase, Tailwind CSS"
+              value={techStack}
+              onChange={(e) => setTechStack(e.target.value)}
+              maxLength={150}
+            />
+          </div>
 
           <Input
-            label="Interests"
-            placeholder="e.g. AI/ML, Web3, Mobile Apps"
+            label="Project Interests"
+            placeholder="AI/ML, Web3, Developer Tools, Mobile Apps"
             value={interests}
             onChange={(e) => setInterests(e.target.value)}
             maxLength={100}
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            label="Skills (Comma-separated)"
-            placeholder="e.g. React, Node.js, UI/UX, Python"
-            value={skills}
-            onChange={(e) => setSkills(e.target.value)}
-            maxLength={150}
-          />
-
-          <Input
-            label="Preferred Tech Stack"
-            placeholder="e.g. Next.js, Firebase, Tailwind CSS"
-            value={techStack}
-            onChange={(e) => setTechStack(e.target.value)}
-            maxLength={150}
-          />
-        </div>
-
-        <div className="space-y-3 pt-2 border-t border-slate-100">
+        {/* 5. Social & External Links */}
+        <div className="space-y-3 pt-3 border-t border-slate-100">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Social & External Links
           </span>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
-              label="GitHub Profile URL"
-              placeholder="https://github.com/username"
+              label="GitHub URL"
+              placeholder="https://github.com/..."
               value={github}
               onChange={(e) => setGithub(e.target.value)}
+              error={errors.github}
             />
 
             <Input
-              label="LinkedIn Profile URL"
-              placeholder="https://linkedin.com/in/username"
+              label="LinkedIn URL"
+              placeholder="https://linkedin.com/in/..."
               value={linkedin}
               onChange={(e) => setLinkedin(e.target.value)}
+              error={errors.linkedin}
             />
 
             <Input
               label="Portfolio Website"
-              placeholder="https://myportfolio.com"
+              placeholder="https://mywebsite.com"
               value={portfolio}
               onChange={(e) => setPortfolio(e.target.value)}
+              error={errors.portfolio}
             />
           </div>
         </div>

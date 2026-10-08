@@ -39,7 +39,7 @@ export function ToolComparisonSection() {
               <p className="text-xs font-mono text-primary-400 font-bold">Best at real-time audio & team chat</p>
 
               <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                Great for hanging out, but unstructured chat threads make ideation painful during hackathons.
+                Great for casual conversation, but unstructured chat threads make proposal prioritization difficult.
               </p>
 
               <div className="space-y-2.5 pt-2 border-t border-slate-800/80 text-xs font-medium text-slate-400">
@@ -109,7 +109,7 @@ export function ToolComparisonSection() {
               </div>
 
               <h3 className="text-2xl font-extrabold text-white">Convia</h3>
-              <p className="text-xs font-mono text-primary-300 font-bold">Purpose-built for hackathon decision speed</p>
+              <p className="text-xs font-mono text-primary-300 font-bold">Purpose-built for engineering decision speed</p>
 
               <p className="text-xs text-slate-200 leading-relaxed font-medium">
                 Structured ideation, peer refinement, upvoting, AI blueprints, and Kanban task breakdown—in one seamless flow.

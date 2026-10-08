@@ -47,7 +47,7 @@ export function WhyItWorksSection() {
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Designed from the ground up to solve hackathon indecision and streamline technical execution.
+            Designed from the ground up to eliminate team indecision and streamline technical execution.
           </p>
         </div>
 

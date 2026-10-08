@@ -26,3 +26,20 @@ export const ORG_STATUS = {
 };
 
 export const INVITE_CODE_LENGTH = 8;
+
+export const PRIMARY_ROLES = [
+  'Student',
+  'Developer',
+  'Designer',
+  'Founder',
+  'Product/Project Manager',
+  'Researcher',
+  'Other',
+];
+
+export const EXPERIENCE_LEVELS = [
+  'Beginner',
+  'Intermediate',
+  'Advanced',
+  'Expert',
+];

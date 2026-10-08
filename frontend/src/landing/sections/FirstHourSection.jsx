@@ -48,7 +48,7 @@ const WASTED_TIME_STAGES = [
     title: 'Late Start',
     subtitle: 'Coding begins under severe stress',
     description: 'First lines of code are written 2 hours late. Development is rushed and buggy.',
-    impact: 'Hackathon Failure',
+    impact: 'Sprint Failure',
   },
 ];
 
@@ -65,7 +65,7 @@ export function FirstHourSection() {
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono font-bold">
             <Clock className="h-3.5 w-3.5" />
-            <span>The Hackathon Time Paradox</span>
+            <span>The Sprint Time Paradox</span>
           </div>
 
           <h2 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight leading-tight">
@@ -76,7 +76,7 @@ export function FirstHourSection() {
           </h2>
 
           <p className="text-base sm:text-lg text-slate-300 font-medium leading-relaxed">
-            Most hackathon teams don&apos;t fail because they can&apos;t build. <br className="hidden sm:inline" />
+            Most sprint teams don&apos;t fail because they can&apos;t build. <br className="hidden sm:inline" />
             They fail because they spend too much time deciding <span className="text-white font-bold">what to build</span>.
           </p>
         </div>

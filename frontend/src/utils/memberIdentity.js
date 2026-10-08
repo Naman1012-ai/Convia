@@ -1,20 +1,23 @@
 /**
- * Canonical Member Identity & Display Name Resolver for Convia.
+ * Canonical Member Identity & Public Name Resolver for Convia.
  *
- * Section 27: Authoritative Identity Priority Hierarchy:
- * 1. displayName (Primary human-readable display name entered in profile, e.g. "Paras")
- * 2. name / fullName (Legacy canonical profile display-name equivalent)
- * 3. username (Fallback only when displayName/name is absent)
- * 4. "Unknown member" (Final fallback)
+ * Public Identity Priority Hierarchy:
+ * 1. username (Primary canonical public identity across Convia, e.g. "alexj")
+ * 2. displayName (Backward-compatible fallback mirroring username)
+ * 3. userName (Legacy casing fallback)
+ * 4. name (Legacy member name if username is absent)
+ * 5. senderName (Message snapshot sender name)
+ * 6. "Unknown member" (Final fallback)
  *
- * Disallowed normal fallbacks: Firebase UID, raw email address, email prefix (@...).
+ * Strictly excluded from public surfaces: fullName (private to account owner),
+ * raw email address, email prefix, and Firebase UID.
  */
 
 /**
- * Resolves the canonical human-readable display name for any member or user object.
+ * Resolves the canonical public username for any member or user object.
  *
  * @param {Object|string|null|undefined} member - Member object, User object, or string name
- * @returns {string} The canonical display name
+ * @returns {string} The canonical public username
  */
 export function resolveMemberDisplayName(member) {
   if (!member) return 'Unknown member';
@@ -29,31 +32,30 @@ export function resolveMemberDisplayName(member) {
     return 'Unknown member';
   }
 
-  // 1. Primary: displayName
+  // 1. Primary Public Identity: username
+  if (typeof member.username === 'string' && member.username.trim()) {
+    return member.username.trim();
+  }
+
+  // 2. Backward-compatible fallback: displayName (mirrors username in updated schema)
   if (typeof member.displayName === 'string' && member.displayName.trim()) {
     return member.displayName.trim();
   }
 
-  // 2. Legacy canonical names (name, fullName)
-  if (typeof member.name === 'string' && member.name.trim()) {
-    return member.name.trim();
-  }
-  if (typeof member.fullName === 'string' && member.fullName.trim()) {
-    return member.fullName.trim();
-  }
-
-  // 3. Fallback: username (only when displayName is absent)
-  if (typeof member.username === 'string' && member.username.trim()) {
-    return member.username.trim();
-  }
+  // 3. Legacy variations
   if (typeof member.userName === 'string' && member.userName.trim()) {
     return member.userName.trim();
+  }
+  if (typeof member.name === 'string' && member.name.trim()) {
+    return member.name.trim();
   }
 
   // 4. Message snapshot senderName
   if (typeof member.senderName === 'string' && member.senderName.trim()) {
     return member.senderName.trim();
   }
+
+  // NOTE: member.fullName is strictly PRIVATE personal info and MUST NEVER be returned publicly.
 
   // 5. Final fallback
   return 'Unknown member';
@@ -108,3 +110,39 @@ export function isMessageAuthoredByUser(message, currentUserId) {
   if (!authorUid) return false;
   return String(authorUid).trim() === String(currentUserId).trim();
 }
+
+/**
+ * Resolves the authenticated user's public display name safely, prioritizing username and preventing premature 'User' fallback.
+ *
+ * @param {Object|null|undefined} userProfile - RTDB user profile from useUser()
+ * @param {Object|null|undefined} user - Firebase Auth user from useAuth()
+ * @returns {string} The resolved public username / display name
+ */
+export function resolveUserDisplayName(userProfile, user) {
+  const profileUsername = typeof userProfile?.username === 'string' ? userProfile.username.trim() : '';
+  const profileDisplayName = typeof userProfile?.displayName === 'string' ? userProfile.displayName.trim() : '';
+  const authName = typeof user?.displayName === 'string' ? user.displayName.trim() : '';
+
+  if (profileUsername && profileUsername !== 'User') return profileUsername;
+  if (profileDisplayName && profileDisplayName !== 'User') return profileDisplayName;
+  if (authName && authName !== 'User') return authName;
+  if (profileUsername) return profileUsername;
+  if (profileDisplayName) return profileDisplayName;
+  if (authName) return authName;
+  if (user?.email) return user.email.split('@')[0];
+  return 'User';
+}
+
+/**
+ * Resolves the user's private full name for account owner visibility only.
+ *
+ * @param {Object|null|undefined} userProfile - RTDB user profile from useUser()
+ * @returns {string} The private full name or empty string
+ */
+export function resolveUserFullName(userProfile) {
+  if (typeof userProfile?.fullName === 'string') {
+    return userProfile.fullName.trim();
+  }
+  return '';
+}
+

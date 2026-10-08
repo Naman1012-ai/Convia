@@ -13,7 +13,7 @@ export function TransitionCtaSection() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-950/80 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
             <Sparkles className="h-3.5 w-3.5 text-primary-400" />
-            <span>Ready for Your Next Hackathon?</span>
+            <span>Ready for Your Next Sprint?</span>
           </div>
 
           {/* Headline */}
@@ -26,7 +26,7 @@ export function TransitionCtaSection() {
             </h2>
 
             <p className="text-base sm:text-lg text-slate-300 font-medium max-w-xl mx-auto">
-              Join thousands of builders using Convia to transform scattered ideas into winning hackathon projects.
+              Empower your team with Convia to transform scattered ideas into structured technical projects.
             </p>
           </div>
 

@@ -35,10 +35,12 @@ import {
 
 import { EmailVerificationBanner } from '../../components/auth/EmailVerificationBanner';
 import { AnnouncementBanner } from '../../components/announcements/AnnouncementBanner';
+import { resolveUserDisplayName } from '../../utils/memberIdentity';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { userProfile } = useUser();
+  const userName = resolveUserDisplayName(userProfile, user);
   const navigate = useNavigate();
 
   // SWR Initializer: Synchronously read cached data on Frame 1
@@ -142,7 +144,8 @@ export default function DashboardPage() {
         {/* Left Column: User Profile */}
         <div className="flex items-center gap-4 z-10">
           <Avatar
-            name={userProfile?.displayName || user?.displayName || user?.email}
+            src={userProfile?.photoURL || user?.photoURL}
+            name={userName}
             size="lg"
             className="border-2 border-indigo-500/60 ring-4 ring-indigo-500/20 shrink-0"
           />
@@ -150,7 +153,7 @@ export default function DashboardPage() {
             <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white leading-tight">
               Welcome back,{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-primary-100 to-primary-300">
-                {userProfile?.displayName || user?.displayName || user?.email?.split('@')[0]}
+                {userName}
               </span>
             </h1>
             <p className="text-[11px] sm:text-xs text-slate-400 font-medium leading-relaxed">

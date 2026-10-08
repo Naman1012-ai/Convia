@@ -350,13 +350,11 @@ export default function CommunityPage() {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       chatService.setPublicIdeaChatTypingState(effectiveUser, false).catch(() => {});
 
-      toast.success(
-        postType === COMMUNITY_POST_TYPES.IDEA
-          ? 'Idea posted to community!'
-          : postType === COMMUNITY_POST_TYPES.QUESTION
-          ? 'Question asked!'
-          : 'Discussion posted!'
-      );
+      if (postType === COMMUNITY_POST_TYPES.IDEA) {
+        toast.success('Idea posted to community!');
+      } else if (postType === COMMUNITY_POST_TYPES.QUESTION) {
+        toast.success('Question asked!');
+      }
     } catch (err) {
       console.error('[CommunityPage] Send error:', err);
       toast.error('Unable to send your message. Please try again.');

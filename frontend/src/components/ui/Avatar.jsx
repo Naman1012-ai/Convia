@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import { getInitials } from '../../utils/formatting';
 import { cn } from '../../utils/cn';
 
-export function Avatar({ name = '', size = 'md', className = '' }) {
+export function Avatar({ src = null, name = '', size = 'md', className = '' }) {
+  const [imgError, setImgError] = React.useState(false);
   const safeName = typeof name === 'string' ? name : String(name || '');
   const initials = getInitials(safeName);
 
@@ -29,6 +30,21 @@ export function Avatar({ name = '', size = 'md', className = '' }) {
   }
   const colorIndex = Math.abs(hash) % colors.length;
 
+  if (src && !imgError) {
+    return (
+      <img
+        src={src}
+        alt={safeName}
+        onError={() => setImgError(true)}
+        className={cn(
+          'inline-flex shrink-0 rounded-full object-cover border border-slate-200 select-none',
+          sizes[size],
+          className
+        )}
+      />
+    );
+  }
+
   return (
     <div
       title={safeName}
@@ -45,6 +61,7 @@ export function Avatar({ name = '', size = 'md', className = '' }) {
 }
 
 Avatar.propTypes = {
+  src: PropTypes.string,
   name: PropTypes.string,
   size: PropTypes.oneOf(['sm', 'md', 'lg']),
   className: PropTypes.string,

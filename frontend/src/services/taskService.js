@@ -2,6 +2,9 @@ import { rtdbService } from './rtdbService';
 import { getErrorMessage } from '../utils/errorMessages';
 import { inAppNotificationService } from './inAppNotificationService';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
+import { activityService } from './activityService';
+import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants';
+import { apiClient } from './apiClient';
 
 /**
  * Complete Service Layer for Task Management & Project Execution Module.
@@ -40,7 +43,25 @@ export const taskService = {
     };
 
     try {
-      await rtdbService.setData(`tasks/${orgId}/${taskId}`, newTask);
+      // 1. Authoritative Backend Endpoint Primary
+      try {
+        const created = await apiClient.post(`/api/workspaces/${encodeURIComponent(orgId)}/tasks`, {
+          title: newTask.title,
+          description: newTask.description,
+          priority: newTask.priority,
+          status: newTask.status,
+          dueDate: newTask.dueDate,
+          assignedTo: newTask.assignedTo,
+          assignedToName: newTask.assignedToName,
+          projectId: newTask.projectId,
+        });
+        if (created && created.taskId) {
+          Object.assign(newTask, created);
+        }
+      } catch (_apiErr) {
+        // Fallback to direct RTDB write if backend endpoint is unavailable
+        await rtdbService.setData(`tasks/${orgId}/${taskId}`, newTask);
+      }
 
       // If initially assigned to another user, dispatch TASK_ASSIGNED notification + FCM push
       if (newTask.assignedTo && newTask.assignedTo !== user.uid) {
@@ -58,6 +79,22 @@ export const taskService = {
           console.warn('[taskService] Failed to dispatch task assignment notification:', err?.message);
         });
       }
+
+      // Record workspace activity
+      activityService.recordWorkspaceActivity(orgId, {
+        eventType: ACTIVITY_EVENT_TYPES.TASK_CREATED,
+        actorId: user.uid,
+        actorType: 'user',
+        actorName: user.displayName || user.email || 'Team Member',
+        actorPhotoURL: user.photoURL || null,
+        resourceType: 'task',
+        resourceId: taskId,
+        resourceTitle: newTask.title,
+        metadata: {
+          priority: newTask.priority,
+          assignedTo: newTask.assignedTo || null,
+        },
+      }).catch((err) => console.warn('[taskService] Failed to record task creation activity:', err?.message));
 
       return newTask;
     } catch (error) {
@@ -104,9 +141,14 @@ export const taskService = {
         existingTask = await rtdbService.getData(`tasks/${orgId}/${taskId}`).catch(() => null);
       }
 
-      await rtdbService.updateData(`tasks/${orgId}/${taskId}`, patch);
+      try {
+        await apiClient.patch(`/api/workspaces/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`, patch);
+      } catch (_apiErr) {
+        // Fallback to direct RTDB update
+        await rtdbService.updateData(`tasks/${orgId}/${taskId}`, patch);
+      }
 
-      // Trigger completion notification if status flipped to Completed
+      // Trigger completion notification and activity if status flipped to Completed
       if (updates.status === 'Completed' && existingTask?.status !== 'Completed') {
         const taskTitle = existingTask?.title || updates.title || 'Task';
         inAppNotificationService.dispatchNotificationEvent(
@@ -121,6 +163,19 @@ export const taskService = {
         ).catch((err) => {
           console.warn('[taskService] Failed to dispatch task completion notification:', err?.message);
         });
+
+        if (actorUser?.uid) {
+          activityService.recordWorkspaceActivity(orgId, {
+            eventType: ACTIVITY_EVENT_TYPES.TASK_COMPLETED,
+            actorId: actorUser.uid,
+            actorType: 'user',
+            actorName: actorUser.displayName || actorUser.email || 'Team Member',
+            actorPhotoURL: actorUser.photoURL || null,
+            resourceType: 'task',
+            resourceId: taskId,
+            resourceTitle: taskTitle,
+          }).catch((err) => console.warn('[taskService] Failed to record task completion activity:', err?.message));
+        }
       }
     } catch (error) {
       console.error('[taskService] updateTask error:', error);
@@ -170,10 +225,14 @@ export const taskService = {
   deleteTask: async (orgId, taskId) => {
     if (!orgId || !taskId) return;
     try {
-      await rtdbService.updateData(`tasks/${orgId}/${taskId}`, {
-        isDeleted: true,
-        updatedAt: Date.now(),
-      });
+      try {
+        await apiClient.delete(`/api/workspaces/${encodeURIComponent(orgId)}/tasks/${encodeURIComponent(taskId)}`);
+      } catch (_apiErr) {
+        await rtdbService.updateData(`tasks/${orgId}/${taskId}`, {
+          isDeleted: true,
+          updatedAt: Date.now(),
+        });
+      }
     } catch (error) {
       console.error('[taskService] deleteTask error:', error);
       throw error;

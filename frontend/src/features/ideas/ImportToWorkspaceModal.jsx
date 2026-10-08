@@ -95,7 +95,7 @@ export function ImportToWorkspaceModal({
             <div>
               <h4 className="font-bold text-slate-900 text-sm">You are not a member of any workspace.</h4>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Create a new private team workspace or join an existing hackathon workspace to start importing public ideas.
+                Create a new private team workspace or join an existing workspace to start importing public ideas.
               </p>
             </div>
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -139,7 +139,7 @@ export function ImportToWorkspaceModal({
 
             <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-2">
               <h5 className="font-bold text-slate-900 text-base">{workspaces[0].name}</h5>
-              <p className="text-xs text-slate-500">{workspaces[0].hackathonName || 'Hackathon Team Workspace'}</p>
+              <p className="text-xs text-slate-500">{workspaces[0].hackathonName || 'Team Workspace'}</p>
               <div className="flex items-center gap-4 pt-1 text-xs text-slate-600">
                 <span className="flex items-center gap-1 font-medium">
                   <Users className="h-3.5 w-3.5 text-primary-500" /> {workspaces[0].memberCount || 1} Members
@@ -186,7 +186,7 @@ export function ImportToWorkspaceModal({
                   >
                     <div className="min-w-0 space-y-1">
                       <h5 className="font-bold text-slate-900 text-sm truncate">{ws.name}</h5>
-                      <p className="text-xs text-slate-500 truncate">{ws.hackathonName || 'Hackathon Workspace'}</p>
+                      <p className="text-xs text-slate-500 truncate">{ws.hackathonName || 'Workspace'}</p>
                       <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-0.5">
                         <span className="flex items-center gap-1">
                           <Users className="h-3 w-3 text-slate-400" /> {ws.memberCount || 1} Members

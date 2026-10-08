@@ -95,6 +95,7 @@ import { resolveMemberDisplayName } from '../utils/memberIdentity.js';
 import { extractMentions } from '../utils/chatMentions.js';
 import { NotificationService } from './notificationService.js';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants.js';
+import { apiClient } from './apiClient.js';
 
 /**
  * Workspace Chat Service (Phase 3 Incremental Real-Time & Pagination Engine)
@@ -173,19 +174,6 @@ export const chatService = {
           user
         ).catch((e) => console.warn('[chatService] Mention notification warning:', e));
       }
-
-      inAppNotificationService.dispatchNotificationEvent(
-        NOTIFICATION_TYPES.CHAT_MESSAGE,
-        {
-          workspaceId,
-          channelId: activeChannelId,
-          messageId,
-          content: validation.trimmedContent,
-          members,
-          excludedUids: mentionedUids,
-        },
-        user
-      ).catch((e) => console.warn('[chatService] Message notification warning:', e));
     } catch (notifErr) {
       console.warn('[chatService] Notification dispatch error:', notifErr.message);
     }
@@ -279,42 +267,66 @@ export const chatService = {
     }
 
     const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
+
+    // 1. Authoritative Backend Endpoint Query (Enforces server-side visibility boundary)
+    try {
+      const endpoint = `/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/messages?pageSize=${pageSize}`;
+      const res = await apiClient.get(endpoint);
+      if (res && Array.isArray(res.messages)) {
+        const messages = res.messages.map((raw) => normalizeChatMessage(raw, raw.messageId)).sort(compareMessages);
+        return {
+          messages,
+          hasMore: Boolean(res.hasMore),
+          oldestKey: res.oldestKey || (messages.length > 0 ? messages[0].messageId : null),
+          newestKey: res.newestKey || (messages.length > 0 ? messages[messages.length - 1].messageId : null),
+          count: messages.length,
+        };
+      }
+    } catch (_apiErr) {
+      // Fallback to RTDB query if backend API is temporarily offline
+    }
+
+    // 2. Direct RTDB Query Fallback
     const messagesPath = getChannelMessagesPath(workspaceId, activeChannelId);
     const messagesRef = ref(rtdb, messagesPath);
     const recentQuery = query(messagesRef, orderByKey(), limitToLast(pageSize));
 
-    const snapshot = await get(recentQuery);
-    if (!snapshot.exists()) {
+    try {
+      const snapshot = await get(recentQuery);
+      if (!snapshot.exists()) {
+        return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
+      }
+
+      const rawVal = snapshot.val();
+      if (!rawVal || typeof rawVal !== 'object') {
+        return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
+      }
+
+      const rawList = Object.entries(rawVal)
+        .map(([key, raw]) => normalizeChatMessage(raw, key))
+        .filter((msg) => msg && msg.messageId)
+        .sort(compareMessages);
+
+      // Filter out messages created before memberJoinedAt boundary
+      const messages = rawList.filter(
+        (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
+      );
+
+      const hitPreJoinBoundary = rawList.some(
+        (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
+      );
+
+      const meta = calculatePaginationMetadata(messages, pageSize);
+      return {
+        messages,
+        hasMore: meta.hasMore && !hitPreJoinBoundary,
+        oldestKey: meta.oldestKey,
+        newestKey: meta.newestKey,
+        count: messages.length,
+      };
+    } catch (_rtdbErr) {
       return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
     }
-
-    const rawVal = snapshot.val();
-    if (!rawVal || typeof rawVal !== 'object') {
-      return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
-    }
-
-    const rawList = Object.entries(rawVal)
-      .map(([key, raw]) => normalizeChatMessage(raw, key))
-      .filter((msg) => msg && msg.messageId)
-      .sort(compareMessages);
-
-    // Filter out messages created before memberJoinedAt boundary
-    const messages = rawList.filter(
-      (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
-    );
-
-    const hitPreJoinBoundary = rawList.some(
-      (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
-    );
-
-    const meta = calculatePaginationMetadata(messages, pageSize);
-    return {
-      messages,
-      hasMore: meta.hasMore && !hitPreJoinBoundary,
-      oldestKey: meta.oldestKey,
-      newestKey: meta.newestKey,
-      count: messages.length,
-    };
   },
 
   /**
@@ -341,42 +353,66 @@ export const chatService = {
 
     const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
     const cleanBeforeId = beforeMessageId.trim();
+
+    // 1. Authoritative Backend Endpoint Query
+    try {
+      const endpoint = `/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/messages?pageSize=${pageSize}&beforeMessageId=${encodeURIComponent(cleanBeforeId)}`;
+      const res = await apiClient.get(endpoint);
+      if (res && Array.isArray(res.messages)) {
+        const messages = res.messages.map((raw) => normalizeChatMessage(raw, raw.messageId)).sort(compareMessages);
+        return {
+          messages,
+          hasMore: Boolean(res.hasMore),
+          oldestKey: res.oldestKey || (messages.length > 0 ? messages[0].messageId : null),
+          newestKey: res.newestKey || (messages.length > 0 ? messages[messages.length - 1].messageId : null),
+          count: messages.length,
+        };
+      }
+    } catch (_apiErr) {
+      // Fallback to direct RTDB query
+    }
+
+    // 2. Direct RTDB Query Fallback
     const messagesPath = getChannelMessagesPath(workspaceId, activeChannelId);
     const messagesRef = ref(rtdb, messagesPath);
     const olderQuery = query(messagesRef, orderByKey(), endBefore(cleanBeforeId), limitToLast(pageSize));
 
-    const snapshot = await get(olderQuery);
-    if (!snapshot.exists()) {
+    try {
+      const snapshot = await get(olderQuery);
+      if (!snapshot.exists()) {
+        return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
+      }
+
+      const rawVal = snapshot.val();
+      if (!rawVal || typeof rawVal !== 'object') {
+        return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
+      }
+
+      const rawList = Object.entries(rawVal)
+        .map(([key, raw]) => normalizeChatMessage(raw, key))
+        .filter((msg) => msg && msg.messageId)
+        .sort(compareMessages);
+
+      // Filter out messages created before memberJoinedAt boundary
+      const messages = rawList.filter(
+        (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
+      );
+
+      const hitPreJoinBoundary = rawList.some(
+        (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
+      );
+
+      const meta = calculatePaginationMetadata(messages, pageSize);
+      return {
+        messages,
+        hasMore: meta.hasMore && !hitPreJoinBoundary,
+        oldestKey: meta.oldestKey,
+        newestKey: meta.newestKey,
+        count: messages.length,
+      };
+    } catch (_rtdbErr) {
       return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
     }
-
-    const rawVal = snapshot.val();
-    if (!rawVal || typeof rawVal !== 'object') {
-      return { messages: [], hasMore: false, oldestKey: null, newestKey: null, count: 0 };
-    }
-
-    const rawList = Object.entries(rawVal)
-      .map(([key, raw]) => normalizeChatMessage(raw, key))
-      .filter((msg) => msg && msg.messageId)
-      .sort(compareMessages);
-
-    // Filter out messages created before memberJoinedAt boundary
-    const messages = rawList.filter(
-      (msg) => !memberJoinedAt || (typeof msg.createdAt === 'number' && msg.createdAt >= memberJoinedAt)
-    );
-
-    const hitPreJoinBoundary = rawList.some(
-      (msg) => memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt
-    );
-
-    const meta = calculatePaginationMetadata(messages, pageSize);
-    return {
-      messages,
-      hasMore: meta.hasMore && !hitPreJoinBoundary,
-      oldestKey: meta.oldestKey,
-      newestKey: meta.newestKey,
-      count: messages.length,
-    };
   },
 
   /**
@@ -985,29 +1021,6 @@ export const chatService = {
       return { action: 'removed', emoji: validation.cleanEmoji };
     } else {
       await set(ref(rtdb, reactionPath), true);
-
-      // Phase 7B: Dispatch reaction notification to the message author
-      try {
-        const msg = await chatService.getMessage(workspaceId, activeChannelId, messageId);
-        const msgAuthorId = msg?.senderId || msg?.authorId;
-        if (msgAuthorId && msgAuthorId !== user.uid && !msg?.isSystem) {
-          inAppNotificationService.dispatchNotificationEvent(
-            NOTIFICATION_TYPES.CHAT_REACTION,
-            {
-              workspaceId,
-              channelId: activeChannelId,
-              messageId,
-              emoji: validation.cleanEmoji,
-              recipientId: msgAuthorId,
-              content: msg.content || '',
-            },
-            user
-          ).catch((e) => console.warn('[chatService] Reaction notification warning:', e));
-        }
-      } catch (err) {
-        console.warn('[chatService] Reaction notification error:', err?.message || err);
-      }
-
       return { action: 'added', emoji: validation.cleanEmoji };
     }
   },

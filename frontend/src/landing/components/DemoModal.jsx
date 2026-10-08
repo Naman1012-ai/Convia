@@ -27,7 +27,7 @@ export function DemoModal({ isOpen, onClose }) {
             </h3>
 
             <p className="text-xs text-slate-300 leading-relaxed font-medium">
-              Convia eliminates endless debate during hackathons by structuring proposal collection, community voting, AI blueprint generation, and Kanban sprint execution into one unified workflow.
+              Convia eliminates endless debate across product teams by structuring proposal collection, community voting, AI blueprint generation, and Kanban sprint execution into one unified workflow.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs font-semibold text-slate-200">

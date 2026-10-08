@@ -19,7 +19,7 @@ const TIMELINE_STEPS = [
     title: 'Create Workspace',
     icon: FolderPlus,
     short: 'Setup team hub',
-    detail: 'Initialize your dedicated hackathon workspace in seconds with custom limits and settings.',
+    detail: 'Initialize your dedicated team workspace in seconds with custom limits and settings.',
   },
   {
     num: 2,

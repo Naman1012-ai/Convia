@@ -1,6 +1,7 @@
 import { ref, update, increment } from 'firebase/database';
 import { rtdb } from '../config/firebase';
 import { rtdbService } from './rtdbService';
+import { apiClient } from './apiClient';
 
 // In-memory platform settings cache for instant zero-latency checks
 let cachedPlatformSettings = null;
@@ -92,7 +93,50 @@ export const voteService = {
     }
 
     const voteKey = `${ideaId}_${uid}`;
-    const ideaPath = isPublic ? `publicIdeas/${ideaId}` : `ideas/${orgId}/${ideaId}`;
+
+    // For public ideas: Route through authoritative server endpoint to protect idea metadata from unauthorized overwrites
+    if (isPublic) {
+      try {
+        const res = await apiClient.post(`/api/public-ideas/${ideaId}/vote`);
+        const resultData = res.data?.data || res.data || {};
+        const willVote = Boolean(resultData.voted);
+        return {
+          voted: willVote,
+          delta: willVote ? 1 : -1,
+          voteCount: resultData.voteCount,
+        };
+      } catch (apiErr) {
+        console.warn('[voteService] Public vote server endpoint fallback to isolated user vote write:', apiErr.message);
+        // Fallback: write only to user-isolated vote subtree without touching protected publicIdea node
+        let willVote;
+        if (currentHasVoted !== null && currentHasVoted !== undefined) {
+          willVote = !currentHasVoted;
+        } else {
+          const voteSnap = await rtdbService.getRtdbOnly(`votes/${voteKey}`);
+          willVote = !voteSnap;
+        }
+        const timestamp = Date.now();
+        if (willVote) {
+          await rtdbService.setData(`votes/${voteKey}`, {
+            voteId: voteKey,
+            ideaId,
+            orgId: null,
+            uid,
+            voteValue,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+        } else {
+          await rtdbService.removeData(`votes/${voteKey}`);
+        }
+        return {
+          voted: willVote,
+          delta: willVote ? 1 : -1,
+        };
+      }
+    }
+
+    const ideaPath = `ideas/${orgId}/${ideaId}`;
 
     try {
       // Determine target action (vote vs unvote)
@@ -131,7 +175,6 @@ export const voteService = {
 
       // Execute atomic RTDB write (~20-40ms)
       await update(ref(rtdb), updates);
-
 
       return {
         voted: willVote,

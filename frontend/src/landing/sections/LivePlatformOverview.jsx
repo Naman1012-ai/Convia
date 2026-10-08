@@ -4,26 +4,26 @@ import { Users, Globe, Briefcase, Trophy, CheckSquare, ThumbsUp, Activity } from
 
 export function LivePlatformOverview() {
   const [stats, setStats] = useState({
-    users: 1420,
-    publicIdeas: 340,
-    workspaces: 380,
-    mvps: 215,
-    tasks: 1850,
-    votes: 4920,
+    users: 0,
+    publicIdeas: 0,
+    workspaces: 0,
+    mvps: 0,
+    tasks: 0,
+    votes: 0,
   });
 
   useEffect(() => {
     // Single secure subscription to public aggregate node 'globalStats'
     const unsubscribe = rtdbService.subscribe('globalStats', (data) => {
       if (data && typeof data === 'object') {
-        setStats((prev) => ({
-          users: Number(data.totalUsers ?? data.users ?? prev.users),
-          publicIdeas: Number(data.totalPublicIdeas ?? data.publicIdeas ?? prev.publicIdeas),
-          workspaces: Number(data.totalWorkspaces ?? data.workspaces ?? prev.workspaces),
-          mvps: Number(data.totalMvps ?? data.mvps ?? prev.mvps),
-          tasks: Number(data.totalTasks ?? data.tasks ?? prev.tasks),
-          votes: Number(data.totalVotes ?? data.votes ?? prev.votes),
-        }));
+        setStats({
+          users: Number(data.totalUsers ?? data.users ?? 0),
+          publicIdeas: Number(data.totalPublicIdeas ?? data.publicIdeas ?? 0),
+          workspaces: Number(data.totalWorkspaces ?? data.workspaces ?? 0),
+          mvps: Number(data.totalMvps ?? data.mvps ?? 0),
+          tasks: Number(data.totalTasks ?? data.tasks ?? 0),
+          votes: Number(data.totalVotes ?? data.votes ?? 0),
+        });
       }
     });
 
@@ -55,7 +55,7 @@ export function LivePlatformOverview() {
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Powering real-time collaboration across thousands of hackathon participants and project teams.
+            Powering real-time collaboration for engineering teams, open-source communities, and agile builders.
           </p>
         </div>
 

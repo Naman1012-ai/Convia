@@ -3,6 +3,7 @@ import { pushDeliveryService } from './pushDeliveryService.js';
 import {
   NOTIFICATION_TYPES,
   createCanonicalNotification,
+  isPushNotificationAllowed,
 } from '../constants/notificationConstants.js';
 
 /**
@@ -45,10 +46,12 @@ export const notificationService = {
       const notifPath = `user_notifications/${recipientUid}/${notifId}`;
       await rtdbService.setData(notifPath, canonicalNotif);
 
-      // Trigger background push delivery (non-blocking)
-      pushDeliveryService.sendPushNotification(recipientUid, canonicalNotif).catch((e) =>
-        console.warn(`[notificationService] Push delivery warning for ${recipientUid}:`, e.message)
-      );
+      // Trigger background push delivery if push-eligible (non-blocking)
+      if (isPushNotificationAllowed(canonicalNotif?.type)) {
+        pushDeliveryService.sendPushNotification(recipientUid, canonicalNotif).catch((e) =>
+          console.warn(`[notificationService] Push delivery warning for ${recipientUid}:`, e.message)
+        );
+      }
 
       return canonicalNotif;
     } catch (err) {
@@ -93,8 +96,8 @@ export const notificationService = {
         await rtdbService.updateData('/', updates);
       }
 
-      // Asynchronously invoke batch push delivery for all recipients
-      if (createdList.length > 0) {
+      // Asynchronously invoke batch push delivery for all recipients if push-eligible
+      if (createdList.length > 0 && isPushNotificationAllowed(createdList[0]?.type)) {
         const sampleNotif = createdList[0];
         pushDeliveryService.sendPushNotifications(validUids, sampleNotif).catch((pushErr) => {
           console.warn('[notificationService] Batch push delivery warning:', pushErr?.message);

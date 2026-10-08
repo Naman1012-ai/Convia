@@ -1,4 +1,4 @@
-import { CHAR_LIMITS } from '../config/constants';
+import { CHAR_LIMITS } from '../config/constants.js';
 
 /**
  * Validates text input length and presence against business rules.
@@ -165,5 +165,31 @@ export function validateEmail(email) {
     return { valid: false, error: 'Please enter a valid email address.' };
   }
   return { valid: true };
+}
+
+export function validateUsername(username, required = true) {
+  if (!username || typeof username !== 'string') {
+    if (required) {
+      return { valid: false, error: 'Username is required.' };
+    }
+    return { valid: true, value: '' };
+  }
+  const cleaned = username.trim().replace(/^@/, '').toLowerCase();
+  if (required && cleaned.length === 0) {
+    return { valid: false, error: 'Username is required.' };
+  }
+  if (cleaned.length > 0 && cleaned.length < 3) {
+    return { valid: false, error: 'Username must be at least 3 characters.' };
+  }
+  if (cleaned.length > 30) {
+    return { valid: false, error: 'Username must be 30 characters or fewer.' };
+  }
+  if (cleaned.length > 0 && !/^[a-z0-9_]+$/.test(cleaned)) {
+    return {
+      valid: false,
+      error: 'Username can only contain letters, numbers, and underscores.',
+    };
+  }
+  return { valid: true, value: cleaned };
 }
 

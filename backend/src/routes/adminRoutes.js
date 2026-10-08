@@ -786,25 +786,88 @@ adminRouter.delete('/workspaces/:workspaceId', async (req, res) => {
 // =========================================================================
 
 /**
+ * GET /api/admin/reports
+ */
+adminRouter.get('/reports', async (req, res) => {
+  try {
+    const reportsMap = await rtdbService.getData('reports');
+    const reportsList = reportsMap ? Object.values(reportsMap).filter(Boolean) : [];
+    reportsList.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    return res.json({
+      success: true,
+      data: reportsList,
+    });
+  } catch (error) {
+    console.error('🚨 [adminRoutes] GET reports error:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'REPORTS_FETCH_ERROR', message: 'Failed to retrieve reports.' },
+    });
+  }
+});
+
+/**
+ * GET /api/admin/reports/:reportId
+ */
+adminRouter.get('/reports/:reportId', async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const reportData = await rtdbService.getData(`reports/${reportId}`);
+    if (!reportData) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'REPORT_NOT_FOUND', message: 'Report not found.' },
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: reportData,
+    });
+  } catch (error) {
+    console.error('🚨 [adminRoutes] GET report detail error:', error.message);
+    return res.status(500).json({
+      success: false,
+      error: { code: 'REPORT_DETAIL_ERROR', message: 'Failed to retrieve report detail.' },
+    });
+  }
+});
+
+/**
  * PATCH /api/admin/reports/:reportId/status
  */
 adminRouter.patch('/reports/:reportId/status', async (req, res) => {
   try {
     const { reportId } = req.params;
-    const { newStatus, targetUid } = req.body;
+    const { newStatus, targetUid, resolutionNotes } = req.body;
 
-    if (!reportId || !newStatus) {
+    const VALID_STATUSES = ['OPEN', 'IN_REVIEW', 'RESOLVED', 'CLOSED', 'REOPENED', 'DISMISSED'];
+    if (!reportId || !newStatus || !VALID_STATUSES.includes(newStatus)) {
       return res.status(400).json({
         success: false,
-        error: { code: 'INVALID_PARAMS', message: 'Report ID and new status are required.' },
+        error: { code: 'INVALID_PARAMS', message: 'Report ID and a valid status are required.' },
       });
     }
 
     const timestamp = Date.now();
+    const adminIdentifier = req.user.name || req.user.email || 'Convia Admin';
     const updates = {
       status: newStatus,
       updatedAt: timestamp,
     };
+
+    if (resolutionNotes !== undefined && resolutionNotes !== null) {
+      updates.resolutionNotes = String(resolutionNotes).trim();
+    }
+
+    if (newStatus === 'RESOLVED' || newStatus === 'CLOSED') {
+      updates.resolvedAt = timestamp;
+      updates.resolvedBy = adminIdentifier;
+    } else if (newStatus === 'REOPENED') {
+      updates.reopenedAt = timestamp;
+      updates.reopenedBy = adminIdentifier;
+    }
 
     await Promise.all([
       rtdbService.updateData(`reports/${reportId}`, updates),
@@ -813,13 +876,17 @@ adminRouter.patch('/reports/:reportId/status', async (req, res) => {
 
     if (targetUid) {
       const notifId = `notif_${Date.now()}`;
+      let notifBody = `Your issue report (${reportId}) status has been updated to "${newStatus}".`;
+      if (resolutionNotes && (newStatus === 'RESOLVED' || newStatus === 'CLOSED')) {
+        notifBody += ` Note: ${resolutionNotes}`;
+      }
       await notificationService.createNotification(targetUid, {
         notificationId: notifId,
         type: NOTIFICATION_TYPES.ADMIN_BROADCAST,
-        title: 'Report Status Updated',
-        body: `Your issue report (${reportId}) status has been updated to "${newStatus}".`,
+        title: `Report Status: ${newStatus}`,
+        body: notifBody,
         actorId: 'system',
-        actorName: req.user.name || req.user.email || 'Convia Admin',
+        actorName: adminIdentifier,
         resourceType: 'report',
         resourceId: reportId,
         actionUrl: '/dashboard',
@@ -827,11 +894,13 @@ adminRouter.patch('/reports/:reportId/status', async (req, res) => {
       });
     }
 
-    await logAdminAudit(req.user, 'UPDATE_REPORT_STATUS', reportId, `Updated status to "${newStatus}"`);
+    const auditDetail = `Updated status to "${newStatus}"${resolutionNotes ? ` with resolution note: "${resolutionNotes}"` : ''}`;
+    await logAdminAudit(req.user, 'UPDATE_REPORT_STATUS', reportId, auditDetail);
 
     return res.json({
       success: true,
       message: 'Report status updated successfully.',
+      data: updates,
     });
   } catch (error) {
     console.error('🚨 [adminRoutes] Update report status error:', error.message);

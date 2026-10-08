@@ -4,13 +4,13 @@ import { Check, Sparkles, Zap, ShieldCheck, ArrowRight } from 'lucide-react';
 
 const PRICING_PLANS = [
   {
-    name: 'Hackathon & Student Plan',
+    name: 'Free Developer Plan',
     price: '$0',
     period: 'Always Free',
     badge: 'Popular',
-    desc: 'Everything you need to turn raw ideas into winning hackathon MVPs.',
+    desc: 'Everything you need to turn raw ideas into actionable technical MVPs.',
     features: [
-      'Unlimited Hackathon Workspaces',
+      'Team Workspaces',
       'Real-Time Ideation & Upvoting',
       'AI Technical PRD & Schema Engine',
       'Auto-Populated Kanban Sprint Tasks',
@@ -68,7 +68,7 @@ export function PricingPreparationSection() {
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Convia is 100% free for hackathons and student teams. Advanced enterprise plans are coming soon.
+            Convia is 100% free for developers and agile teams. Advanced enterprise plans are coming soon.
           </p>
         </div>
 

@@ -20,7 +20,7 @@ const COMPREHENSIVE_FAQS = [
   },
   {
     q: 'Is Convia free to use?',
-    a: 'Yes, Convia offers free workspaces for teams, open-source contributors, student projects, and hackathon participants with full real-time collaboration features.',
+    a: 'Yes, Convia offers free workspaces for product teams, open-source contributors, student projects, and developer communities with full real-time collaboration features.',
   },
   {
     q: 'Can my entire team collaborate simultaneously?',

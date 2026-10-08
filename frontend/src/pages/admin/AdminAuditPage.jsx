@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Clock,
   Shield,
+  ShieldCheck,
   FileText,
 } from 'lucide-react';
 

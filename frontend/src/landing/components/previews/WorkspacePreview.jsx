@@ -12,12 +12,12 @@ export function WorkspacePreview() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h4 className="text-base font-extrabold text-white">Hackathon Alpha Workspace</h4>
+              <h4 className="text-base font-extrabold text-white">Engineering Sprint Workspace</h4>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-primary-500/20 text-primary-300 border border-primary-500/30">
-                Code: HACK26
+                Code: CONV26
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">Project Lead: Naman (Owner)</p>
+            <p className="text-xs text-slate-400 font-medium">Project Lead: Team Lead (Owner)</p>
           </div>
         </div>
 

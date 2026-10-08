@@ -57,7 +57,7 @@ export function FeaturesSection() {
             </span>
           </h2>
           <p className="text-base text-slate-400 font-medium">
-            Designed specifically to solve hackathon team indecision, scattered notes, and delayed project starts.
+            Designed specifically to solve team indecision, scattered notes, and delayed project starts.
           </p>
         </div>
 

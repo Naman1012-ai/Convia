@@ -21,7 +21,7 @@ export function CommunityCtaSection() {
             </h2>
 
             <p className="text-base sm:text-lg text-slate-300 font-medium max-w-xl mx-auto">
-              Transform your next hackathon project from brainstorm to blueprint in minutes.
+              Transform your next team project from brainstorm to blueprint in minutes.
             </p>
           </div>
 

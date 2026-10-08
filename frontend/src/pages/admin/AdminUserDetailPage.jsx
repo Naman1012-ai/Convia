@@ -34,6 +34,8 @@ import {
   Clock,
   Send,
   Lock,
+  Sparkles,
+  UserPlus,
 } from 'lucide-react';
 
 export default function AdminUserDetailPage() {
@@ -76,7 +78,7 @@ export default function AdminUserDetailPage() {
     );
   }
 
-  const { user: profileUser, stats, workspaces, ideas, tasks, timeline, notes, warnings, auditLogs } = data;
+  const { user: profileUser, stats, workspaces, ideas, tasks, blueprints = [], invitations = [], timeline, notes, warnings, auditLogs } = data;
   const isSuspended = profileUser.isSuspended;
 
   const handleCopyUid = () => {
@@ -219,8 +221,12 @@ export default function AdminUserDetailPage() {
 
               <p className="text-xs text-slate-400 font-mono">{profileUser.email}</p>
 
-              <div className="flex items-center gap-3 text-[11px] font-mono text-slate-500 pt-1">
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono text-slate-500 pt-1">
                 <span>Joined {formatTimestamp(profileUser.joinedAt)}</span>
+                <span>·</span>
+                <span className="text-slate-300 font-bold">
+                  Last Login: {profileUser.lastLoginAt ? formatTimestamp(profileUser.lastLoginAt) : 'Never logged in / legacy account'}
+                </span>
                 <span>·</span>
                 <button
                   onClick={handleCopyUid}
@@ -301,10 +307,12 @@ export default function AdminUserDetailPage() {
       {/* Navigation Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
         {[
-          { id: 'timeline', label: 'Activity Timeline', icon: Activity },
+          { id: 'timeline', label: `Activity Timeline (${timeline.length})`, icon: Activity },
           { id: 'workspaces', label: `Workspaces (${workspaces.length})`, icon: Briefcase },
           { id: 'ideas', label: `Proposals (${ideas.length})`, icon: Lightbulb },
           { id: 'tasks', label: `Developer Tasks (${tasks.length})`, icon: CheckSquare },
+          { id: 'blueprints', label: `AI Blueprints (${blueprints.length})`, icon: Sparkles },
+          { id: 'invitations', label: `Invitations (${invitations.length})`, icon: UserPlus },
           { id: 'notes', label: `Admin Notes & Warnings (${notes.length + warnings.length})`, icon: FileText },
           { id: 'moderation', label: `Audit Log (${auditLogs.length})`, icon: Lock },
         ].map((tab) => {
@@ -330,23 +338,37 @@ export default function AdminUserDetailPage() {
       {/* Tab 1: Activity Timeline */}
       {activeTab === 'timeline' && (
         <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4">
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Activity className="h-4 w-4 text-purple-400" /> Chronological User Activity Stream
-          </h3>
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
+              <Activity className="h-4 w-4 text-purple-400" /> Chronological User Activity Stream
+            </h3>
+            <Badge variant="default" className="bg-purple-950 text-purple-300 border border-purple-800 text-[10px] font-mono">
+              {timeline.length} Historical Events
+            </Badge>
+          </div>
 
           {timeline.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-500 italic">No activity recorded for this user.</div>
+            <div className="text-center py-12 text-xs text-slate-500 italic bg-slate-950/50 rounded-xl border border-dashed border-slate-800">
+              No historical activity events recorded for this user yet.
+            </div>
           ) : (
             <div className="space-y-3">
               {timeline.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                <div key={item.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-850 text-purple-400">
+                    <div className="p-2 rounded-lg bg-slate-850 text-purple-400 shrink-0">
                       <Clock className="h-3.5 w-3.5" />
                     </div>
-                    <span className="font-bold text-slate-200">{item.title}</span>
+                    <div>
+                      <span className="font-bold text-slate-200">{item.title}</span>
+                      {item.workspaceId && (
+                        <span className="ml-2 font-mono text-[10px] bg-slate-900 text-purple-300 px-2 py-0.5 rounded border border-purple-900/40">
+                          Workspace: {workspaces.find((w) => w.orgId === item.workspaceId)?.name || item.workspaceId}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="font-mono text-slate-400 text-[11px]">{formatTimestamp(item.timestamp)}</span>
+                  <span className="font-mono text-slate-400 text-[11px] shrink-0">{formatTimestamp(item.timestamp)}</span>
                 </div>
               ))}
             </div>
@@ -408,24 +430,98 @@ export default function AdminUserDetailPage() {
       {activeTab === 'tasks' && (
         <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4">
           <h3 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <CheckSquare className="h-4 w-4 text-emerald-400" /> Sprint Tasks Assigned
+            <CheckSquare className="h-4 w-4 text-emerald-400" /> Sprint Tasks ({tasks.length})
           </h3>
 
-          <div className="space-y-3">
-            {tasks.map((t) => (
-              <div key={t.taskId} className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-sm text-white">{t.title}</h4>
-                  <p className="text-xs text-slate-400">Priority: {t.priority || 'Medium'} · Due: {t.dueDate ? formatTimestamp(t.dueDate) : 'No deadline'}</p>
+          {tasks.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 italic">No tasks created or assigned for this user.</div>
+          ) : (
+            <div className="space-y-3">
+              {tasks.map((t) => (
+                <div key={t.taskId} className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-sm text-white">{t.title}</h4>
+                    <p className="text-xs text-slate-400">Priority: {t.priority || 'Medium'} · Due: {t.dueDate ? formatTimestamp(t.dueDate) : 'No deadline'}</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    t.status === 'Completed' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
+                  }`}>
+                    {t.status}
+                  </span>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                  t.status === 'Completed' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'
-                }`}>
-                  {t.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: AI Blueprints */}
+      {activeTab === 'blueprints' && (
+        <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <Sparkles className="h-4 w-4 text-purple-400" /> AI Blueprint Generations ({blueprints.length})
+          </h3>
+
+          {blueprints.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 italic">No AI blueprints associated with this user.</div>
+          ) : (
+            <div className="space-y-3">
+              {blueprints.map((bp) => (
+                <div key={bp.blueprintId || bp.updatedAt} className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-sm text-white">{bp.ideaTitle || 'Workspace Blueprint'}</h4>
+                    <p className="text-xs text-slate-400">
+                      Model: {bp.aiModel || 'gemini-2.0-flash'} · Version: v{bp.version || '1.0'} · Updated {formatTimestamp(bp.generationCompletedAt || bp.updatedAt || bp.createdAt)}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    bp.status === 'completed'
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                      : bp.status === 'failed'
+                      ? 'bg-rose-950 text-rose-300 border border-rose-800'
+                      : 'bg-purple-950 text-purple-300 border border-purple-800'
+                  }`}>
+                    {bp.status || 'Generated'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* Tab: Invitations */}
+      {activeTab === 'invitations' && (
+        <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4">
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-white flex items-center gap-2 border-b border-slate-800 pb-3">
+            <UserPlus className="h-4 w-4 text-purple-400" /> Workspace Invitations ({invitations.length})
+          </h3>
+
+          {invitations.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 italic">No invitations sent or received by this user.</div>
+          ) : (
+            <div className="space-y-3">
+              {invitations.map((inv) => (
+                <div key={inv.invitationId || inv.inviteCode || inv.createdAt} className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-sm text-white">To: {inv.invitedEmail || 'Team Member'}</h4>
+                    <p className="text-xs text-slate-400">
+                      Code: <span className="font-mono text-purple-300">{inv.inviteCode || 'N/A'}</span> · Role: {inv.role || 'member'} · Sent {formatTimestamp(inv.createdAt)}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    inv.status === 'accepted'
+                      ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                      : inv.status === 'expired'
+                      ? 'bg-slate-800 text-slate-400'
+                      : 'bg-amber-950 text-amber-300 border border-amber-800'
+                  }`}>
+                    {inv.status || 'Pending'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 

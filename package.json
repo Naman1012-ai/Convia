@@ -6,7 +6,8 @@
     "build": "npm run build --prefix frontend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "node --watch backend/src/index.js",
-    "build:frontend": "npm run build --prefix frontend"
+    "build:frontend": "npm run build --prefix frontend",
+    "get-token": "node generate-token.js"
   },
   "dependencies": {
     "@google/genai": "^2.16.0",

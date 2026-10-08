@@ -28,37 +28,6 @@ export function LandingFooter() {
             <p className="text-xs text-slate-300 font-medium leading-relaxed max-w-sm">
               Where Ideas Converge into Action. Convia brings together scattered ideas, team discussion, weighted voting, and instant AI technical blueprints into a single actionable direction.
             </p>
-
-            {/* Social Icons */}
-            <div className="flex items-center gap-3 pt-2">
-              <a
-                href="https://github.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
-                aria-label="GitHub Repository"
-              >
-                <Github className="h-4 w-4" />
-              </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
-                aria-label="Twitter Profile"
-              >
-                <Twitter className="h-4 w-4" />
-              </a>
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-primary-500/40 transition-all"
-                aria-label="LinkedIn Profile"
-              >
-                <Linkedin className="h-4 w-4" />
-              </a>
-            </div>
           </div>
 
           {/* Navigation Links aligned with Landing Page sequence */}

@@ -32,11 +32,11 @@ export function MvpPreview() {
 
         <h5 className="text-base font-extrabold text-white">Convia Real-Time AI Code Synthesizer</h5>
         <p className="text-xs text-slate-300 leading-relaxed font-medium">
-          An interactive web surface enabling hackathon teams to submit problem statements, upvote top concepts, and generate technical PRDs instantly.
+          An interactive web surface enabling product teams to submit problem statements, upvote top concepts, and generate technical PRDs instantly.
         </p>
 
         <div className="flex items-center gap-2 pt-2 text-[11px] font-mono text-slate-400 border-t border-primary-900/40">
-          <span>Author: <strong>Alex Chen</strong></span>
+          <span>Author: <strong>Alex C. (Team Member)</strong></span>
           <span>&bull;</span>
           <span className="text-emerald-400 font-bold">Approved by Workspace Lead</span>
         </div>

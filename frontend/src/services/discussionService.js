@@ -9,6 +9,7 @@ import { inAppNotificationService } from './inAppNotificationService';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 import { activityService } from './activityService';
 import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants';
+import { apiClient } from './apiClient';
 
 /**
  * Service Layer for Unified Discussion System (Comments, Suggestions, Questions, Replies).
@@ -404,9 +405,17 @@ export const discussionService = {
         }
       });
 
-      const ideaPath = isPublic || !orgId
-        ? `publicIdeas/${ideaId}`
-        : `ideas/${orgId}/${ideaId}`;
+      if (isPublic || !orgId) {
+        // Authoritative server-side sync to preserve immutable aggregate counters on public idea
+        try {
+          await apiClient.post(`/api/public-ideas/${ideaId}/sync-counters`);
+        } catch (apiErr) {
+          console.warn('[discussionService] Public counters server sync warning:', apiErr.message);
+        }
+        return;
+      }
+
+      const ideaPath = `ideas/${orgId}/${ideaId}`;
 
       await rtdbService.updateData(ideaPath, {
         commentCount,

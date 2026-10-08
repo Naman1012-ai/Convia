@@ -38,3 +38,5 @@ database.rules.json
 firebase.json
 skills-lock.json
 fFIREBASE_PRIVATE KEY.json
+generate-token.js
+.prettierrc

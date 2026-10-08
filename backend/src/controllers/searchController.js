@@ -265,8 +265,10 @@ export const searchController = {
               Object.entries(rawMessages).forEach(([msgId, msg]) => {
                 if (!msg || typeof msg !== 'object' || msg.deleted || msg.isSystem) return;
 
-                // Enforce join-time-based chat history access control
-                if (!isOwner && memberJoinedAt && typeof msg.createdAt === 'number' && msg.createdAt < memberJoinedAt) {
+                // Enforce join-time-based chat history access control (accounting for rejoining and roles)
+                const isPrivileged = Boolean(isOwner || membership.isTeamCaptain || membership.isSecondOwner || membership.role === 'team_captain' || membership.role === 'admin');
+                const effectiveJoinedAt = membership.memberRecord?.rejoinedAt || memberJoinedAt || 0;
+                if (!isPrivileged && typeof msg.createdAt === 'number' && msg.createdAt < effectiveJoinedAt) {
                   return;
                 }
 

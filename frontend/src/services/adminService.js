@@ -1215,6 +1215,7 @@ export const adminService = {
           ...u,
           role: u.role || (u.isAdmin ? 'superadmin' : 'user'),
           status: u.isSuspended ? 'Suspended' : u.onlineStatus === 'online' ? 'Active' : 'Offline',
+          lastLoginAt: u.lastLoginAt || null,
           totalWorkspaces: userWorkspaces.length,
           totalIdeas: userIdeas.length,
           totalTasks: userTasks.length,
@@ -1267,6 +1268,9 @@ export const adminService = {
     let ideasData = {};
     let publicIdeasData = {};
     let tasksData = {};
+    let blueprintsData = {};
+    let invitationsData = {};
+    let workspaceActivityData = {};
     let notesData = {};
     let warningsData = {};
     let auditData = {};
@@ -1295,7 +1299,7 @@ export const adminService = {
       let userTasks = [];
       tasksMapList.forEach((map) => {
         if (map) {
-          userTasks.push(...Object.values(map).filter((t) => t && !t.isDeleted && (t.assigneeId === userId || t.assignedTo === userId)));
+          userTasks.push(...Object.values(map).filter((t) => t && !t.isDeleted && (t.assigneeId === userId || t.assignedTo === userId || t.createdBy === userId)));
         }
       });
 
@@ -1304,26 +1308,116 @@ export const adminService = {
         return o.members && o.members[userId];
       });
 
+      // AI Blueprints for user's workspaces
+      let userBlueprints = [];
+      Object.entries(blueprintsData || {}).forEach(([orgId, wsObj]) => {
+        if (wsObj && typeof wsObj === 'object') {
+          const isUserWs = userWorkspaces.some((w) => w.orgId === orgId);
+          Object.values(wsObj).forEach((bp) => {
+            if (bp && typeof bp === 'object' && (bp.blueprintId || bp.status || bp.content || bp.ideaTitle)) {
+              if (isUserWs || bp.authorId === userId || bp.createdBy === userId) {
+                userBlueprints.push({ ...bp, orgId });
+              }
+            }
+          });
+        }
+      });
+
+      // Invitations sent or received by user
+      let userInvitations = [];
+      Object.values(invitationsData || {}).forEach((inv) => {
+        if (inv && (inv.invitedBy === userId || inv.creatorUid === userId || inv.invitedEmail === userData.email)) {
+          userInvitations.push(inv);
+        }
+      });
+
+      // Timeline compilation
       const timeline = [];
+
+      // 1. Account Created
       if (userData.joinedAt) {
         timeline.push({ id: `t_join`, type: 'registered', title: 'User Account Created', timestamp: userData.joinedAt });
       }
+
+      // 2. Last Login Event (distinguished from current presence)
+      if (userData.lastLoginAt) {
+        timeline.push({ id: `t_login_${userData.lastLoginAt}`, type: 'login', title: 'Last Successful Login', timestamp: userData.lastLoginAt });
+      }
+
+      // 3. Workspaces Created / Joined
       userWorkspaces.forEach((w) => {
         const isCreator = userId === (w.createdBy || w.ownerId);
         const memberJoined = w.members?.[userId]?.joinedAt;
         const wsTimestamp = isCreator ? w.createdAt : (memberJoined || w.createdAt);
         const title = isCreator ? `Created Workspace "${w.name}"` : `Joined Workspace "${w.name}"`;
-        timeline.push({ id: `t_w_${w.orgId}`, type: isCreator ? 'workspace_created' : 'workspace_joined', title, timestamp: wsTimestamp });
+        timeline.push({ id: `t_w_${w.orgId}`, type: isCreator ? 'workspace_created' : 'workspace_joined', title, timestamp: wsTimestamp, workspaceId: w.orgId });
       });
+
+      // 4. Proposals Authored & MVP selections
       userIdeas.forEach((i) => {
-        timeline.push({ id: `t_i_${i.ideaId}`, type: i.isSelected ? 'mvp_selected' : 'idea_posted', title: i.isSelected ? `MVP Selected: "${i.title}"` : `Proposed Idea: "${i.title}"`, timestamp: i.createdAt });
+        timeline.push({
+          id: `t_i_${i.ideaId}`,
+          type: i.isSelected ? 'mvp_selected' : 'idea_posted',
+          title: i.isSelected ? `MVP Selected: "${i.title}"` : `Proposed Idea: "${i.title}"`,
+          timestamp: i.createdAt,
+          workspaceId: i.orgId || null,
+        });
       });
+
+      // 5. Tasks created / completed
       userTasks.forEach((t) => {
         if (t.status === 'Completed') {
-          timeline.push({ id: `t_t_${t.taskId}`, type: 'task_completed', title: `Completed Task: "${t.title}"`, timestamp: t.updatedAt || t.createdAt });
+          timeline.push({ id: `t_t_comp_${t.taskId}`, type: 'task_completed', title: `Completed Task: "${t.title}"`, timestamp: t.completedAt || t.updatedAt || t.createdAt, workspaceId: t.orgId });
+        } else if (t.createdBy === userId) {
+          timeline.push({ id: `t_t_create_${t.taskId}`, type: 'task_created', title: `Created Task: "${t.title}"`, timestamp: t.createdAt, workspaceId: t.orgId });
         }
       });
-      timeline.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      // 6. Blueprints generated or approved
+      userBlueprints.forEach((bp) => {
+        const bpTime = bp.generationCompletedAt || bp.updatedAt || bp.createdAt;
+        if (bpTime) {
+          timeline.push({
+            id: `t_bp_${bp.blueprintId || bpTime}`,
+            type: bp.status === 'completed' ? 'blueprint_generated' : bp.status === 'failed' ? 'blueprint_failed' : 'blueprint_activity',
+            title: bp.status === 'completed'
+              ? `Generated AI Blueprint for "${bp.ideaTitle || 'Project'}" (v${bp.version || '1.0'})`
+              : bp.status === 'failed'
+              ? `AI Blueprint Generation Failed for "${bp.ideaTitle || 'Project'}"`
+              : `AI Blueprint Updated for "${bp.ideaTitle || 'Project'}"`,
+            timestamp: bpTime,
+            workspaceId: bp.orgId,
+          });
+        }
+      });
+
+      // 7. Workspace Activity events where user was actor
+      Object.entries(workspaceActivityData || {}).forEach(([orgId, actMap]) => {
+        if (actMap && typeof actMap === 'object') {
+          Object.values(actMap).forEach((event) => {
+            if (event && event.actorId === userId && event.id) {
+              timeline.push({
+                id: `t_act_${event.id}`,
+                type: event.eventType ? event.eventType.replace(/\./g, '_') : 'workspace_activity',
+                title: event.summary || `Activity in Workspace: ${event.eventType}`,
+                timestamp: event.createdAt,
+                workspaceId: orgId,
+              });
+            }
+          });
+        }
+      });
+
+      // 8. Deduplicate timeline by unique id & sort newest first
+      const seenTimelineIds = new Set();
+      const dedupedTimeline = [];
+      timeline.forEach((item) => {
+        if (item.id && !seenTimelineIds.has(item.id)) {
+          seenTimelineIds.add(item.id);
+          dedupedTimeline.push(item);
+        }
+      });
+      dedupedTimeline.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       const notes = Object.values(notesData || {}).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       const warnings = Object.values(warningsData || {}).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -1338,6 +1432,7 @@ export const adminService = {
           ...userData,
           role: userData.role || (userData.isAdmin ? 'superadmin' : 'user'),
           status: userData.isSuspended ? 'Suspended' : userData.onlineStatus === 'online' ? 'Active' : 'Offline',
+          lastLoginAt: userData.lastLoginAt || null,
         },
         stats: {
           totalWorkspaces: userWorkspaces.length,
@@ -1349,11 +1444,15 @@ export const adminService = {
           totalTasks: userTasks.length,
           completedTasks: completedTasks.length,
           completionRate: userTasks.length > 0 ? Math.round((completedTasks.length / userTasks.length) * 100) : 0,
+          totalBlueprints: userBlueprints.length,
+          totalInvitations: userInvitations.length,
         },
         workspaces: userWorkspaces,
         ideas: userIdeas,
         tasks: userTasks,
-        timeline,
+        blueprints: userBlueprints,
+        invitations: userInvitations,
+        timeline: dedupedTimeline,
         notes,
         warnings,
         auditLogs,
@@ -1380,6 +1479,18 @@ export const adminService = {
       tasksData = data || {};
       computeAndEmit();
     });
+    const unsubBlueprints = rtdbService.subscribe('blueprints', (data) => {
+      blueprintsData = data || {};
+      computeAndEmit();
+    });
+    const unsubInvitations = rtdbService.subscribe('invitations', (data) => {
+      invitationsData = data || {};
+      computeAndEmit();
+    });
+    const unsubActivity = rtdbService.subscribe('workspace_activity', (data) => {
+      workspaceActivityData = data || {};
+      computeAndEmit();
+    });
     const unsubNotes = rtdbService.subscribe(`user_admin_notes/${userId}`, (data) => {
       notesData = data || {};
       computeAndEmit();
@@ -1399,6 +1510,9 @@ export const adminService = {
       unsubIdeas,
       unsubPublicIdeas,
       unsubTasks,
+      unsubBlueprints,
+      unsubInvitations,
+      unsubActivity,
       unsubNotes,
       unsubWarnings,
       unsubAudit,
@@ -1462,8 +1576,29 @@ export const adminService = {
   /**
    * Update Report Status (Admin Only)
    */
-  updateReportStatus: async (reportId, newStatus, targetUid) => {
+  updateReportStatus: async (reportId, newStatus, targetUid, resolutionNotes = null) => {
     if (!reportId || !newStatus) return;
-    return await apiClient.patch(`/api/admin/reports/${reportId}/status`, { newStatus, targetUid });
+    return await apiClient.patch(`/api/admin/reports/${reportId}/status`, {
+      newStatus,
+      targetUid,
+      resolutionNotes,
+    });
+  },
+
+  /**
+   * Fetch All Reports (Admin Only) via Server-Authoritative API
+   */
+  getAllReports: async () => {
+    const res = await apiClient.get('/api/admin/reports');
+    return res.data?.data || res.data || [];
+  },
+
+  /**
+   * Fetch Single Report Detail (Admin Only) via Server-Authoritative API
+   */
+  getReportDetail: async (reportId) => {
+    if (!reportId) return null;
+    const res = await apiClient.get(`/api/admin/reports/${reportId}`);
+    return res.data?.data || res.data || null;
   },
 };

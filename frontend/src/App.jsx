@@ -45,6 +45,7 @@ const ContactEngineeringPage = lazy(() => import('./pages/legal/ContactEngineeri
 const SignUpPage = lazy(() => import('./pages/auth/SignUpPage'));
 const SignInPage = lazy(() => import('./pages/auth/SignInPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
+const ProfileSetupPage = lazy(() => import('./pages/auth/ProfileSetupPage'));
 const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
 const ExploreIdeasPage = lazy(() => import('./pages/explore/ExploreIdeasPage'));
 const CommunityPage = lazy(() => import('./pages/community/CommunityPage'));
@@ -128,6 +129,7 @@ export function App() {
 
               {/* Authenticated Protected Routes */}
               <Route element={<AuthGuard />}>
+                <Route path="/setup-profile" element={<ProfileSetupPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/explore" element={<ExploreIdeasPage />} />

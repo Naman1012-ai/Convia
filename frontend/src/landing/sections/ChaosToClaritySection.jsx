@@ -57,7 +57,7 @@ export function ChaosToClaritySection() {
             </div>
 
             <div className="pt-2 text-center text-xs font-mono text-rose-400 font-bold">
-              Result: Rushed coding, bugs, & missed hackathon deadline
+              Result: Rushed coding, bugs, & missed project launch deadline
             </div>
           </div>
 

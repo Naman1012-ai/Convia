@@ -9,6 +9,7 @@ import {
 import {
   NOTIFICATION_TYPES,
   createCanonicalNotification,
+  isPushNotificationAllowed,
 } from '../constants/notificationConstants';
 
 /**
@@ -348,13 +349,15 @@ export const inAppNotificationService = {
       const notifRef = ref(rtdb, getUserNotificationsPath(recipientUid, notifId));
       await set(notifRef, canonical);
 
-      // Asynchronously trigger server-side FCM push delivery (non-blocking)
-      apiClient.post('/api/notifications/fcm/send-push', {
-        recipientUids: [recipientUid],
-        notification: canonical,
-      }).catch((pushErr) => {
-        console.warn('[inAppNotificationService] FCM push delivery skipped or failed:', pushErr?.message || pushErr);
-      });
+      // Asynchronously trigger server-side FCM push delivery if push-eligible (non-blocking)
+      if (isPushNotificationAllowed(canonical.type)) {
+        apiClient.post('/api/notifications/fcm/send-push', {
+          recipientUids: [recipientUid],
+          notification: canonical,
+        }).catch((pushErr) => {
+          console.warn('[inAppNotificationService] FCM push delivery skipped or failed:', pushErr?.message || pushErr);
+        });
+      }
 
       return canonical;
     } catch (err) {
@@ -408,8 +411,8 @@ export const inAppNotificationService = {
         }
       }
 
-      // Asynchronously trigger server-side FCM push delivery for all recipients (non-blocking)
-      if (createdList.length > 0) {
+      // Asynchronously trigger server-side FCM push delivery for all recipients if push-eligible (non-blocking)
+      if (createdList.length > 0 && isPushNotificationAllowed(createdList[0]?.type)) {
         const sampleCanonical = createdList[0];
         apiClient.post('/api/notifications/fcm/send-push', {
           recipientUids: validUids,

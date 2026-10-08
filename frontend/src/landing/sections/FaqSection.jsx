@@ -3,8 +3,8 @@ import { ChevronDown, HelpCircle } from 'lucide-react';
 
 const FAQS = [
   {
-    q: 'Is Convia free to use for hackathons and student teams?',
-    a: 'Yes! Convia is 100% free for hackathon participants, student builder teams, and open-source contributors. You can create unlimited workspaces and proposals.',
+    q: 'Is Convia free to use for developer teams?',
+    a: 'Yes! Convia is 100% free for developers, engineering teams, and open-source contributors. You can create workspaces and proposals with zero friction.',
   },
   {
     q: 'How does the AI Technical Blueprint Generator work?',
@@ -15,8 +15,8 @@ const FAQS = [
     a: 'Absolutely. You can share your workspace Join Code or invite teammates directly via email. Workspace owners have full administrative controls over member roles and permissions.',
   },
   {
-    q: 'What happens to our project data after the hackathon ends?',
-    a: 'All project data, ideas, blueprints, tasks, and telemetry remain permanently saved in your workspace. You can export your data anytime or convert your MVP into an ongoing open-source repository or startup project.',
+    q: 'What happens to our project data when a sprint ends?',
+    a: 'All project data, ideas, blueprints, tasks, and telemetry remain permanently saved in your workspace. You can export your data anytime or convert your MVP into an ongoing open-source repository or product project.',
   },
   {
     q: 'Can I explore public ideas from other builders?',

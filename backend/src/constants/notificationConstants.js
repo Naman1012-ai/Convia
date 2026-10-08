@@ -64,6 +64,31 @@ export const NOTIFICATION_CATEGORIES = {
   SYSTEM: 'system',
 };
 
+/**
+ * Authoritative set of notification types permitted to trigger FCM browser push notifications.
+ * All other notification types are either IN-APP ONLY or suppressed from notification systems.
+ */
+export const PUSH_ALLOWED_NOTIFICATION_TYPES = new Set([
+  NOTIFICATION_TYPES.CHAT_MENTION,
+  NOTIFICATION_TYPES.MENTION,
+  NOTIFICATION_TYPES.BLUEPRINT_FAILED,
+  NOTIFICATION_TYPES.BLUEPRINT_VERSION_APPROVED,
+  'BLUEPRINT_APPROVED',
+  NOTIFICATION_TYPES.TASK_ASSIGNED,
+  NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+  'MEMBER_INVITED',
+  NOTIFICATION_TYPES.ADMIN_BROADCAST,
+]);
+
+/**
+ * Checks whether an event type is authorized for FCM browser push delivery.
+ * @param {string} type - Notification type
+ * @returns {boolean}
+ */
+export function isPushNotificationAllowed(type) {
+  return Boolean(type && PUSH_ALLOWED_NOTIFICATION_TYPES.has(type));
+}
+
 export function getNotificationCategory(type) {
   switch (type) {
     case NOTIFICATION_TYPES.CHAT_MESSAGE:

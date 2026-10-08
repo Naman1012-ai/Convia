@@ -105,6 +105,7 @@ export default function AdminUsersPage() {
     result.sort((a, b) => {
       if (sortBy === 'NEWEST') return (b.joinedAt || 0) - (a.joinedAt || 0);
       if (sortBy === 'OLDEST') return (a.joinedAt || 0) - (b.joinedAt || 0);
+      if (sortBy === 'LAST_ACTIVE') return (b.lastLoginAt || b.joinedAt || 0) - (a.lastLoginAt || a.joinedAt || 0);
       if (sortBy === 'WORKSPACES') return (b.totalWorkspaces || 0) - (a.totalWorkspaces || 0);
       if (sortBy === 'IDEAS') return (b.totalIdeas || 0) - (a.totalIdeas || 0);
       if (sortBy === 'TASKS') return (b.totalTasks || 0) - (a.totalTasks || 0);
@@ -249,8 +250,9 @@ export default function AdminUsersPage() {
             onChange={(e) => setSortBy(e.target.value)}
             className="bg-slate-950 border border-slate-800 text-white text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500"
           >
-            <option value="NEWEST font-mono">Sort: Newest First</option>
-            <option value="OLDEST">Sort: Oldest First</option>
+            <option value="NEWEST">Sort: Newest Joined</option>
+            <option value="OLDEST">Sort: Oldest Joined</option>
+            <option value="LAST_ACTIVE">Sort: Most Recently Active</option>
             <option value="WORKSPACES">Sort: Most Workspaces</option>
             <option value="IDEAS">Sort: Most Proposals</option>
             <option value="TASKS">Sort: Most Tasks</option>
@@ -274,6 +276,7 @@ export default function AdminUsersPage() {
                   <th className="p-3">Email & UID</th>
                   <th className="p-3">Role</th>
                   <th className="p-3">Status</th>
+                  <th className="p-3">Last Active / Login</th>
                   <th className="p-3">Activity Metrics</th>
                   <th className="p-3 text-right">Moderation Actions</th>
                 </tr>
@@ -321,6 +324,18 @@ export default function AdminUsersPage() {
                         }`}>
                           {isSuspended ? '⛔ SUSPENDED' : u.onlineStatus === 'online' ? '● Online' : 'Offline'}
                         </span>
+                      </td>
+
+                      {/* Last Active / Last Login */}
+                      <td className="p-3">
+                        <div className="flex flex-col">
+                          <span className="text-white font-mono text-xs">
+                            {u.lastLoginAt ? formatTimestamp(u.lastLoginAt) : 'Never logged in'}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {u.onlineStatus === 'online' ? '● Live Session' : u.lastLoginAt ? 'Historical record' : 'Profile created only'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Activity Telemetry Metrics */}

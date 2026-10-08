@@ -505,7 +505,6 @@ export default function WorkspaceChatPage() {
       }
 
       await chatService.sendMessage(orgId, activeChannelId, content, effectiveUser || user, attachmentData, members);
-      toast.success('Message sent.');
 
       requestAnimationFrame(() => {
         if (messagesEndRef.current) {
