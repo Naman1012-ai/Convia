@@ -92,9 +92,9 @@ const STAGES = [
     description: 'AI instantly generates architectural specs, database models, API endpoints, and PRD.',
     cardContent: {
       techStack: 'React 19 + Tailwind v4 + Firebase RTDB',
-      endpoints: '6 Core Endpoints Defined',
-      dbSchema: 'Normalized Realtime JSON Graph',
-      metrics: 'Generated in 1.4s',
+      endpoints: 'API Endpoints & Schemas',
+      dbSchema: 'Structured Database Models',
+      metrics: 'Automated AI Spec',
     },
   },
   {
@@ -108,7 +108,7 @@ const STAGES = [
     bgGlow: 'shadow-rose-500/20',
     description: 'Auto-populated Kanban board assigns frontend, backend, and integration tasks to members.',
     cardContent: {
-      task1: '✓ Setup Firebase Auth & Security Rules',
+      task1: '✓ Setup Auth & Security Rules',
       task2: '⚡ Build Real-Time Discussion Panel',
       task3: '📋 Implement Dashboard KPI Telemetry',
       metrics: '8 Sprint Cards Assigned',
@@ -128,7 +128,7 @@ const STAGES = [
       title: 'Production MVP Ready',
       completion: '100% Sprint Complete',
       verdict: '🚀 Ready for Production Deployment',
-      metrics: 'Zero Downtime',
+      metrics: 'Target Achieved',
     },
   },
 ];

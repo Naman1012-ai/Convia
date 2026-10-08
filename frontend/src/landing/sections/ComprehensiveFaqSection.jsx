@@ -4,7 +4,7 @@ import { ChevronDown, HelpCircle, Sparkles } from 'lucide-react';
 const COMPREHENSIVE_FAQS = [
   {
     q: 'What is Convia?',
-    a: 'Convia is a real-time collaborative innovation platform that helps startup founders, product teams, open-source communities, and developers move from scattered ideas to a structured MVP proposal and a 16-section AI technical blueprint in minutes.',
+    a: 'Convia is a real-time collaborative innovation platform that helps startup founders, product teams, open-source communities, and developers move from scattered ideas to a structured MVP proposal and a comprehensive AI technical blueprint in minutes.',
   },
   {
     q: 'How is Convia different from Slack or Discord?',

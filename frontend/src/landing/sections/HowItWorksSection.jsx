@@ -29,7 +29,7 @@ const STEPS = [
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="py-24 bg-slate-950/90 border-t border-slate-800/80 relative overflow-hidden">
+    <section id="legacy-how-it-works" className="py-24 bg-slate-950/90 border-t border-slate-800/80 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Title */}
         <div className="text-center space-y-4 max-w-3xl mx-auto">

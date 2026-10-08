@@ -123,7 +123,7 @@ export function LandingFooter() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 font-medium gap-4">
           <div>
-            &copy; {new Date().getFullYear()} Convia Platform. All rights reserved.
+            &copy; {new Date().getFullYear()} Convia Platform.
           </div>
 
           <div className="flex items-center gap-4 font-mono text-[11px]">

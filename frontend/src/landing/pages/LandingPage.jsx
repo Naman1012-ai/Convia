@@ -18,7 +18,7 @@ export default function LandingPage() {
     // Meta Description
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
-      metaDesc.content = 'Convia represents the convergence of different ideas, perspectives, discussions, and decisions into a clear direction that can be acted upon.';
+      metaDesc.content = 'Convia turns team ideas and discussions into structured decisions, AI technical blueprints, and actionable tasks.';
     }
 
     // Open Graph Title & Description
@@ -27,13 +27,15 @@ export default function LandingPage() {
       ogTitle.content = 'Convia — Where Ideas Converge into Action.';
     }
 
-    let ogDesc = document.querySelector('meta[property="og:description"]');
-    if (!ogDesc) {
-      ogDesc = document.createElement('meta');
-      ogDesc.setAttribute('property', 'og:description');
-      document.head.appendChild(ogDesc);
+    const ogDesc = document.querySelector('meta[property="og:description"]');
+    if (ogDesc) {
+      ogDesc.content = 'Convia turns team ideas and discussions into structured decisions, AI technical blueprints, and actionable tasks.';
     }
-    ogDesc.content = 'Transform team ideas into production-ready technical blueprints, database schemas, and sprint backlogs.';
+
+    const twitterDesc = document.querySelector('meta[name="twitter:description"]');
+    if (twitterDesc) {
+      twitterDesc.content = 'Convia turns team ideas and discussions into structured decisions, AI technical blueprints, and actionable tasks.';
+    }
 
     // Track Pageview via Analytics Service Layer
     analyticsService.trackPageView('/');

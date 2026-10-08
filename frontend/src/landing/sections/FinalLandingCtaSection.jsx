@@ -4,7 +4,7 @@ import { ArrowRight, LogIn, Sparkles } from 'lucide-react';
 
 export function FinalLandingCtaSection() {
   return (
-    <section id="pricing" className="py-24 bg-slate-950 relative overflow-hidden">
+    <section id="cta" className="py-24 bg-slate-950 relative overflow-hidden">
       {/* Radial Glow Background */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[34rem] w-[34rem] rounded-full bg-gradient-to-tr from-primary-600/25 via-primary-700/25 to-emerald-600/10 blur-3xl pointer-events-none" />
 

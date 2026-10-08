@@ -41,7 +41,7 @@ export function AiBlueprintShowcase() {
             </div>
 
             <span className="px-3 py-1 rounded-full text-xs font-mono font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-              ⚡ Generated in 1.4 seconds
+              ⚡ Production-Ready Technical Spec
             </span>
           </div>
 
@@ -67,7 +67,7 @@ export function AiBlueprintShowcase() {
                 <span>Database Schema</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-medium">
-                Normalized RTDB JSON tree: <code className="text-primary-300">/workspaces</code>, <code className="text-primary-200">/ideas</code>, <code className="text-emerald-300">/votes</code>, <code className="text-amber-300">/tasks</code>.
+                Structured data models: <code className="text-primary-300">Workspaces</code>, <code className="text-primary-200">Proposals</code>, <code className="text-emerald-300">Decisions</code>, <code className="text-amber-300">Tasks</code>.
               </p>
             </div>
 
@@ -75,10 +75,10 @@ export function AiBlueprintShowcase() {
             <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
               <div className="flex items-center gap-2 text-emerald-400 font-bold">
                 <Cpu className="h-4 w-4" />
-                <span>API & Security Rules</span>
+                <span>API & Endpoint Specs</span>
               </div>
               <p className="text-slate-300 leading-relaxed font-medium">
-                Atomic update handlers with role-based write security rules and client sanitization.
+                Documented REST & real-time endpoint contracts, authorization policies, and validated data schemas.
               </p>
             </div>
           </div>

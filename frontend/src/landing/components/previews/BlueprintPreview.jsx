@@ -12,7 +12,7 @@ export function BlueprintPreview() {
           </div>
           <div>
             <h4 className="text-base font-extrabold text-white">AI Technical PRD & Blueprint</h4>
-            <p className="text-xs text-slate-400 font-medium">Generated in 1.4s via Convia AI Engine</p>
+            <p className="text-xs text-slate-400 font-medium">Automated Spec via Convia AI Engine</p>
           </div>
         </div>
 
@@ -37,20 +37,20 @@ export function BlueprintPreview() {
         <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
           <div className="flex items-center gap-1.5 text-primary-400 font-bold">
             <Database className="h-3.5 w-3.5" />
-            <span>RTDB Nodes (/ideas, /votes)</span>
+            <span>Database Schema Models</span>
           </div>
           <p className="text-[11px] text-slate-400 font-medium">
-            Normalized JSON tree with index keys for sub-second synchronization.
+            Structured schema models with real-time state synchronization.
           </p>
         </div>
 
         <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
           <div className="flex items-center gap-1.5 text-primary-300 font-bold">
             <Code2 className="h-3.5 w-3.5" />
-            <span>6 Core Endpoints Defined</span>
+            <span>API Endpoints & Contracts</span>
           </div>
           <p className="text-[11px] text-slate-400 font-medium">
-            Atomic update handlers and security rule validations mapped.
+            Documented endpoint handlers and security rule validations mapped.
           </p>
         </div>
       </div>

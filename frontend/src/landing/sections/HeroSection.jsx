@@ -1,12 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Play, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { WorkflowVisualizer } from '../components/WorkflowVisualizer';
-import { DemoModal } from '../components/DemoModal';
 
 export function HeroSection() {
-  const [isDemoOpen, setIsDemoOpen] = useState(false);
-
   return (
     <section className="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
       {/* Background Radial Glow Effects */}
@@ -21,7 +18,7 @@ export function HeroSection() {
         {/* Top Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold shadow-lg shadow-primary-950/40 animate-in fade-in slide-in-from-top-2 duration-300">
           <Sparkles className="h-3.5 w-3.5 text-primary-400" />
-          <span>Universal Innovation & Technical Blueprint Platform</span>
+          <span>From Idea to Architecture & Execution</span>
         </div>
 
         {/* Hero Title & Subtitle */}
@@ -70,7 +67,7 @@ export function HeroSection() {
             <div className="p-1 rounded-lg bg-primary-500/20 text-primary-400">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
-            <span>Take Product Tour</span>
+            <span>See How Convia Works</span>
           </button>
         </div>
 
@@ -79,9 +76,6 @@ export function HeroSection() {
           <WorkflowVisualizer />
         </div>
       </div>
-
-      {/* Product Demo Modal */}
-      <DemoModal isOpen={isDemoOpen} onClose={() => setIsDemoOpen(false)} />
     </section>
   );
 }

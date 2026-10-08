@@ -38,7 +38,7 @@ const USE_CASES = [
 
 export function UseCasesSection() {
   return (
-    <section id="use-cases" className="py-24 bg-slate-950 border-t border-slate-800/80 relative">
+    <section id="legacy-use-cases" className="py-24 bg-slate-950 border-t border-slate-800/80 relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         <div className="text-center space-y-4 max-w-3xl mx-auto">
           <span className="px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">

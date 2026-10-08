@@ -45,7 +45,7 @@ export function CoreFeaturesGrid() {
           </h2>
 
           <p className="text-base text-slate-400 font-medium">
-            Thirteen built-in modules designed to turn ideation into execution.
+            {ALL_FEATURES.length} core modules designed to turn ideation into execution.
           </p>
         </div>
 

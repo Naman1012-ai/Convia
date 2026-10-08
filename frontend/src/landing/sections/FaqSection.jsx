@@ -32,7 +32,7 @@ export function FaqSection() {
   };
 
   return (
-    <section id="faq" className="py-24 bg-slate-950/90 border-t border-slate-800/80 relative">
+    <section id="legacy-faq" className="py-24 bg-slate-950/90 border-t border-slate-800/80 relative">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-primary-500/30 text-primary-300 text-xs font-mono font-bold">
