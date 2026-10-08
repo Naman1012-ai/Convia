@@ -6,5 +6,3 @@ Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /org/
 Disallow: /settings/
-
-Sitemap: https://convia.dev/sitemap.xml
