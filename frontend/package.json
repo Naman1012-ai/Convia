@@ -11,8 +11,6 @@
     "format": "prettier --write \"src/**/*.{js,jsx,css,md}\""
   },
   "dependencies": {
-    "@google/genai": "^2.16.0",
-    "@uploadthing/react": "^7.3.3",
     "clsx": "^2.1.1",
     "firebase": "^10.14.1",
     "jspdf": "^4.2.1",
@@ -21,8 +19,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^6.28.0",
-    "tailwind-merge": "^2.5.4",
-    "uploadthing": "^7.7.4"
+    "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

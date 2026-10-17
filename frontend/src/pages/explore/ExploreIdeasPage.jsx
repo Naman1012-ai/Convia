@@ -17,6 +17,8 @@ import { NOTIFICATION_MESSAGES } from '../../utils/notificationMessages';
 import { CreatePublicIdeaModal } from '../../features/ideas/CreatePublicIdeaModal';
 import { PublicIdeaDetailModal } from '../../features/ideas/PublicIdeaDetailModal';
 import { ImportToWorkspaceModal } from '../../features/ideas/ImportToWorkspaceModal';
+import { ImportRequestsModal } from '../../features/ideas/ImportRequestsModal';
+import { importRequestService } from '../../services/importRequestService';
 import { PublicIdeaChatDrawer } from '../../features/chat/PublicIdeaChatDrawer';
 import { formatTimestamp, truncateText } from '../../utils/formatting';
 import { useUserProfiles } from '../../hooks/useUserProfile';
@@ -31,6 +33,9 @@ import {
   ArrowRight,
   FolderPlus,
   Trash2,
+  Inbox,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 
@@ -68,6 +73,38 @@ export default function ExploreIdeasPage() {
   const [isCreatePublicIdeaOpen, setIsCreatePublicIdeaOpen] = useState(false);
   const [isCommunityChatOpen, setIsCommunityChatOpen] = useState(false);
   const [communityChatContext, setCommunityChatContext] = useState(null);
+  const [isImportRequestsOpen, setIsImportRequestsOpen] = useState(false);
+  const [pendingReceivedCount, setPendingReceivedCount] = useState(0);
+  const [userSentRequests, setUserSentRequests] = useState([]);
+
+  // Load received requests count for creator badge & sent requests for live card badges
+  const loadRequestsData = () => {
+    if (!user) return;
+    importRequestService
+      .getReceivedRequests()
+      .then((reqs) => {
+        const pending = (reqs || []).filter((r) => r.status === 'PENDING').length;
+        setPendingReceivedCount(pending);
+      })
+      .catch((err) => console.warn('[ExploreIdeasPage] Failed to load received request count:', err));
+
+    importRequestService
+      .getSentRequests()
+      .then((reqs) => setUserSentRequests(reqs || []))
+      .catch((err) => console.warn('[ExploreIdeasPage] Failed to load sent requests:', err));
+  };
+
+  useEffect(() => {
+    loadRequestsData();
+  }, [user]);
+
+  // Check URL tab query param (e.g. /explore?tab=requests from notification link)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'requests') {
+      setIsImportRequestsOpen(true);
+    }
+  }, [location.search]);
 
   // Dismiss all transient modals & drawers on route transition
   useEffect(() => {
@@ -177,6 +214,22 @@ export default function ExploreIdeasPage() {
         subtitle="Discover, vote, and suggest technical iterations on community proposal drafts"
         action={
           <div className="flex items-center gap-2.5">
+            {user && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Inbox className="h-4 w-4 text-indigo-600" />}
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-xs font-semibold relative"
+                onClick={() => setIsImportRequestsOpen(true)}
+              >
+                <span>Import Requests</span>
+                {pendingReceivedCount > 0 && (
+                  <span className="bg-primary-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1">
+                    {pendingReceivedCount}
+                  </span>
+                )}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -240,6 +293,10 @@ export default function ExploreIdeasPage() {
             const isAuthor = user && user.uid === idea.authorId;
             const isNewlyCreated = idea.ideaId === newlyCreatedIdeaId;
 
+            const sentRequestForIdea = userSentRequests.find((r) => r.ideaId === idea.ideaId);
+            const isIdeaPending = sentRequestForIdea && sentRequestForIdea.status === 'PENDING';
+            const isIdeaImported = sentRequestForIdea && sentRequestForIdea.status === 'IMPORTED';
+
             return (
               <div
                 key={idea.ideaId}
@@ -266,7 +323,7 @@ export default function ExploreIdeasPage() {
                         )}
                       </div>
 
-                      {/* Card Header Actions */}
+                      {/* Card Header Actions (Single Canonical Action Button) */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         {user && (
                           <button
@@ -274,11 +331,39 @@ export default function ExploreIdeasPage() {
                               e.stopPropagation();
                               handleOpenImportModal(idea);
                             }}
-                            className="flex items-center gap-1 text-[11px] font-bold text-primary-700 bg-primary-50 hover:bg-primary-100 px-2.5 py-1 rounded-lg transition-colors border border-primary-200/60"
-                            title="Import this idea into a workspace"
+                            className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors border ${
+                              isIdeaImported
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isIdeaPending
+                                ? 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
+                                : 'text-primary-700 bg-primary-50 hover:bg-primary-100 border-primary-200/60'
+                            }`}
+                            title={
+                              isAuthor
+                                ? 'Import to Workspace'
+                                : isIdeaImported
+                                ? 'Already imported to your workspace'
+                                : isIdeaPending
+                                ? 'Import request pending creator approval'
+                                : 'Request to import this idea into a workspace'
+                            }
                           >
-                            <FolderPlus className="h-3.5 w-3.5 text-primary-600" />
-                            <span>Import</span>
+                            {isIdeaImported ? (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                <span>Imported</span>
+                              </>
+                            ) : isIdeaPending ? (
+                              <>
+                                <Clock className="h-3.5 w-3.5 text-amber-600" />
+                                <span>Pending</span>
+                              </>
+                            ) : (
+                              <>
+                                <FolderPlus className="h-3.5 w-3.5 text-primary-600" />
+                                <span>{isAuthor ? 'Import' : 'Request'}</span>
+                              </>
+                            )}
                           </button>
                         )}
 
@@ -375,6 +460,17 @@ export default function ExploreIdeasPage() {
         onClose={() => {
           setIsImportModalOpen(false);
           setImportingIdea(null);
+          loadRequestsData();
+        }}
+        onToast={(msg) => NotificationService.info(msg)}
+      />
+
+      {/* Creator Import Requests Review Modal */}
+      <ImportRequestsModal
+        isOpen={isImportRequestsOpen}
+        onClose={() => {
+          setIsImportRequestsOpen(false);
+          loadRequestsData();
         }}
         onToast={(msg) => NotificationService.info(msg)}
       />

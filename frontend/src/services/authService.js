@@ -14,10 +14,12 @@ import {
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
 import { getErrorMessage } from '../utils/errorMessages';
+import { mapAuthError, AuthError } from '../utils/authErrorMapper.js';
 import { rtdbService } from './rtdbService';
-import { orgService } from './orgService';
 import { profileService } from './profileService';
 import { apiClient } from './apiClient';
+
+export { AuthError };
 
 /**
  * Service Layer abstraction for Firebase Authentication.
@@ -63,7 +65,8 @@ export const authService = {
       await userCredential.user.reload().catch(() => {});
       return auth.currentUser || userCredential.user;
     } catch (error) {
-      throw new Error(getErrorMessage(error.code));
+      const message = mapAuthError(error, { provider: 'password', context: 'signup' });
+      throw new AuthError(error.code || 'auth/unknown', message, error);
     }
   },
 
@@ -82,7 +85,8 @@ export const authService = {
       }
       return userCredential.user;
     } catch (error) {
-      throw new Error(getErrorMessage(error.code));
+      const message = mapAuthError(error, { provider: 'password', context: 'signin' });
+      throw new AuthError(error.code || 'auth/unknown', message, error);
     }
   },
 
@@ -115,7 +119,8 @@ export const authService = {
       if (error.code === 'auth/popup-closed-by-user') {
         return null;
       }
-      throw new Error(getErrorMessage(error.code));
+      const message = mapAuthError(error, { provider: 'google', context: 'signin' });
+      throw new AuthError(error.code || 'auth/unknown', message, error);
     }
   },
 
@@ -208,7 +213,8 @@ export const authService = {
     try {
       await sendPasswordResetEmail(auth, email);
     } catch (error) {
-      throw new Error(getErrorMessage(error.code));
+      const message = mapAuthError(error, { provider: 'password', context: 'reset' });
+      throw new AuthError(error.code || 'auth/unknown', message, error);
     }
   },
 

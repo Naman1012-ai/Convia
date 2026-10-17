@@ -37,9 +37,9 @@ export function ResetPasswordForm() {
       setIsSuccess(true);
       toast.success('Password reset email sent! Please check your inbox.');
     } catch (err) {
-      const msg = getErrorMessage(err.code || err.message);
+      const msg = err.message || getErrorMessage(err, { provider: 'password', context: 'reset' });
       setServerError(msg);
-      toast.error(msg);
+      // Inline form error is displayed; no duplicate toast
     } finally {
       setIsSubmitting(false);
     }

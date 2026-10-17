@@ -808,6 +808,85 @@ export const notificationService = {
           });
         }
 
+        // -------------------------------------------------------------
+        // 11. IDEA IMPORT APPROVAL EVENTS
+        // -------------------------------------------------------------
+        case NOTIFICATION_TYPES.IMPORT_REQUEST_RECEIVED: {
+          const { targetUid, ideaId, ideaTitle, workspaceName, requestNote, requestId } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.IMPORT_REQUEST_RECEIVED,
+            title: 'New Idea Import Request',
+            body: `${actorName} requested to import "${ideaTitle || 'your idea'}" into ${workspaceName || 'their workspace'}.`,
+            previewText: requestNote,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'import_request',
+            resourceId: requestId || ideaId,
+            actionUrl: `/explore?tab=requests`,
+            metadata: { ideaId, ideaTitle, workspaceName, requestId },
+            dedupeKey: `import_req_${requestId || `${ideaId}_${actorUid}`}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.IMPORT_REQUEST_APPROVED: {
+          const { targetUid, ideaId, ideaTitle, workspaceId, workspaceName, importedIdeaId, requestId } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.IMPORT_REQUEST_APPROVED,
+            workspaceId,
+            orgId: workspaceId,
+            title: 'Import Request Approved! 🎉',
+            body: `${actorName} approved your request to import "${ideaTitle || 'idea'}". An independent copy has been added to ${workspaceName || 'your workspace'}.`,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'workspace_idea',
+            resourceId: importedIdeaId || ideaId,
+            actionUrl: `/workspaces/${workspaceId}/ideas`,
+            metadata: { ideaId, ideaTitle, workspaceId, workspaceName, importedIdeaId, requestId },
+            dedupeKey: `import_appr_${requestId || `${ideaId}_${workspaceId}`}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
+        case NOTIFICATION_TYPES.IMPORT_REQUEST_REJECTED: {
+          const { targetUid, ideaId, ideaTitle, rejectionReason, requestId } = eventData;
+          if (!targetUid || targetUid === actorUid) return [];
+
+          const notif = await notificationService.createNotification(targetUid, {
+            type: NOTIFICATION_TYPES.IMPORT_REQUEST_REJECTED,
+            title: 'Import Request Declined',
+            body: `${actorName} was unable to approve your import request for "${ideaTitle || 'idea'}". Reason: "${rejectionReason || 'No reason provided'}"`,
+            previewText: rejectionReason,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'import_request',
+            resourceId: requestId || ideaId,
+            actionUrl: `/explore`,
+            metadata: { ideaId, ideaTitle, rejectionReason, requestId },
+            dedupeKey: `import_rej_${requestId || `${ideaId}_${actorUid}`}_${Date.now()}`,
+          });
+
+          return notif ? [notif] : [];
+        }
+
         default:
           console.warn(`[notificationService] Unhandled eventType: ${eventType}`);
           return [];

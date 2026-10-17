@@ -7,14 +7,12 @@ export const DB_PATHS = {
   USER_NOTIFICATIONS: 'user_notifications',
   ORGANIZATIONS: 'organizations',
   ORGANIZATION_MEMBERS: 'organization_members',
-  WORKSPACES_METADATA: 'workspaces',
   IDEAS: 'ideas',
   DISCUSSIONS: 'discussions',
   BLUEPRINTS: 'blueprints',
   TASKS: 'tasks',
   PLATFORM_SETTINGS: 'platform_settings',
   ANNOUNCEMENTS: 'announcements',
-  CHAT_MESSAGES: 'chat_messages', // Retained legacy constant for backward compatibility
   WORKSPACE_CHATS: 'workspaceChats', // Canonical root path for workspace chat system
   GLOBAL_STATS: 'globalStats',
   USER_SAVED_DISCUSSIONS: 'user_saved_discussions',

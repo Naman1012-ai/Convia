@@ -32,6 +32,7 @@ const testFiles = [
   './buttonVisualStateAndContrast.test.js',
   './globalTimestampAudit.test.js',
   './joinTimeChatAccessControl.test.js',
+  './importRequestApprovalSystem.test.js',
 ];
 
 async function main() {

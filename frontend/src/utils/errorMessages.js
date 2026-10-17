@@ -1,27 +1,52 @@
+import { mapAuthError, AUTH_ERROR_MESSAGES, extractAuthErrorCode } from './authErrorMapper.js';
+
+export { AUTH_ERROR_MESSAGES, mapAuthError, extractAuthErrorCode };
+
 /**
- * Maps Firebase Auth and Firestore error codes to user-friendly error strings.
+ * Maps Firebase Auth, Firestore, and RTDB error codes or error objects to user-friendly error strings.
+ * Preserves existing user-facing strings and prevents unexpected double-translation fallthroughs.
+ * 
+ * @param {string|Error|null} errorCodeOrError
+ * @param {Object} [options]
+ * @returns {string}
  */
-export function getErrorMessage(errorCode) {
-  switch (errorCode) {
-    case 'auth/email-already-in-use':
-      return 'An account with this email address already exists.';
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-      return 'Incorrect email or password. Please try again.';
-    case 'auth/too-many-requests':
-      return 'Too many failed attempts. Please wait a few minutes and try again.';
-    case 'auth/weak-password':
-      return 'Password must be at least 6 characters long.';
-    case 'auth/popup-closed-by-user':
-      return 'Sign-in window was closed before completing.';
+export function getErrorMessage(errorCodeOrError, options = {}) {
+  if (!errorCodeOrError) {
+    return AUTH_ERROR_MESSAGES.DEFAULT_UNEXPECTED;
+  }
+
+  // If already a recognized user-friendly message, preserve it directly
+  if (typeof errorCodeOrError === 'string') {
+    const knownMessages = Object.values(AUTH_ERROR_MESSAGES);
+    if (knownMessages.includes(errorCodeOrError)) {
+      return errorCodeOrError;
+    }
+  }
+
+  // Extract raw string or code
+  const code = typeof errorCodeOrError === 'object' && errorCodeOrError.code
+    ? errorCodeOrError.code
+    : typeof errorCodeOrError === 'string'
+    ? errorCodeOrError.trim()
+    : (errorCodeOrError.message || '');
+
+  // 1. Non-auth Firestore / RTDB codes
+  switch (code) {
     case 'permission-denied':
       return "You don't have permission to perform this action.";
     case 'not-found':
       return 'The requested resource was not found.';
     case 'already-exists':
       return 'This entry already exists.';
-    default:
-      return 'An unexpected error occurred. Please try again.';
   }
+
+  // 2. Delegate to centralized Auth Error Mapper
+  const authCode = extractAuthErrorCode(errorCodeOrError);
+  if (authCode) {
+    return mapAuthError(errorCodeOrError, options);
+  }
+
+  // 3. Fallback for unexpected errors
+  return AUTH_ERROR_MESSAGES.DEFAULT_UNEXPECTED;
 }
+

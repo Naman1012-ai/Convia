@@ -67,9 +67,9 @@ export function SignUpForm() {
       toast.success('Account created successfully! Welcome to Convia.');
       navigate(redirectTarget, { replace: true });
     } catch (err) {
-      const msg = getErrorMessage(err.code || err.message);
+      const msg = err.message || getErrorMessage(err, { provider: 'password', context: 'signup' });
       setServerError(msg);
-      toast.error(msg);
+      // Inline form error is shown; do not stack duplicate toast
     } finally {
       setIsSubmitting(false);
     }
@@ -85,9 +85,8 @@ export function SignUpForm() {
         navigate(redirectTarget, { replace: true });
       }
     } catch (err) {
-      const msg = getErrorMessage(err.code || err.message);
+      const msg = err.message || getErrorMessage(err, { provider: 'google', context: 'signup' });
       setServerError(msg);
-      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }

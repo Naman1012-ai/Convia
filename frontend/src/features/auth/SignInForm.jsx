@@ -30,6 +30,18 @@ export function SignInForm() {
     ? decodeURIComponent(searchParams.get('returnUrl'))
     : '/dashboard';
 
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    if (serverError) setServerError('');
+    if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    if (serverError) setServerError('');
+    if (errors.password) setErrors((prev) => ({ ...prev, password: '' }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setServerError('');
@@ -65,9 +77,9 @@ export function SignInForm() {
       toast.success(isAdminLogin ? 'Welcome Super Admin! Opening Admin Portal...' : 'Signed in successfully!');
       navigate(targetUrl, { replace: true });
     } catch (err) {
-      const msg = getErrorMessage(err.code || err.message);
+      const msg = err.message || getErrorMessage(err, { provider: 'password', context: 'signin' });
       setServerError(msg);
-      toast.error(msg);
+      // NOTE: Expected authentication failures are displayed inline only; no global error toast.
     } finally {
       setIsSubmitting(false);
     }
@@ -93,9 +105,9 @@ export function SignInForm() {
         navigate(targetUrl, { replace: true });
       }
     } catch (err) {
-      const msg = getErrorMessage(err.code || err.message);
+      const msg = err.message || getErrorMessage(err, { provider: 'google', context: 'signin' });
       setServerError(msg);
-      toast.error(msg);
+      // NOTE: Displayed inline only; no duplicate global error toast.
     } finally {
       setIsSubmitting(false);
     }
@@ -108,19 +120,13 @@ export function SignInForm() {
         <p className="text-sm text-slate-500 mt-1">Sign in to your Convia workspace</p>
       </div>
 
-      {serverError && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 font-medium">
-          {serverError}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           label="Email Address"
           type="email"
           placeholder="email@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleEmailChange}
           error={errors.email}
           required
         />
@@ -130,7 +136,7 @@ export function SignInForm() {
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={handlePasswordChange}
             error={errors.password}
             required
           />
@@ -140,6 +146,30 @@ export function SignInForm() {
             </Link>
           </div>
         </div>
+
+        {serverError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 font-medium flex items-start gap-2.5 transition-all duration-150"
+          >
+            <svg
+              className="w-4 h-4 text-rose-500 shrink-0 mt-0.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth="2"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+              />
+            </svg>
+            <span className="flex-1 leading-snug">{serverError}</span>
+          </div>
+        )}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting} className="mt-2">
           Sign In

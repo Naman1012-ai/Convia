@@ -139,11 +139,13 @@ export function PublicIdeaDetailModal({
                 title={
                   userWorkspaces.length === 0
                     ? 'You must create or join a workspace before importing ideas.'
-                    : 'Import this public idea into one of your workspaces'
+                    : isAuthor
+                    ? 'Import your public idea into one of your workspaces'
+                    : 'Submit an import request to the creator'
                 }
                 className="border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Import to Workspace
+                {isAuthor ? 'Import to Workspace' : 'Request to Import'}
               </Button>
 
               <Button

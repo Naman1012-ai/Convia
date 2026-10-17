@@ -13,6 +13,7 @@ import { workspaceInvitationRouter } from './routes/workspaceInvitationRoutes.js
 import { uploadthingExpressHandler } from './routes/uploadthingRouter.js';
 import { fcmRouter } from './routes/fcmRoutes.js';
 import { publicIdeaRouter } from './routes/publicIdeaRoutes.js';
+import { importRequestRouter } from './routes/importRequestRoutes.js';
 import { chatRouter } from './routes/chatRoutes.js';
 import { taskRouter } from './routes/taskRoutes.js';
 import { globalStatsService } from './services/globalStatsService.js';
@@ -99,6 +100,7 @@ app.use('/api/invitations', workspaceInvitationRouter);
 app.use('/api/uploadthing', uploadthingExpressHandler);
 app.use('/api/notifications/fcm', fcmRouter);
 app.use('/api/public-ideas', publicIdeaRouter);
+app.use('/api/public-ideas', importRequestRouter);
 app.use('/api/workspaces/:workspaceId/chat', chatRouter);
 app.use('/api/workspace/:workspaceId/chat', chatRouter);
 app.use('/api/workspaces/:workspaceId/tasks', taskRouter);
