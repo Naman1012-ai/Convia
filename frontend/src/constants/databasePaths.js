@@ -231,6 +231,26 @@ export const getChannelReadStatePath = (workspaceId, channelId = 'general', uid)
 };
 
 /**
+ * Builds the canonical RTDB root path for a channel's pinned messages:
+ * workspaceChats/{workspaceId}/channels/{channelId}/pinnedMessages
+ */
+export const getChannelPinnedMessagesRootPath = (workspaceId, channelId = 'general') => {
+  return `${getChannelPath(workspaceId, channelId)}/pinnedMessages`;
+};
+
+/**
+ * Builds the canonical RTDB path for a specific pinned message record:
+ * workspaceChats/{workspaceId}/channels/{channelId}/pinnedMessages/{messageId}
+ */
+export const getChannelPinnedMessagePath = (workspaceId, channelId = 'general', messageId) => {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[databasePaths] messageId is required for pinned message path.');
+  }
+  return `${getChannelPinnedMessagesRootPath(workspaceId, channelId)}/${messageId.trim()}`;
+};
+
+
+/**
  * Builds the canonical RTDB root path for a user's in-app notifications:
  * user_notifications/{uid}
  */
@@ -405,6 +425,23 @@ export const getPublicIdeasChatPinnedPath = () => `${getPublicIdeasChatRootPath(
  * publicChats/ideas/pinned
  */
 export const getPublicIdeasChatPinnedDiscussionPath = () => `${getPublicIdeasChatRootPath()}/pinned`;
+
+/**
+ * Builds the canonical RTDB root path for pinned community discussions (up to 5):
+ * publicChats/ideas/pinnedMessages
+ */
+export const getPublicIdeasChatPinnedMessagesRootPath = () => `${getPublicIdeasChatRootPath()}/pinnedMessages`;
+
+/**
+ * Builds the canonical RTDB path for a specific pinned community discussion:
+ * publicChats/ideas/pinnedMessages/{messageId}
+ */
+export const getPublicIdeasChatPinnedMessagePath = (messageId) => {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[databasePaths] messageId is required for public pinned message path.');
+  }
+  return `${getPublicIdeasChatPinnedMessagesRootPath()}/${messageId.trim()}`;
+};
 
 /**
  * Builds the canonical RTDB root path for a user's FCM device tokens:

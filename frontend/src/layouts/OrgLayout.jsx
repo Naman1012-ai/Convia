@@ -184,7 +184,13 @@ function OrgLayoutContent() {
           isMobileOpen={isMobileOpen}
           onCloseMobile={() => setIsMobileOpen(false)}
         />
-        <main className="flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6 transition-all duration-200">
+        <main
+          className={
+            location.pathname.endsWith('/chat')
+              ? 'flex-1 min-w-0 px-3 py-4 sm:px-6 w-full space-y-4 transition-all duration-200'
+              : 'flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6 transition-all duration-200'
+          }
+        >
           {/* Centralized Workspace Top Navigation Header */}
           <div className="border-b border-lavender-border pb-5 space-y-3.5">
             {/* Single Breadcrumb System */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Pencil,
@@ -14,10 +14,15 @@ import {
   SmilePlus,
   MessageSquare,
   MoreVertical,
+  Pin,
+  PinOff,
+  CornerDownRight,
+  Reply,
 } from 'lucide-react';
 import { useToast } from '../../hooks/useToast';
 import { chatService } from '../../services/chatService';
 import { ChatFileCard } from './ChatFileCard';
+import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { ChatReactionPicker } from './ChatReactionPicker';
 import { ChatReactionParticipantsModal } from './ChatReactionParticipantsModal';
 import {
@@ -26,10 +31,16 @@ import {
   formatReplyCountLabel,
 } from '../../utils/chatFeedHelpers';
 import { resolveMemberDisplayName } from '../../utils/memberIdentity';
-import { renderFormattedContent } from '../../utils/chatMentions';
+import { renderDiscordMarkdown } from '../../utils/discordMarkdown';
+import { extractMentions } from '../../utils/chatMentions';
 import { useUserProfile } from '../../hooks/useUserProfile';
 
-export function ChatMessageItem({
+/**
+ * Discord-style Community Chat Message Item for Convia.
+ * Features full-width linear layout, grouping, role badges, interactive markdown,
+ * hover action bar, in-line reply references, and pinned message indicators.
+ */
+function ChatMessageItemComponent({
   workspaceId,
   channelId = 'general',
   message,
@@ -37,7 +48,11 @@ export function ChatMessageItem({
   members = [],
   isWorkspaceAdmin = false,
   isGrouped = false,
+  isFirstInGroup = false,
+  isLastInGroup = false,
+  isHighlighted = false,
   isTargetHighlighted = false,
+  isPinned = false,
   timeLabel = '',
   fullDateLabel = '',
   activeMenuMessageId = null,
@@ -48,20 +63,32 @@ export function ChatMessageItem({
   onDelete = () => {},
   onDeleteMessage,
   onEditMessage,
+  onPinMessage,
   onOpenPreview = () => {},
   onOpenThread = () => {},
   onToggleReaction = () => {},
+  onSelectChannel = null,
+  onReplyMessage = null,
+  onOpenProfile = null,
 }) {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [editContent, setEditContent] = useState(message.content || '');
+  const [editContent, setEditContent] = useState(message?.content || '');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showMobileActions, setShowMobileActions] = useState(false);
-  const [reactionPickerAnchor, setReactionPickerAnchor] = useState(null); // 'chips' | null
-  const [inspectReactionEmoji, setInspectReactionEmoji] = useState(null); // null | 'all' | emoji string
+  const [reactionPickerSource, setReactionPickerSource] = useState(null); // 'floating' | 'footer' | null
+  const [inspectReactionEmoji, setInspectReactionEmoji] = useState(null);
+
   const reactions = reactionsProp || {};
   const replyCount = replyCountProp || 0;
+
+  const currentUserReactions = useMemo(() => {
+    if (!currentUserId || !reactions || typeof reactions !== 'object') return [];
+    return Object.entries(reactions)
+      .filter(([_, data]) => Array.isArray(data?.users) && data.users.includes(currentUserId))
+      .map(([emoji]) => emoji);
+  }, [reactions, currentUserId]);
 
   const editTextareaRef = useRef(null);
   const menuRef = useRef(null);
@@ -109,34 +136,51 @@ export function ChatMessageItem({
     };
   }, [isMenuOpen]);
 
-  const isOwnMessage = Boolean(currentUserId && (message.senderId === currentUserId || message.authorId === currentUserId));
-  const canDelete = !message.deleted && (isOwnMessage || isWorkspaceAdmin);
-  const canEdit = isOwnMessage && !message.deleted && !message.isSystem;
-  const canReply = !message.deleted && !message.isSystem;
-  const canReact = !message.deleted && !message.isSystem;
+  const isOwnMessage = Boolean(
+    currentUserId && (message.senderId === currentUserId || message.authorId === currentUserId)
+  );
 
-  // Resolve sender display name and profile from member roster, or fallback to snapshot
+  // Resolve sender member from workspace member directory
   const senderMember = Array.isArray(members)
     ? members.find((m) => m && (m.uid === message.senderId || m.id === message.senderId))
     : null;
 
-  // Real-time user profile resolution from canonical users/{uid}
-  // Note: Workspace roster is live-synced at the workspace level (OrgContext).
-  // Passing subscribe: false eliminates the N+1 listener explosion per rendered chat message.
-  const { displayName: liveDisplayName, avatar: liveAvatar, profile: liveProfile } = useUserProfile(
-    message.senderId,
-    {
-      subscribe: false,
-      fallbackName: senderMember ? resolveMemberDisplayName(senderMember) : resolveMemberDisplayName(message.senderName || 'Member'),
-      fallbackAvatar: senderMember?.avatar || senderMember?.photoURL || message.senderAvatar || '',
-    }
-  );
+  const canDelete = !message.deleted && (isOwnMessage || isWorkspaceAdmin);
+  const canEdit = isOwnMessage && !message.deleted && !message.isSystem;
+  const canReply = !message.deleted && !message.isSystem;
+  const canReact = !message.deleted && !message.isSystem;
+  const canPin = !message.deleted && !message.isSystem;
+
+  // User profile resolution
+  const fallbackAvatarCandidate = senderMember
+    ? (senderMember.avatar || senderMember.photoURL || '')
+    : (message.senderAvatar || '');
+
+  const {
+    displayName: liveDisplayName,
+    avatar: liveAvatar,
+    profile: liveProfile,
+  } = useUserProfile(message.senderId, {
+    subscribe: false,
+    fallbackName: senderMember
+      ? resolveMemberDisplayName(senderMember)
+      : resolveMemberDisplayName(message.senderName || 'Member'),
+    fallbackAvatar: fallbackAvatarCandidate,
+  });
 
   const senderDisplayName = liveDisplayName;
-  const senderAvatar = liveAvatar || message.senderAvatar || '';
+  const isProfileLoaded = Boolean(liveProfile || senderMember);
+  const senderAvatar = isProfileLoaded
+    ? (liveAvatar || (senderMember ? (senderMember.avatar || senderMember.photoURL || '') : ''))
+    : (liveAvatar || message.senderAvatar || '');
   const memberProfile = liveProfile || senderMember;
 
-
+  // Detect whether current user is mentioned in this message
+  const isUserMentioned = useMemo(() => {
+    if (!currentUserId || !message?.content || message?.isSystem) return false;
+    const mentions = extractMentions(message.content, members);
+    return mentions.some((m) => m.uid === currentUserId);
+  }, [message?.content, members, currentUserId, message?.isSystem]);
 
   // Auto-focus and resize textarea when entering edit mode
   useEffect(() => {
@@ -149,7 +193,7 @@ export function ChatMessageItem({
 
   const handleCopy = () => {
     if (message.content) {
-      navigator.clipboard.writeText(message.content);
+      navigator.clipboard?.writeText?.(message.content);
       setCopied(true);
       toast.success('Message copied to clipboard.');
       setTimeout(() => setCopied(false), 2000);
@@ -191,14 +235,40 @@ export function ChatMessageItem({
     }
   };
 
+  const handlePinToggle = async () => {
+    if (onPinMessage) {
+      onPinMessage(message);
+      return;
+    }
+
+    if (!workspaceId || !channelId) return;
+
+    try {
+      if (isPinned || message.isPinned) {
+        await chatService.unpinMessage(workspaceId, channelId, message.messageId);
+        toast.success('Message unpinned.');
+      } else {
+        await chatService.pinMessage(workspaceId, channelId, message, {
+          uid: currentUserId,
+          displayName: senderDisplayName || 'Member',
+        });
+        toast.success('Message pinned to channel.');
+      }
+    } catch (err) {
+      console.error('[ChatMessageItem] Pin toggle error:', err);
+      toast.error('Failed to update pinned state.');
+    }
+  };
+
   const displayTime = timeLabel || formatMessageTime(message.createdAt);
   const displayFullDate = fullDateLabel || formatFullDateTime(message.createdAt);
+  const isMessageHighlighted = Boolean(isHighlighted || isTargetHighlighted);
 
   // 1. Render System Event Messages
   if (message.isSystem) {
     return (
-      <div className="flex items-center justify-center my-3 px-4" role="status">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-xs font-medium text-slate-600 shadow-2xs">
+      <div className="flex items-center justify-center my-2 px-4" role="status">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/90 border border-slate-200/80 text-xs font-medium text-slate-600 shadow-2xs">
           <Info className="h-3.5 w-3.5 text-primary-500 shrink-0" aria-hidden="true" />
           <span className="font-normal text-slate-700">{message.content}</span>
           <span className="text-[11px] text-slate-400 font-mono" title={displayFullDate}>
@@ -211,63 +281,160 @@ export function ChatMessageItem({
 
   // 2. Render Soft-Deleted Message Tombstone
   if (message.deleted) {
+    const isDeletedByAdmin = message.deletedBy && message.deletedBy !== message.senderId;
+    const deletedLabel = isOwnMessage
+      ? 'You deleted this message'
+      : isDeletedByAdmin
+      ? 'Message deleted by Admin'
+      : `${senderDisplayName || 'Member'} deleted a message`;
+
     return (
       <div
         id={`msg_${message.messageId}`}
-        className={`flex w-full my-1 px-2 sm:px-4 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+        className="flex w-full py-1 px-4 text-xs italic text-slate-400 gap-3 items-center select-none"
       >
-        <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-2xl text-xs italic ${
-            isOwnMessage
-              ? 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tr-xs'
-              : 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tl-xs'
-          }`}
-        >
-          <Trash2 className="h-3 w-3 opacity-60" />
-          <span>This message was deleted</span>
-          <span className="text-[10px] font-mono opacity-60" title={displayFullDate}>
-            • {displayTime}
-          </span>
+        <div className="w-10 shrink-0 flex justify-center">
+          <Trash2 className="h-3.5 w-3.5 opacity-50 text-slate-400" />
         </div>
+        <span className="bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5 text-slate-500 font-medium">
+          {deletedLabel}
+        </span>
+        <span className="text-[10px] font-mono opacity-60" title={displayFullDate}>
+          {displayTime}
+        </span>
       </div>
     );
   }
 
-  // Helper: WhatsApp Web-Style Three-Dot Action Trigger & Contextual Menu
-  const renderActionToolbar = (isOwn) => {
+  // Helper: Floating Discord Row Action Bar
+  const renderFloatingActionBar = () => {
     if (isEditing) return null;
 
     return (
       <div
         ref={menuButtonRef}
-        className={`absolute -top-3 z-20 items-center justify-center transition-all ${
-          isOwn ? 'left-1' : 'right-1'
-        } ${isMenuOpen ? 'flex' : 'hidden sm:group-hover:flex sm:group-focus-within:flex max-sm:flex'}`}
+        className={`absolute -top-3.5 right-4 z-20 items-center bg-white border border-slate-200 rounded-lg shadow-sm px-1 py-0.5 gap-0.5 transition-opacity ${
+          isMenuOpen || showMobileActions
+            ? 'flex opacity-100'
+            : 'hidden group-hover:flex group-focus-within:flex opacity-100'
+        }`}
       >
+        {/* Quick Add Reaction (WhatsApp-Style Bar) */}
+        {canReact && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setReactionPickerSource((prev) => (prev === 'floating' ? null : 'floating'))
+              }
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                reactionPickerSource === 'floating'
+                  ? 'bg-slate-200 text-slate-900'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              }`}
+              title="Add reaction"
+              aria-label="Add reaction"
+            >
+              <SmilePlus className="h-3.5 w-3.5" />
+            </button>
+
+            {reactionPickerSource === 'floating' && (
+              <ChatReactionPicker
+                isOpen={true}
+                align="right"
+                userReactions={currentUserReactions}
+                onSelectReaction={(emoji) => {
+                  onToggleReaction(message.messageId, emoji);
+                  setReactionPickerSource(null);
+                }}
+                onClose={() => setReactionPickerSource(null)}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Reply in Thread / Quick Reply */}
+        {canReply && (
+          <button
+            type="button"
+            onClick={() => onOpenThread(message)}
+            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Reply in thread"
+            aria-label="Reply in thread"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {/* Pin / Unpin message */}
+        {canPin && (
+          <button
+            type="button"
+            onClick={handlePinToggle}
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              isPinned || message.isPinned
+                ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+            title={isPinned || message.isPinned ? 'Unpin message' : 'Pin message'}
+            aria-label={isPinned || message.isPinned ? 'Unpin message' : 'Pin message'}
+          >
+            {isPinned || message.isPinned ? (
+              <PinOff className="h-3.5 w-3.5" />
+            ) : (
+              <Pin className="h-3.5 w-3.5 fill-current" />
+            )}
+          </button>
+        )}
+
+        {/* Edit Message (Author Only) */}
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Edit message"
+            aria-label="Edit message"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {/* Delete Message (Author or Workspace Admin) */}
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => (resolveDelete || onDelete)(message.messageId)}
+            className="p-1.5 rounded-md text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            title="Delete message"
+            aria-label="Delete message"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        {/* More Options Trigger */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsMenuOpen(!isMenuOpen);
-          }}
-          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer ${
-            isMenuOpen ? 'ring-2 ring-primary-500 text-primary-600 bg-white shadow-sm' : ''
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+            isMenuOpen
+              ? 'bg-slate-100 text-slate-900'
+              : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
           }`}
           title="More options"
-          aria-label="More message options"
+          aria-label="More options"
           aria-haspopup="true"
           aria-expanded={isMenuOpen}
         >
           <MoreVertical className="h-3.5 w-3.5" />
         </button>
 
-        {/* Three-Dot Contextual Menu */}
+        {/* Three-Dot Contextual Dropdown */}
         {isMenuOpen && (
           <div
             ref={menuRef}
-            className={`absolute z-30 min-w-[130px] rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition-all animate-in fade-in zoom-in-95 ${
-              isOwn ? 'top-full left-0 mt-1' : 'top-full right-0 mt-1'
-            }`}
+            className="absolute right-0 top-full mt-1 z-30 min-w-[150px] rounded-xl border border-slate-200 bg-white p-1 shadow-lg transition-all"
             role="menu"
             aria-label="Message context menu"
           >
@@ -287,7 +454,43 @@ export function ChatMessageItem({
                 ) : (
                   <Copy className="h-3.5 w-3.5 text-slate-500" />
                 )}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
+                <span>{copied ? 'Copied' : 'Copy Text'}</span>
+              </button>
+            )}
+
+            {/* Quick Reply callback if supported */}
+            {onReplyMessage && canReply && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  onReplyMessage(message);
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                <Reply className="h-3.5 w-3.5 text-slate-500" />
+                <span>Quote Reply</span>
+              </button>
+            )}
+
+            {/* Pin Toggle in Menu */}
+            {canPin && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  handlePinToggle();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                {isPinned || message.isPinned ? (
+                  <PinOff className="h-3.5 w-3.5 text-amber-600" />
+                ) : (
+                  <Pin className="h-3.5 w-3.5 text-slate-500" />
+                )}
+                <span>{isPinned || message.isPinned ? 'Unpin Message' : 'Pin Message'}</span>
               </button>
             )}
 
@@ -310,7 +513,7 @@ export function ChatMessageItem({
             {/* Delete Message (Author or Workspace Admin) */}
             {canDelete && (
               <>
-                {(message.content || canEdit) && <div className="my-0.5 border-t border-slate-100" />}
+                <div className="my-0.5 border-t border-slate-100" />
                 <button
                   type="button"
                   onClick={() => {
@@ -332,73 +535,89 @@ export function ChatMessageItem({
   };
 
   // Helper: Reaction Chips & Thread Replies Row
-  const renderReactionsAndReplies = (isOwn) => {
+  const renderReactionsAndReplies = () => {
     if (message.deleted) return null;
     const hasReactions = Object.keys(reactions).length > 0;
     const hasReplies = replyCount > 0;
     if (!hasReactions && !hasReplies && !canReact && !canReply) return null;
 
     return (
-      <div className={`flex flex-wrap items-center gap-1.5 pt-1 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+      <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
         {Object.entries(reactions).map(([emoji, reactionData]) => {
           const hasReacted = reactionData.users?.includes(currentUserId);
           return (
             <button
               key={emoji}
               type="button"
-              onClick={() => setInspectReactionEmoji(emoji)}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
+              onClick={() => onToggleReaction(message.messageId, emoji)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setInspectReactionEmoji(emoji);
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
                 hasReacted
-                  ? 'bg-primary-100 border border-primary-300 text-primary-800 font-bold shadow-2xs hover:bg-primary-200/70'
-                  : 'bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 text-slate-700 font-medium'
+                  ? 'bg-primary-50 border border-primary-300 text-primary-800 font-bold shadow-2xs hover:bg-primary-100'
+                  : 'bg-slate-100 hover:bg-slate-200/80 border border-slate-200/70 text-slate-700 font-medium'
               }`}
-              title={`View who reacted with ${emoji} (${reactionData.count})`}
-              aria-label={`${emoji} reaction, ${reactionData.count} count. Click to view participants`}
+              title={`${hasReacted ? 'Click to remove reaction' : 'Click to react'} • Right-click or click count to view participants (${reactionData.count})`}
+              aria-label={`${emoji} reaction, ${reactionData.count} count`}
             >
-              <span>{emoji}</span>
-              <span className="text-[11px] font-mono">{reactionData.count}</span>
+              <span className="text-sm leading-none">{emoji}</span>
+              <span
+                className="text-[11px] font-mono hover:underline cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setInspectReactionEmoji(emoji);
+                }}
+                title="View who reacted"
+              >
+                {reactionData.count}
+              </span>
             </button>
           );
         })}
 
-        {/* Quick Add Reaction Button */}
+        {/* Quick Add Reaction Button in Footer */}
         {canReact && (
           <div className="relative">
             <button
               type="button"
-              onClick={() => setReactionPickerAnchor((prev) => (prev === 'chips' ? null : 'chips'))}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+              onClick={() =>
+                setReactionPickerSource((prev) => (prev === 'footer' ? null : 'footer'))
+              }
+              className={`p-1 rounded-full hover:bg-slate-100 focus:outline-none transition-colors cursor-pointer ${
+                reactionPickerSource === 'footer'
+                  ? 'bg-slate-200 text-slate-800'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
               title="Add reaction"
               aria-label="Add emoji reaction"
             >
               <SmilePlus className="h-3.5 w-3.5" />
             </button>
 
-            {reactionPickerAnchor === 'chips' && (
+            {reactionPickerSource === 'footer' && (
               <ChatReactionPicker
                 isOpen={true}
-                align={isOwn ? 'right' : 'left'}
+                align="left"
+                userReactions={currentUserReactions}
                 onSelectReaction={(emoji) => {
                   onToggleReaction(message.messageId, emoji);
-                  setReactionPickerAnchor(null);
+                  setReactionPickerSource(null);
                 }}
-                onClose={() => setReactionPickerAnchor(null)}
+                onClose={() => setReactionPickerSource(null)}
               />
             )}
           </div>
         )}
 
-        {/* Reply in Thread Button */}
-        {canReply && (
+        {/* Thread Discussion Pill */}
+        {hasReplies && (
           <button
             type="button"
             onClick={() => onOpenThread(message)}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
-              replyCount > 0
-                ? 'bg-primary-50 text-primary-700 font-bold border border-primary-200/80 shadow-2xs hover:bg-primary-100 hover:text-primary-800'
-                : 'bg-slate-100 hover:bg-primary-50 hover:text-primary-600 border border-slate-200/60 text-slate-600'
-            }`}
-            title={replyCount > 0 ? `${formatReplyCountLabel(replyCount)} - Click to open discussion thread` : 'Reply in thread'}
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-primary-50 text-primary-700 font-bold border border-primary-200/80 shadow-2xs hover:bg-primary-100 transition-all cursor-pointer"
+            title={`${formatReplyCountLabel(replyCount)} - Click to open discussion thread`}
             aria-label={`Reply in thread, ${formatReplyCountLabel(replyCount)}`}
           >
             <MessageSquare className="h-3 w-3" />
@@ -409,7 +628,6 @@ export function ChatMessageItem({
     );
   };
 
-  // 3. Render Normal User Message (WhatsApp-Style Two-Sided Bubbles)
   return (
     <div
       id={`msg_${message.messageId}`}
@@ -420,192 +638,202 @@ export function ChatMessageItem({
           setShowMobileActions(false);
         }
       }}
-      className={`group relative flex w-full my-1 px-2 sm:px-4 transition-all duration-200 ${
-        isOwnMessage ? 'justify-end' : 'justify-start'
-      } ${isTargetHighlighted ? 'bg-primary-50/70 ring-2 ring-primary-500 rounded-2xl py-1' : ''}`}
+      className={`group relative flex w-full transition-all duration-700 ease-out ${
+        isGrouped ? 'py-0.5' : 'pt-2 pb-1 mt-1'
+      } px-4 hover:bg-slate-50/80 ${
+        isMessageHighlighted
+          ? 'bg-primary-500/15 ring-2 ring-primary-500/50 shadow-sm rounded-lg'
+          : isUserMentioned
+          ? 'bg-amber-500/5 border-l-2 border-amber-500'
+          : ''
+      }`}
     >
-      {isOwnMessage ? (
-        /* OWN MESSAGE (RIGHT-ALIGNED) */
-        <div className="relative flex flex-col items-end max-w-[85%] sm:max-w-[75%] lg:max-w-[65%]">
-          {/* Main Bubble Wrapper with relative anchor */}
-          <div className="relative group/bubble flex flex-col items-end">
-            {renderActionToolbar(true)}
+      {/* Floating Action Bar */}
+      {renderFloatingActionBar()}
 
-            {/* Main Bubble */}
-            <div
-              className={`relative rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
-                isTargetHighlighted ? 'ring-2 ring-primary-300' : ''
-              }`}
-            >
-              {isEditing ? (
-                <form onSubmit={handleSaveEdit} className="space-y-2 min-w-[240px] max-w-md">
-                  <div className="relative">
-                    <textarea
-                      ref={editTextareaRef}
-                      value={editContent}
-                      onChange={(e) => {
-                        setEditContent(e.target.value.substring(0, 2000));
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${e.target.scrollHeight}px`;
-                      }}
-                      onKeyDown={handleEditKeyDown}
-                      rows={2}
-                      disabled={isSavingEdit}
-                      className="w-full rounded-xl border border-primary-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-300 shadow-inner resize-none leading-relaxed"
-                      aria-label="Edit message content"
-                    />
-                    <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-slate-400">
-                      {editContent.length}/2000
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      type="submit"
-                      disabled={isSavingEdit || !editContent.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-primary-700 hover:bg-primary-50 disabled:bg-primary-300 text-white font-bold text-xs transition-colors shadow-2xs"
-                    >
-                      {isSavingEdit ? (
-                        <>
-                          <Loader2 className="animate-spin h-3.5 w-3.5" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <span>Save</span>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditContent(message.content || '');
-                      }}
-                      disabled={isSavingEdit}
-                      className="px-2.5 py-1.5 rounded-lg bg-primary-700/60 hover:bg-primary-700 text-primary-100 font-medium text-xs transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <span className="text-[10px] text-primary-200/80 font-mono hidden sm:inline">
-                      Enter to save, Esc to cancel
-                    </span>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  {message.content && (
-                    <div className="text-xs text-white leading-relaxed font-medium whitespace-pre-wrap break-words">
-                      {renderFormattedContent(message.content, members, currentUserId, true)}
-                    </div>
-                  )}
-
-                  {message.attachment && (
-                    <div className="pt-0.5">
-                      <ChatFileCard attachment={message.attachment} onOpenPreview={onOpenPreview} />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-primary-200/90 font-mono select-none pt-0.5">
-                    <span title={displayFullDate}>{displayTime}</span>
-                    {message.editedAt && (
-                      <span
-                        className="italic hover:underline cursor-help"
-                        title={`Edited at ${formatFullDateTime(message.editedAt)}`}
-                      >
-                        (edited)
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Reactions & Thread Replies */}
-          {renderReactionsAndReplies(true)}
-        </div>
-      ) : (
-        /* OTHER MEMBER'S MESSAGE (LEFT-ALIGNED) */
-        <div className="relative flex flex-row items-start gap-2 max-w-[85%] sm:max-w-[75%] lg:max-w-[65%]">
-          {/* Avatar with Presence Dot */}
-          {!isGrouped ? (
-            <div className="relative shrink-0 pt-0.5">
-              {senderAvatar ? (
-                <img
-                  src={senderAvatar}
-                  alt={senderDisplayName}
-                  className="h-8 w-8 rounded-full object-cover border border-slate-200 shadow-2xs"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs bg-slate-700 text-white shadow-2xs">
-                  {(senderDisplayName || 'M').charAt(0).toUpperCase()}
-                </div>
-              )}
-              {senderMember && (
-                <span
-                  className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white ${
-                    senderMember.onlineStatus === 'online' ? 'bg-emerald-500 shadow-2xs' : 'bg-slate-400'
-                  }`}
-                  title={senderMember.onlineStatus === 'online' ? 'Online' : 'Offline'}
-                />
-              )}
-            </div>
-          ) : (
-            <div className="w-8 shrink-0" />
-          )}
-
-          {/* Bubble Column */}
-          <div className="flex flex-col items-start min-w-0">
-            {!isGrouped && (
-              <div className="flex items-center gap-2 mb-1 px-1">
-                <span className="text-xs font-bold text-slate-800 truncate">
-                  {senderDisplayName}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono" title={displayFullDate}>
-                  {displayTime}
-                </span>
-              </div>
-            )}
-
-            {/* Main Bubble Wrapper with relative anchor */}
-            <div className="relative group/bubble flex flex-col items-start">
-              {renderActionToolbar(false)}
-
-              {/* Main Bubble */}
-              <div className="relative rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-900 shadow-2xs px-3.5 py-2 space-y-1">
-                {message.content && (
-                  <div className="text-xs text-slate-900 leading-relaxed font-medium whitespace-pre-wrap break-words">
-                    {renderFormattedContent(message.content, members, currentUserId, false)}
-                  </div>
-                )}
-
-                {message.attachment && (
-                  <div className="pt-0.5">
-                    <ChatFileCard attachment={message.attachment} onOpenPreview={onOpenPreview} />
-                  </div>
-                )}
-
-                <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-mono select-none pt-0.5">
-                  <span title={displayFullDate}>{displayTime}</span>
-                  {message.editedAt && (
-                    <span
-                      className="italic hover:underline cursor-help"
-                      title={`Edited at ${formatFullDateTime(message.editedAt)}`}
-                    >
-                      (edited)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Reactions & Thread Replies */}
-            {renderReactionsAndReplies(false)}
-          </div>
+      {/* In-Line Reply Reference Banner (if message replies to another) */}
+      {message.replyTo && !isGrouped && (
+        <div className="absolute -top-3.5 left-14 flex items-center gap-1.5 text-[11px] text-slate-500 select-none">
+          <CornerDownRight className="h-3 w-3 text-slate-400" />
+          <span className="font-semibold text-slate-600">
+            @{message.replyTo.senderName || 'Member'}
+          </span>
+          <span className="truncate max-w-[200px] text-slate-400">
+            {message.replyTo.content || 'Attachment'}
+          </span>
         </div>
       )}
 
-      {/* WhatsApp-Style Reaction Participants Modal */}
+      {/* Left Column: Avatar or Hover Timestamp Gutter */}
+      <div className="w-10 shrink-0 flex items-start justify-center pt-0.5 mr-3 select-none">
+        {!isGrouped ? (
+          <button
+            type="button"
+            onClick={() => onOpenProfile?.(memberProfile || senderMember)}
+            className="relative cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+            title={isOwnMessage ? 'View your profile' : `View ${senderDisplayName}'s profile`}
+          >
+            {senderAvatar ? (
+              <img
+                src={senderAvatar}
+                alt={isOwnMessage ? 'You' : senderDisplayName}
+                className="h-10 w-10 rounded-full object-cover border border-slate-200/80 shadow-2xs hover:opacity-90 transition-opacity"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-600 to-indigo-700 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                {(isOwnMessage ? 'Y' : (senderDisplayName || 'M')).charAt(0).toUpperCase()}
+              </div>
+            )}
+            {senderMember && (
+              <span
+                className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white ${
+                  senderMember.onlineStatus === 'online' ? 'bg-emerald-500 shadow-2xs' : 'bg-slate-400'
+                }`}
+                title={senderMember.onlineStatus === 'online' ? 'Online' : 'Offline'}
+              />
+            )}
+          </button>
+        ) : (
+          <span
+            className="hidden group-hover:inline-block text-[10px] text-slate-400 font-mono tracking-tighter"
+            title={displayFullDate}
+          >
+            {displayTime.replace(/\s?[AP]M/, '')}
+          </span>
+        )}
+      </div>
+
+      {/* Right Column: Author Header, Body, Markdown, Files, Reactions */}
+      <div className="flex-1 min-w-0 pr-2">
+        {!isGrouped && (
+          <div className="flex items-center gap-2 mb-1 leading-none">
+            <button
+              type="button"
+              onClick={() => onOpenProfile?.(memberProfile || senderMember)}
+              className="text-xs font-bold text-slate-900 hover:underline cursor-pointer truncate"
+            >
+              {isOwnMessage ? 'You' : senderDisplayName}
+            </button>
+
+            {/* Timestamp */}
+            <span
+              className="text-[11px] text-slate-400 font-mono select-none"
+              title={displayFullDate}
+            >
+              {displayTime}
+            </span>
+
+            {/* Pinned Badge */}
+            {(isPinned || message.isPinned) && (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 select-none bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200/60"
+                title="Pinned message"
+              >
+                <Pin className="h-2.5 w-2.5 fill-current" />
+                <span>Pinned</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Message Content or Edit Input */}
+        {isEditing ? (
+          <form onSubmit={handleSaveEdit} className="space-y-2 mt-1 max-w-2xl">
+            <div className="relative">
+              <textarea
+                ref={editTextareaRef}
+                value={editContent}
+                onChange={(e) => {
+                  setEditContent(e.target.value.substring(0, 2000));
+                  e.target.style.height = 'auto';
+                  e.target.style.height = `${e.target.scrollHeight}px`;
+                }}
+                onKeyDown={handleEditKeyDown}
+                rows={2}
+                disabled={isSavingEdit}
+                className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-inner resize-none leading-relaxed"
+                aria-label="Edit message content"
+              />
+              <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-slate-400">
+                {editContent.length}/2000
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs">
+              <button
+                type="submit"
+                disabled={isSavingEdit || !editContent.trim()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-primary-300 text-white font-bold text-xs transition-colors shadow-2xs"
+              >
+                {isSavingEdit ? (
+                  <>
+                    <Loader2 className="animate-spin h-3.5 w-3.5" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <span>Save</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditContent(message.content || '');
+                }}
+                disabled={isSavingEdit}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                Enter to save, Esc to cancel
+              </span>
+            </div>
+          </form>
+        ) : (
+          <div className="text-xs text-slate-900 leading-relaxed font-normal">
+            {message.content &&
+              renderDiscordMarkdown(message.content, {
+                members,
+                currentUserId,
+                onSelectChannel,
+              })}
+
+            {message.editedAt && (
+              <span
+                className="text-[10px] text-slate-400 italic ml-1 cursor-help select-none"
+                title={`Edited at ${formatFullDateTime(message.editedAt)}`}
+              >
+                (edited)
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* File Attachments & Voice Notes */}
+        {message.attachment && (
+          <div className="pt-1.5 w-full max-w-md overflow-hidden">
+            {message.attachment.isVoiceNote ||
+            message.attachment.category === 'audio' ||
+            message.attachment.mimeType?.startsWith('audio/') ? (
+              <VoiceMessagePlayer
+                audioUrl={message.attachment.url}
+                duration={message.attachment.duration}
+                waveform={message.attachment.waveform}
+                isOwnMessage={isOwnMessage}
+              />
+            ) : (
+              <ChatFileCard attachment={message.attachment} onOpenPreview={onOpenPreview} />
+            )}
+          </div>
+        )}
+
+        {/* Reactions and Reply Counts */}
+        {renderReactionsAndReplies()}
+      </div>
+
+      {/* Reaction Participants Inspection Modal */}
       <ChatReactionParticipantsModal
         isOpen={Boolean(inspectReactionEmoji)}
         initialEmoji={inspectReactionEmoji || 'all'}
@@ -619,6 +847,56 @@ export function ChatMessageItem({
   );
 }
 
+function areMessagePropsEqual(prev, next) {
+  // 1. If message ID differs, must re-render
+  if (prev.message?.messageId !== next.message?.messageId) return false;
+
+  // 2. If content, edited timestamp, deleted, pinned, or status changed
+  if (prev.message?.content !== next.message?.content) return false;
+  if (prev.message?.editedAt !== next.message?.editedAt) return false;
+  if (prev.message?.deleted !== next.message?.deleted) return false;
+  if (prev.message?.status !== next.message?.status) return false;
+
+  // 3. Layout & Highlight changes
+  if (prev.isGrouped !== next.isGrouped) return false;
+  if (prev.isHighlighted !== next.isHighlighted) return false;
+  if (prev.isTargetHighlighted !== next.isTargetHighlighted) return false;
+  if (prev.isPinned !== next.isPinned) return false;
+  if (prev.isWorkspaceAdmin !== next.isWorkspaceAdmin) return false;
+  if (prev.currentUserId !== next.currentUserId) return false;
+
+  // 4. Active contextual menu state
+  const prevWasOpen = prev.activeMenuMessageId === prev.message?.messageId;
+  const nextIsOpen = next.activeMenuMessageId === next.message?.messageId;
+  if (prevWasOpen !== nextIsOpen) return false;
+
+  // 5. Reply count
+  if (prev.replyCount !== next.replyCount) return false;
+
+  // 6. Reactions comparison
+  if (prev.reactions !== next.reactions) {
+    const prevKeys = Object.keys(prev.reactions || {});
+    const nextKeys = Object.keys(next.reactions || {});
+    if (prevKeys.length !== nextKeys.length) return false;
+    for (const key of prevKeys) {
+      if (prev.reactions[key]?.count !== next.reactions[key]?.count) return false;
+      const prevHasMe = prev.reactions[key]?.users?.includes(prev.currentUserId);
+      const nextHasMe = next.reactions[key]?.users?.includes(next.currentUserId);
+      if (prevHasMe !== nextHasMe) return false;
+    }
+  }
+
+  // 7. Members roster length
+  if (prev.members?.length !== next.members?.length) return false;
+
+  // 8. Action handler references
+  if (prev.onPinMessage !== next.onPinMessage) return false;
+
+  return true;
+}
+
+export const ChatMessageItem = React.memo(ChatMessageItemComponent, areMessagePropsEqual);
+
 ChatMessageItem.propTypes = {
   workspaceId: PropTypes.string,
   channelId: PropTypes.string,
@@ -627,26 +905,41 @@ ChatMessageItem.propTypes = {
     senderId: PropTypes.string,
     senderName: PropTypes.string,
     senderAvatar: PropTypes.string,
+    senderRole: PropTypes.string,
     content: PropTypes.string,
     createdAt: PropTypes.number,
     editedAt: PropTypes.number,
     deleted: PropTypes.bool,
     isSystem: PropTypes.bool,
+    isPinned: PropTypes.bool,
+    replyTo: PropTypes.object,
     attachment: PropTypes.object,
   }).isRequired,
   currentUserId: PropTypes.string,
   members: PropTypes.array,
   isWorkspaceAdmin: PropTypes.bool,
   isGrouped: PropTypes.bool,
-  onEdit: PropTypes.func,
-  onDelete: PropTypes.func,
-  onEditMessage: PropTypes.func,
-  onDeleteMessage: PropTypes.func,
+  isFirstInGroup: PropTypes.bool,
+  isLastInGroup: PropTypes.bool,
+  isHighlighted: PropTypes.bool,
+  isTargetHighlighted: PropTypes.bool,
+  isPinned: PropTypes.bool,
+  timeLabel: PropTypes.string,
+  fullDateLabel: PropTypes.string,
   activeMenuMessageId: PropTypes.string,
   onSetActiveMenuMessageId: PropTypes.func,
   reactions: PropTypes.object,
   replyCount: PropTypes.number,
+  onEdit: PropTypes.func,
+  onDelete: PropTypes.func,
+  onEditMessage: PropTypes.func,
+  onDeleteMessage: PropTypes.func,
+  onPinMessage: PropTypes.func,
   onOpenPreview: PropTypes.func,
   onOpenThread: PropTypes.func,
   onToggleReaction: PropTypes.func,
+  onSelectChannel: PropTypes.func,
+  onReplyMessage: PropTypes.func,
+  onOpenProfile: PropTypes.func,
 };
+

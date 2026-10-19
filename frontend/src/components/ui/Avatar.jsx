@@ -9,10 +9,13 @@ export function Avatar({ src = null, name = '', size = 'md', className = '' }) {
   const initials = getInitials(safeName);
 
   const sizes = {
+    xs: 'h-5 w-5 text-[10px]',
     sm: 'h-6 w-6 text-xs',
     md: 'h-8 w-8 text-xs',
     lg: 'h-10 w-10 text-sm',
+    xl: 'h-12 w-12 text-base',
   };
+  const sizeClass = sizes[size] || sizes.md;
 
   // Consistent color palette derived from string hash
   const colors = [
@@ -38,7 +41,7 @@ export function Avatar({ src = null, name = '', size = 'md', className = '' }) {
         onError={() => setImgError(true)}
         className={cn(
           'inline-flex shrink-0 rounded-full object-cover border border-slate-200 select-none',
-          sizes[size],
+          sizeClass,
           className
         )}
       />
@@ -50,7 +53,7 @@ export function Avatar({ src = null, name = '', size = 'md', className = '' }) {
       title={safeName}
       className={cn(
         'inline-flex shrink-0 items-center justify-center rounded-full border font-semibold select-none',
-        sizes[size],
+        sizeClass,
         colors[colorIndex],
         className
       )}
@@ -63,6 +66,6 @@ export function Avatar({ src = null, name = '', size = 'md', className = '' }) {
 Avatar.propTypes = {
   src: PropTypes.string,
   name: PropTypes.string,
-  size: PropTypes.oneOf(['sm', 'md', 'lg']),
+  size: PropTypes.oneOf(['xs', 'sm', 'md', 'lg', 'xl']),
   className: PropTypes.string,
 };

@@ -1,10 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Users, Crown, UserCheck, Search, Circle } from 'lucide-react';
+import { Users, Crown, Shield, UserCheck, Search, Circle } from 'lucide-react';
 import { resolveMemberDisplayName } from '../../utils/memberIdentity';
+import { ChatUserProfilePopover } from './ChatUserProfilePopover';
 
-export function ChatMemberList({ members = [], currentUserId }) {
+/**
+ * Discord-style Role Hierarchy Member Roster for Convia.
+ * Partitions workspace members into Owners/Leaders, Admins, Online, and Offline,
+ * with presence indicators and interactive profile popovers.
+ */
+export function ChatMemberList({ members = [], currentUserId, onMentionUser }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMember, setSelectedMember] = useState(null);
 
   const filteredMembers = useMemo(() => {
     return members.filter((m) => {
@@ -17,27 +24,41 @@ export function ChatMemberList({ members = [], currentUserId }) {
     });
   }, [members, searchTerm]);
 
-  // Partition members into Online and Offline
-  const { onlineMembers, offlineMembers } = useMemo(() => {
-    const online = [];
-    const offline = [];
+  // Partition members into Discord Role Hierarchy
+  const { leaders, admins, onlineMembers, offlineMembers } = useMemo(() => {
+    const l = [];
+    const a = [];
+    const on = [];
+    const off = [];
 
     filteredMembers.forEach((m) => {
-      // Current user is always online in active view; others check onlineStatus
       const isOnline = m.uid === currentUserId || m.onlineStatus === 'online';
-      if (isOnline) {
-        online.push(m);
+      const isLeader = m.role === 'leader' || m.isLeader || m.role === 'owner';
+      const isAdmin = m.role === 'admin' || m.isAdmin;
+
+      if (!isOnline) {
+        off.push(m);
+      } else if (isLeader) {
+        l.push(m);
+      } else if (isAdmin) {
+        a.push(m);
       } else {
-        offline.push(m);
+        on.push(m);
       }
     });
 
-    return { onlineMembers: online, offlineMembers: offline };
+    return {
+      leaders: l,
+      admins: a,
+      onlineMembers: on,
+      offlineMembers: off,
+    };
   }, [filteredMembers, currentUserId]);
 
   const renderMemberRow = (member, isOnline) => {
     const isMe = member.uid === currentUserId;
     const isLeader = member.role === 'leader' || member.isLeader || member.role === 'owner';
+    const isAdmin = member.role === 'admin' || member.isAdmin;
     const name = resolveMemberDisplayName(member);
     const avatar = member.avatar || member.photoURL || '';
     const hasUsername = member.username && member.username !== name;
@@ -45,9 +66,11 @@ export function ChatMemberList({ members = [], currentUserId }) {
     return (
       <div
         key={member.uid || member.id}
-        className={`flex items-center justify-between p-2 rounded-xl transition-colors ${
+        onClick={() => setSelectedMember(member)}
+        className={`flex items-center justify-between p-2 rounded-xl transition-colors cursor-pointer select-none ${
           isOnline ? 'hover:bg-slate-100/80' : 'opacity-70 hover:opacity-100 hover:bg-slate-50'
         }`}
+        title={`Click to view ${name}'s profile`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
           {/* Avatar with Presence Indicator Dot */}
@@ -59,7 +82,7 @@ export function ChatMemberList({ members = [], currentUserId }) {
                 className="h-8 w-8 rounded-full object-cover border border-slate-200"
               />
             ) : (
-              <div className="h-8 w-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
                 {name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -82,7 +105,7 @@ export function ChatMemberList({ members = [], currentUserId }) {
               </p>
             ) : (
               <p className="text-[10px] text-slate-500 font-mono capitalize">
-                {isLeader ? 'Workspace Owner' : member.role || 'Member'}
+                {isLeader ? 'Owner' : isAdmin ? 'Admin' : member.role || 'Member'}
               </p>
             )}
           </div>
@@ -91,8 +114,10 @@ export function ChatMemberList({ members = [], currentUserId }) {
         {/* Role Icon */}
         {isLeader ? (
           <Crown className="h-4 w-4 text-amber-500 shrink-0" title="Workspace Owner" />
+        ) : isAdmin ? (
+          <Shield className="h-3.5 w-3.5 text-purple-500 shrink-0" title="Workspace Admin" />
         ) : (
-          <UserCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+          <UserCheck className="h-3.5 w-3.5 text-slate-300 shrink-0" />
         )}
       </div>
     );
@@ -124,9 +149,31 @@ export function ChatMemberList({ members = [], currentUserId }) {
         </div>
       </div>
 
-      {/* Member Roster List partitioned by presence */}
+      {/* Member Roster List partitioned by role hierarchy and presence */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {/* Online Section */}
+        {/* Leaders Section */}
+        {leaders.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
+              <Crown className="h-3 w-3 text-amber-500" />
+              <span>Leaders — {leaders.length}</span>
+            </div>
+            {leaders.map((member) => renderMemberRow(member, true))}
+          </div>
+        )}
+
+        {/* Admins Section */}
+        {admins.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-700 uppercase tracking-wider">
+              <Shield className="h-3 w-3 text-purple-500" />
+              <span>Admins — {admins.length}</span>
+            </div>
+            {admins.map((member) => renderMemberRow(member, true))}
+          </div>
+        )}
+
+        {/* Online Members Section */}
         {onlineMembers.length > 0 && (
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
@@ -152,6 +199,15 @@ export function ChatMemberList({ members = [], currentUserId }) {
           <p className="text-center py-6 text-xs text-slate-400 italic">No members found.</p>
         )}
       </div>
+
+      {/* User Profile Popover Modal */}
+      <ChatUserProfilePopover
+        member={selectedMember}
+        isOpen={Boolean(selectedMember)}
+        onClose={() => setSelectedMember(null)}
+        onMentionUser={onMentionUser}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 }
@@ -159,4 +215,5 @@ export function ChatMemberList({ members = [], currentUserId }) {
 ChatMemberList.propTypes = {
   members: PropTypes.array,
   currentUserId: PropTypes.string,
+  onMentionUser: PropTypes.func,
 };

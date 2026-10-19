@@ -30,6 +30,9 @@ import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { ChatChannelSidebar } from '../../features/chat/ChatChannelSidebar';
 import { CreateChannelModal } from '../../features/chat/CreateChannelModal';
 import { ChannelSettingsModal } from '../../features/chat/ChannelSettingsModal';
+import { ChatPinnedMessagesDrawer } from '../../features/chat/ChatPinnedMessagesDrawer';
+import { ChatUserProfilePopover } from '../../features/chat/ChatUserProfilePopover';
+import { useUserProfiles } from '../../hooks/useUserProfile';
 import {
   Hash,
   Users,
@@ -44,6 +47,7 @@ import {
   Settings,
   Menu,
   X,
+  Pin,
 } from 'lucide-react';
 
 export default function WorkspaceChatPage() {
@@ -106,6 +110,17 @@ export default function WorkspaceChatPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [targetHighlightedMessageId, setTargetHighlightedMessageId] = useState(null);
   const [activeMenuMessageId, setActiveMenuMessageId] = useState(null);
+  const [isPinnedDrawerOpen, setIsPinnedDrawerOpen] = useState(false);
+  const [channelPinnedMessages, setChannelPinnedMessages] = useState({});
+  const [profilePopoverMember, setProfilePopoverMember] = useState(null);
+
+  // Batch subscribe to profiles of message authors & workspace members for real-time username & avatar sync
+  const chatProfileUids = useMemo(() => {
+    const messageUids = messages.map((m) => m?.senderId);
+    const memberUids = members.map((m) => m?.uid || m?.id);
+    return Array.from(new Set([...messageUids, ...memberUids].filter(Boolean)));
+  }, [messages, members]);
+  useUserProfiles(chatProfileUids);
 
   // Close any open message action menu on channel switch or route transition
   useEffect(() => {
@@ -209,6 +224,34 @@ export default function WorkspaceChatPage() {
     };
   }, [orgId, activeChannelId]);
 
+  // Channel-level Pinned Messages Subscription (Authoritative Sync + RTDB)
+  useEffect(() => {
+    if (!orgId || !activeChannelId) return;
+    setChannelPinnedMessages({});
+
+    const unsubPinned = chatService.subscribeToPinnedMessages(orgId, activeChannelId, (pinnedData) => {
+      const map = {};
+      if (Array.isArray(pinnedData)) {
+        pinnedData.forEach((p) => {
+          if (p?.messageId) map[p.messageId] = p;
+        });
+      } else if (pinnedData && typeof pinnedData === 'object') {
+        Object.entries(pinnedData).forEach(([k, v]) => {
+          if (v && typeof v === 'object' && v.messageId) {
+            map[v.messageId] = v;
+          } else if (v && typeof v === 'object') {
+            map[k] = { ...v, messageId: k };
+          }
+        });
+      }
+      setChannelPinnedMessages(map);
+    });
+
+    return () => {
+      if (typeof unsubPinned === 'function') unsubPinned();
+    };
+  }, [orgId, activeChannelId]);
+
   // Keyboard shortcut for search modal (Ctrl+K / Cmd+K)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -246,6 +289,68 @@ export default function WorkspaceChatPage() {
     }
   }, [orgId, activeChannelId, user?.uid, messages.length]);
 
+  // Helper to jump to a specific message, handle scrolling reliably, and apply WhatsApp-style 2s glowing highlight
+  const jumpToMessageWithHighlight = useCallback(
+    (msgId) => {
+      if (!msgId) return;
+
+      isNearBottomRef.current = false;
+      setTargetHighlightedMessageId(msgId);
+
+      const executeScroll = () => {
+        const el = document.getElementById(`msg_${msgId}`);
+        if (el) {
+          const container = messageListContainerRef.current;
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const elRect = el.getBoundingClientRect();
+            const targetScrollTop =
+              container.scrollTop +
+              (elRect.top - containerRect.top) -
+              container.clientHeight / 2 +
+              el.clientHeight / 2;
+            container.scrollTo({
+              top: Math.max(0, targetScrollTop),
+              behavior: 'smooth',
+            });
+          } else {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return true;
+        }
+        return false;
+      };
+
+      // If message is not in the currently loaded batch, fetch directly and prepend to feed
+      if (orgId && !messages.some((m) => m.messageId === msgId)) {
+        chatService
+          .getMessage(orgId, activeChannelId, msgId, memberJoinedAt)
+          .then((fetched) => {
+            if (fetched && !fetched.deleted) {
+              setMessages((prev) => prependOlderMessages(prev, [fetched]));
+              requestAnimationFrame(() => {
+                executeScroll();
+                setTimeout(executeScroll, 150);
+              });
+            }
+          })
+          .catch(() => {});
+      }
+
+      // Execute immediately and retry as drawer slide-out animation settles
+      executeScroll();
+      setTimeout(executeScroll, 100);
+      setTimeout(executeScroll, 250);
+      setTimeout(executeScroll, 400);
+
+      // WhatsApp-style 2-second glowing background auto-fade
+      setTimeout(() => {
+        setTargetHighlightedMessageId((prev) => (prev === msgId ? null : prev));
+      }, 2000);
+    },
+    [orgId, activeChannelId, memberJoinedAt, messages]
+  );
+
   // Deep-linking from notification or URL search params
   useEffect(() => {
     const targetMsgId = searchParams.get('messageId');
@@ -261,24 +366,19 @@ export default function WorkspaceChatPage() {
       }
       // If parent is not in initial batch and not loading, attempt direct lookup
       if (!loadingMessages && orgId) {
-        chatService.getMessage(orgId, activeChannelId, targetThreadId, memberJoinedAt).then((fetched) => {
-          if (fetched && !fetched.deleted) {
-            setActiveThreadMessage(fetched);
-          }
-        }).catch(() => {});
+        chatService
+          .getMessage(orgId, activeChannelId, targetThreadId, memberJoinedAt)
+          .then((fetched) => {
+            if (fetched && !fetched.deleted) {
+              setActiveThreadMessage(fetched);
+            }
+          })
+          .catch(() => {});
       }
     } else if (targetMsgId && messages.length > 0) {
-      setTargetHighlightedMessageId(targetMsgId);
-      setTimeout(() => {
-        const el = document.getElementById(`msg_${targetMsgId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 200);
-      const timer = setTimeout(() => setTargetHighlightedMessageId(null), 3500);
-      return () => clearTimeout(timer);
+      jumpToMessageWithHighlight(targetMsgId);
     }
-  }, [searchParams, messages, loadingMessages, orgId, activeChannelId, memberJoinedAt]);
+  }, [searchParams, messages, loadingMessages, orgId, activeChannelId, memberJoinedAt, jumpToMessageWithHighlight]);
 
   // Load older messages (bounded cursor pagination)
   const handleLoadOlder = useCallback(async () => {
@@ -497,11 +597,16 @@ export default function WorkspaceChatPage() {
       let attachmentData = null;
 
       if (file) {
-        attachmentData = await uploadthingService.uploadFile(file, {
-          workspaceId: orgId,
-          userUid: user?.uid,
-          onProgress: (progress) => setUploadProgress(progress),
-        });
+        if (file instanceof File || file instanceof Blob) {
+          attachmentData = await uploadthingService.uploadFile(file, {
+            workspaceId: orgId,
+            userUid: user?.uid,
+            onProgress: (progress) => setUploadProgress(progress),
+          });
+        } else if (typeof file === 'object' && (file.url || file.fileId)) {
+          // Pre-uploaded attachment metadata (e.g. voice notes with duration and waveform)
+          attachmentData = file;
+        }
       }
 
       await chatService.sendMessage(orgId, activeChannelId, content, effectiveUser || user, attachmentData, members);
@@ -554,6 +659,57 @@ export default function WorkspaceChatPage() {
     }
   };
 
+  // Pin / unpin message handler (maximum 3 pinned messages per channel)
+  const handlePinMessage = async (msg) => {
+    if (!orgId || !activeChannelId || !msg?.messageId) return;
+    const isCurrentlyPinned = Boolean(channelPinnedMessages[msg.messageId] || msg.isPinned);
+    try {
+      if (isCurrentlyPinned) {
+        // Optimistically unpin immediately
+        const nextMap = { ...channelPinnedMessages };
+        delete nextMap[msg.messageId];
+        setChannelPinnedMessages(nextMap);
+        await chatService.unpinMessage(orgId, activeChannelId, msg.messageId);
+        const remaining = Object.keys(nextMap).length;
+        toast.success(`Message unpinned (${remaining}/3).`);
+      } else {
+        const currentCount = Object.keys(channelPinnedMessages).length;
+        if (currentCount >= 3) {
+          toast.error('Maximum of 3 pinned messages allowed in this channel. Please unpin an older message first.');
+          return;
+        }
+        // Optimistically pin immediately
+        const pinnedRecord = {
+          messageId: msg.messageId,
+          content: msg.content || '',
+          senderId: msg.senderId || '',
+          senderName: msg.senderName || '',
+          attachment: msg.attachment || null,
+          pinnedAt: Date.now(),
+        };
+        const nextMap = { ...channelPinnedMessages, [msg.messageId]: pinnedRecord };
+        setChannelPinnedMessages(nextMap);
+        const savedPin = await chatService.pinMessage(orgId, activeChannelId, msg, effectiveUser || user);
+        if (savedPin) {
+          setChannelPinnedMessages((prev) => ({ ...prev, [msg.messageId]: savedPin }));
+        }
+        const updatedCount = Object.keys(nextMap).length;
+        toast.success(`Message pinned to channel (${updatedCount}/3).`);
+      }
+    } catch (err) {
+      console.error('[WorkspaceChatPage] Pin toggle error:', err);
+      // Revert on error by re-fetching
+      chatService.getPinnedMessages(orgId, activeChannelId).then((pins) => {
+        const map = {};
+        if (Array.isArray(pins)) {
+          pins.forEach((p) => { if (p?.messageId) map[p.messageId] = p; });
+        }
+        setChannelPinnedMessages(map);
+      }).catch(() => {});
+      toast.error(err?.message || 'Failed to update pinned state.');
+    }
+  };
+
   // Open Preview Modal
   const handleOpenPreview = (attachment) => {
     setPreviewAttachment(attachment);
@@ -591,15 +747,7 @@ export default function WorkspaceChatPage() {
         setActiveThreadMessage(parent);
       }
     } else {
-      setTargetHighlightedMessageId(result.messageId);
-      setTimeout(() => {
-        const el = document.getElementById(`msg_${result.messageId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 250);
-      const timer = setTimeout(() => setTargetHighlightedMessageId(null), 3500);
-      return () => clearTimeout(timer);
+      jumpToMessageWithHighlight(result.messageId);
     }
   };
 
@@ -702,43 +850,43 @@ export default function WorkspaceChatPage() {
         {/* Central Chat Column */}
         <div className="flex-1 flex flex-col min-w-0 bg-slate-50/40 relative">
           {/* Chat Header Bar */}
-          <div className="h-14 px-4 sm:px-6 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-14 px-2.5 sm:px-6 border-b border-slate-200 bg-white flex items-center justify-between shrink-0 z-10 gap-2 overflow-hidden">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-1 min-w-0 mr-1 sm:mr-2">
               {/* Mobile Channel Toggle Button */}
               <button
                 type="button"
                 onClick={() => setMobileChannelSidebarOpen(true)}
-                className="md:hidden p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
+                className="md:hidden p-1.5 sm:p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0 cursor-pointer"
                 aria-label="Open channels list"
               >
                 <Menu className="h-4 w-4" />
               </button>
 
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-600 shrink-0">
+              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-primary-100 bg-primary-50 text-primary-600 shrink-0">
                 {activeChannel.isDefault ? (
-                  <Hash className="h-4 w-4 stroke-[2.5]" />
+                  <Hash className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
                 ) : (
-                  <Lock className="h-4 w-4" />
+                  <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 )}
               </div>
 
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-black text-slate-900 truncate">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <h2 className="text-xs sm:text-sm font-black text-slate-900 truncate">
                     {activeChannel.name || activeChannelId}
                   </h2>
                   {activeChannel.isDefault && (
-                    <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-mono font-bold shrink-0">
+                    <span className="hidden sm:inline-flex px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full bg-slate-100 text-slate-600 text-[9px] sm:text-[10px] font-mono font-bold shrink-0">
                       Default
                     </span>
                   )}
                   {activeChannel.archived && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider shrink-0">
+                    <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold uppercase tracking-wider shrink-0">
                       Archived
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 truncate">
+                <p className="hidden sm:block text-[11px] text-slate-500 truncate mt-0.5">
                   {activeChannel.topic || (
                     activeChannel.isDefault
                       ? `Real-time team chat for ${org?.name || 'Workspace'}`
@@ -748,13 +896,13 @@ export default function WorkspaceChatPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {/* Channel Settings Button (if leader) */}
               {isLeader && (
                 <button
                   type="button"
                   onClick={() => setChannelToConfigure(activeChannel)}
-                  className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                  className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer"
                   title="Channel Settings"
                 >
                   <Settings className="h-4 w-4 text-slate-600" />
@@ -762,11 +910,36 @@ export default function WorkspaceChatPage() {
                 </button>
               )}
 
+              {/* Pinned Messages Button */}
+              <button
+                type="button"
+                onClick={() => setIsPinnedDrawerOpen(!isPinnedDrawerOpen)}
+                className={`p-1.5 sm:p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer ${
+                  isPinnedDrawerOpen
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900'
+                }`}
+                title="Pinned messages in channel"
+                aria-label="Pinned messages in channel"
+              >
+                <Pin
+                  className={`h-4 w-4 ${
+                    isPinnedDrawerOpen ? 'text-amber-600 fill-amber-600' : 'text-slate-600'
+                  }`}
+                />
+                <span className="hidden sm:inline">Pins</span>
+                {Object.keys(channelPinnedMessages).length > 0 && (
+                  <span className="px-1 sm:px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] sm:text-[10px] font-bold font-mono">
+                    {Object.keys(channelPinnedMessages).length}
+                  </span>
+                )}
+              </button>
+
               {/* Message Discovery Search Button */}
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(true)}
-                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors cursor-pointer"
                 title="Search messages (Ctrl+K)"
                 aria-label="Search messages"
               >
@@ -780,11 +953,11 @@ export default function WorkspaceChatPage() {
               {/* Mobile Roster Toggle */}
               <button
                 onClick={() => setMobileRosterOpen(!mobileRosterOpen)}
-                className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer"
                 aria-label="Toggle team roster"
               >
                 <Users className="h-4 w-4 text-primary-600" />
-                <span>({members.length})</span>
+                <span className="text-[11px] sm:text-xs">({members.length})</span>
               </button>
             </div>
           </div>
@@ -864,6 +1037,7 @@ export default function WorkspaceChatPage() {
                   isLastInGroup={item.isLastInGroup}
                   members={members}
                   isHighlighted={item.message.messageId === targetHighlightedMessageId}
+                  isPinned={Boolean(channelPinnedMessages[item.message.messageId])}
                   activeMenuMessageId={activeMenuMessageId}
                   onSetActiveMenuMessageId={setActiveMenuMessageId}
                   onDeleteMessage={promptDeleteMessage}
@@ -871,6 +1045,9 @@ export default function WorkspaceChatPage() {
                   onOpenPreview={handleOpenPreview}
                   onOpenThread={handleOpenThread}
                   onToggleReaction={handleToggleReaction}
+                  onPinMessage={handlePinMessage}
+                  onSelectChannel={handleSelectChannel}
+                  onOpenProfile={setProfilePopoverMember}
                 />
               );
             })}
@@ -960,6 +1137,25 @@ export default function WorkspaceChatPage() {
           onSelectResult={handleSelectSearchResult}
         />
 
+        {/* Discord-style Channel Pinned Messages Drawer */}
+        <ChatPinnedMessagesDrawer
+          isOpen={isPinnedDrawerOpen}
+          onClose={() => setIsPinnedDrawerOpen(false)}
+          workspaceId={orgId}
+          channelId={activeChannelId}
+          channelName={activeChannel.name || activeChannelId}
+          currentUserId={user?.uid}
+          isLeader={isLeader}
+          members={members}
+          messages={messages}
+          onJumpToMessage={(msgId) => {
+            setIsPinnedDrawerOpen(false);
+            jumpToMessageWithHighlight(msgId);
+          }}
+          onOpenPreview={handleOpenPreview}
+          onSelectChannel={handleSelectChannel}
+        />
+
         {/* File Lightbox / PDF Preview Modal */}
         <FilePreviewModal
           isOpen={isPreviewModalOpen}
@@ -994,6 +1190,14 @@ export default function WorkspaceChatPage() {
           onUpdateTopic={handleUpdateTopic}
           onArchiveChannel={handleArchiveChannel}
           onDeleteChannel={handleDeleteChannel}
+        />
+
+        {/* Discord User Profile Popover Modal */}
+        <ChatUserProfilePopover
+          member={profilePopoverMember}
+          isOpen={Boolean(profilePopoverMember)}
+          onClose={() => setProfilePopoverMember(null)}
+          currentUserId={user?.uid}
         />
       </div>
     </div>

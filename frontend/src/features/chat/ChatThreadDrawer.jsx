@@ -18,6 +18,7 @@ import {
 import { chatService } from '../../services/chatService';
 import { useToast } from '../../hooks/useToast';
 import { ChatFileCard } from './ChatFileCard';
+import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { ChatMentionAutocomplete } from './ChatMentionAutocomplete';
 import { ChatTypingIndicator } from './ChatTypingIndicator';
 import { formatMessageTime, formatFullDateTime } from '../../utils/chatFeedHelpers';
@@ -430,6 +431,7 @@ export function ChatThreadDrawer({
     ? resolveMemberDisplayName(parentMember)
     : resolveMemberDisplayName(parentMessage.senderName || 'Member');
   const parentDisplayName = resolveName(parentMessage.senderId, parentFallback);
+  const isParentOwn = Boolean(currentUserId && parentMessage.senderId === currentUserId);
 
   return (
     <aside
@@ -443,7 +445,7 @@ export function ChatThreadDrawer({
           <div>
             <h2 className="text-sm font-black text-slate-900">Thread Discussion</h2>
             <p className="text-[11px] text-slate-500 font-medium">
-              with {parentDisplayName} in #{channelId}
+              with {isParentOwn ? 'You' : parentDisplayName} in #{channelId}
             </p>
           </div>
         </div>
@@ -464,10 +466,10 @@ export function ChatThreadDrawer({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded-full bg-primary-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
-                {(parentDisplayName || 'M').charAt(0).toUpperCase()}
+                {(isParentOwn ? 'Y' : (parentDisplayName || 'M')).charAt(0).toUpperCase()}
               </div>
               <span className="text-xs font-bold text-slate-900 truncate">
-                {parentDisplayName}
+                {isParentOwn ? 'You' : parentDisplayName}
               </span>
             </div>
             <span className="text-[10px] font-mono text-slate-400">
@@ -484,11 +486,22 @@ export function ChatThreadDrawer({
           </div>
 
           {parentMessage.attachment && !parentMessage.deleted && (
-            <div className="pt-1">
-              <ChatFileCard
-                attachment={parentMessage.attachment}
-                onOpenPreview={onOpenPreview}
-              />
+            <div className="pt-1 w-full overflow-hidden">
+              {parentMessage.attachment.isVoiceNote ||
+              parentMessage.attachment.category === 'audio' ||
+              parentMessage.attachment.mimeType?.startsWith('audio/') ? (
+                <VoiceMessagePlayer
+                  audioUrl={parentMessage.attachment.url}
+                  duration={parentMessage.attachment.duration}
+                  waveform={parentMessage.attachment.waveform}
+                  isOwnMessage={Boolean(currentUserId && parentMessage.senderId === currentUserId)}
+                />
+              ) : (
+                <ChatFileCard
+                  attachment={parentMessage.attachment}
+                  onOpenPreview={onOpenPreview}
+                />
+              )}
             </div>
           )}
         </div>

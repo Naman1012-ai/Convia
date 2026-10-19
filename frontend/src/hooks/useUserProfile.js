@@ -47,6 +47,7 @@ export function useUserProfile(uid, options = {}) {
     if (profile) {
       const photo = profile.photoURL || profile.avatar;
       if (photo && typeof photo === 'string' && photo.trim()) return photo.trim();
+      return '';
     }
     return fallbackAvatar || '';
   }, [profile, fallbackAvatar]);
@@ -103,8 +104,8 @@ UserIdentity.propTypes = {
  * Reusable UserAvatar Component for live avatar rendering.
  */
 export function UserAvatar({ uid, fallbackName = 'Member', fallbackAvatar = '', size = 'sm', className = '' }) {
-  const { displayName } = useUserProfile(uid, { fallbackName, fallbackAvatar });
-  return React.createElement(Avatar, { name: displayName, size, className });
+  const { displayName, avatar } = useUserProfile(uid, { fallbackName, fallbackAvatar });
+  return React.createElement(Avatar, { src: avatar, name: displayName, size, className });
 }
 
 UserAvatar.propTypes = {

@@ -261,7 +261,11 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
                   className="flex items-center gap-2.5 rounded-full p-1 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   aria-label="User profile menu"
                 >
-                  <Avatar src={userProfile?.photoURL || user?.photoURL} name={userName} size="sm" />
+                  <Avatar
+                    src={userProfile ? (userProfile.photoURL || '') : (user?.photoURL || '')}
+                    name={userName}
+                    size="sm"
+                  />
                   <span className="hidden sm:inline-block text-sm font-semibold text-slate-700 max-w-[120px] truncate">
                     {userName}
                   </span>

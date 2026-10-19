@@ -29,12 +29,10 @@ export const profileService = {
       const userEmail = (user.email || '').toLowerCase().trim();
       const isAdminEmail = Boolean(adminEmail && userEmail === adminEmail);
 
-      const exists = await profileService.profileExists(user.uid);
-      if (exists) {
-        // Profile already exists; update role if email matches admin email
-        const existingProfile = await profileService.getUserProfile(user.uid);
-
-        // If existing profile has missing username/displayName or has premature 'User' fallback, update it
+      // Fetch existing profile directly to avoid duplicate network roundtrips
+      const existingProfile = await profileService.getUserProfile(user.uid);
+      if (existingProfile) {
+        // Profile already exists; NEVER overwrite! Safely merge updates if necessary
         const incomingUsername = (additionalData?.username || '').trim().toLowerCase().replace(/^@/, '');
         const incomingName = (additionalData?.displayName || user?.displayName || incomingUsername || '').trim();
         const updates = {};
@@ -71,6 +69,19 @@ export const profileService = {
         if (incomingPhoto && !existingProfile?.photoURL) {
           updates.photoURL = incomingPhoto;
           existingProfile.photoURL = incomingPhoto;
+        }
+
+        // Self-heal: If existing profile has username and primaryRole, guarantee profileCompleted is true
+        const hasCoreIdentity = Boolean(
+          (existingProfile?.username && existingProfile.username !== 'User') &&
+          existingProfile?.primaryRole
+        );
+        if (hasCoreIdentity && existingProfile.profileCompleted !== true) {
+          updates.profileCompleted = true;
+          existingProfile.profileCompleted = true;
+        } else if (additionalData?.profileCompleted === true) {
+          updates.profileCompleted = true;
+          existingProfile.profileCompleted = true;
         }
 
         if (Object.keys(updates).length > 0) {
@@ -115,6 +126,11 @@ export const profileService = {
         (isAdminEmail ? 'admin' : (user?.email ? user.email.split('@')[0] : 'user'));
       const resolvedDisplayName = explicitName || resolvedUsername;
 
+      const isProfileCompleted = Boolean(
+        additionalData?.profileCompleted ||
+        (resolvedUsername && resolvedUsername !== 'user' && additionalData?.primaryRole)
+      );
+
       const profileData = {
         uid: user.uid,
         username: resolvedUsername,
@@ -128,7 +144,7 @@ export const profileService = {
         createdAt: rtdbService.getTimestamp(),
         updatedAt: rtdbService.getTimestamp(),
         organizationId: null,
-        profileCompleted: false,
+        profileCompleted: isProfileCompleted,
         primaryRole: additionalData.primaryRole || null,
         experienceLevel: additionalData.experienceLevel || null,
         onlineStatus: 'online',

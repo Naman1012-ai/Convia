@@ -43,6 +43,8 @@ import { CommunityThreadDrawer } from '../../features/community/CommunityThreadD
 import { CommunityWelcomeCard } from '../../features/community/CommunityWelcomeCard';
 import { CommunityMembersModal } from '../../features/community/CommunityMembersModal';
 import { ChatDateDivider } from '../../features/chat/ChatDateDivider';
+import { ChatUserProfilePopover } from '../../features/chat/ChatUserProfilePopover';
+import { CommunityPinnedDrawer } from '../../features/community/CommunityPinnedDrawer';
 import { processMessageFeed } from '../../utils/chatFeedHelpers';
 import {
   COMMUNITY_POST_TYPES,
@@ -98,15 +100,35 @@ export default function CommunityPage() {
   const [savedDiscussionsMap, setSavedDiscussionsMap] = useState({});
   const [savedLoading, setSavedLoading] = useState(true);
 
-  // Pinned Discussion State
-  const [pinnedDiscussion, setPinnedDiscussion] = useState(null);
+  // Pinned Discussions State (up to 5 pinned discussions)
+  const [pinnedDiscussionsMap, setPinnedDiscussionsMap] = useState({});
+  const [isPinnedDrawerOpen, setIsPinnedDrawerOpen] = useState(false);
 
-  // Community Members Modal State
+  const pinnedDiscussionsList = useMemo(() => {
+    const messageLookup = new Map(messages.map((m) => [m.messageId, m]));
+    return Object.values(pinnedDiscussionsMap)
+      .map((pin) => {
+        const fullMsg = messageLookup.get(pin.messageId);
+        return fullMsg ? { ...fullMsg, ...pin } : pin;
+      })
+      .sort((a, b) => Number(b.pinnedAt || 0) - Number(a.pinnedAt || 0));
+  }, [pinnedDiscussionsMap, messages]);
+
+  // Community Members Modal & User Profile Popover States
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
+  const [profilePopoverMember, setProfilePopoverMember] = useState(null);
 
   // Thread Drawer State
   const [activeThreadMessage, setActiveThreadMessage] = useState(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+
+  // Batch subscribe to profiles of all authors of loaded messages & pinned discussions for real-time username & avatar sync
+  const messageAuthorUids = useMemo(() => {
+    const fromMessages = messages.map((m) => getMessageAuthorUid(m));
+    const fromPins = Object.values(pinnedDiscussionsMap).map((p) => getMessageAuthorUid(p));
+    return Array.from(new Set([...fromMessages, ...fromPins].filter(Boolean)));
+  }, [messages, pinnedDiscussionsMap]);
+  useUserProfiles(messageAuthorUids);
 
   // Turn into Idea Modal State
   const [turnIntoIdeaInitialValues, setTurnIntoIdeaInitialValues] = useState(null);
@@ -121,7 +143,7 @@ export default function CommunityPage() {
     'convia_sidebar_community_collapsed',
     false
   );
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
 
   // Mobile / Responsive Sheets
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -207,12 +229,14 @@ export default function CommunityPage() {
     return () => unsubSaved();
   }, [user?.uid]);
 
-  // 6. Subscribe to Featured / Pinned Community Discussion
+  // 6. Subscribe to Featured / Pinned Community Discussions
   useEffect(() => {
-    const unsubPinned = chatService.subscribeToPinnedPublicIdeaDiscussion((pinnedData) => {
-      setPinnedDiscussion(pinnedData || null);
+    const unsubPinned = chatService.subscribeToPinnedPublicCommunityDiscussions((pinnedMap) => {
+      setPinnedDiscussionsMap(pinnedMap || {});
     });
-    return () => unsubPinned();
+    return () => {
+      if (typeof unsubPinned === 'function') unsubPinned();
+    };
   }, []);
 
   // 7. Bidirectional URL Search Parameters Synchronization
@@ -391,7 +415,7 @@ export default function CommunityPage() {
     }
 
     try {
-      await chatService.togglePublicIdeaMessageReaction(messageId, emoji, effectiveUser.uid);
+      await chatService.togglePublicIdeaReaction(messageId, emoji, effectiveUser);
     } catch (err) {
       console.error('[CommunityPage] Reaction error:', err);
       toast.error('Unable to update reaction.');
@@ -491,7 +515,7 @@ export default function CommunityPage() {
     }
   };
 
-  // Pin or unpin discussion (Leader / Admin only)
+  // Pin or unpin discussion (Leader / Admin only, up to 5 pinned discussions)
   const handleTogglePin = async (msg) => {
     if (!effectiveUser?.uid) return;
     const isAdmin = Boolean(
@@ -502,19 +526,87 @@ export default function CommunityPage() {
       return;
     }
 
-    const isCurrentlyPinned = pinnedDiscussion?.messageId === msg.messageId;
+    const messageId = msg?.messageId || msg?.id;
+    if (!messageId) return;
+
+    const isCurrentlyPinned = Boolean(pinnedDiscussionsMap[messageId]);
     try {
       if (isCurrentlyPinned) {
-        await chatService.setPinnedPublicIdeaDiscussion(null, effectiveUser, true);
-        toast.success('Discussion unpinned from top.');
+        // Optimistically unpin immediately
+        const nextMap = { ...pinnedDiscussionsMap };
+        delete nextMap[messageId];
+        setPinnedDiscussionsMap(nextMap);
+        await chatService.unpinPublicCommunityDiscussion(messageId, effectiveUser, true);
+        const remaining = Object.keys(nextMap).length;
+        toast.success(`Discussion unpinned (${remaining}/5).`);
       } else {
-        await chatService.setPinnedPublicIdeaDiscussion(msg.messageId, effectiveUser, true);
-        toast.success('Discussion pinned to top as featured.');
+        const currentCount = Object.keys(pinnedDiscussionsMap).length;
+        if (currentCount >= 5) {
+          toast.error('Maximum of 5 pinned discussions allowed in the community channel. Please unpin an older discussion first.');
+          return;
+        }
+        // Optimistically pin immediately
+        const pinnedRecord = {
+          messageId,
+          content: msg.content || '',
+          senderId: msg.senderId || msg.authorId || '',
+          senderName: msg.senderName || msg.authorName || '',
+          pinnedAt: Date.now(),
+        };
+        const nextMap = { ...pinnedDiscussionsMap, [messageId]: pinnedRecord };
+        setPinnedDiscussionsMap(nextMap);
+        const savedPin = await chatService.pinPublicCommunityDiscussion(msg, effectiveUser, true);
+        if (savedPin) {
+          setPinnedDiscussionsMap((prev) => ({ ...prev, [messageId]: savedPin }));
+        }
+        const updatedCount = Object.keys(nextMap).length;
+        toast.success(`Discussion pinned as featured (${updatedCount}/5).`);
       }
     } catch (err) {
-      toast.error('Unable to update pinned discussion.');
+      console.error('[CommunityPage] Failed to toggle pin:', err);
+      // Revert on error by re-fetching
+      chatService.getPinnedPublicCommunityDiscussions().then((pins) => {
+        setPinnedDiscussionsMap(pins || {});
+      }).catch(() => {});
+      toast.error(err?.message || 'Unable to update pinned discussion.');
     }
   };
+
+  // Jump to specific discussion and highlight
+  const handleJumpToDiscussion = useCallback(
+    (messageId) => {
+      if (!messageId) return;
+      if (activeFilter !== 'all' && activeFilter !== 'featured') {
+        setActiveFilter('all');
+      }
+      if (searchQuery) {
+        setSearchQuery('');
+      }
+      setIsPinnedDrawerOpen(false);
+      setHighlightedMessageId(messageId);
+
+      const executeScroll = () => {
+        const el = document.getElementById(`msg_${messageId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return true;
+        }
+        return false;
+      };
+
+      // Execute immediately and retry post-drawer slide-out
+      executeScroll();
+      setTimeout(executeScroll, 100);
+      setTimeout(executeScroll, 250);
+      setTimeout(executeScroll, 400);
+
+      // WhatsApp-style 2-second glowing background auto-fade
+      setTimeout(() => {
+        setHighlightedMessageId((prev) => (prev === messageId ? null : prev));
+      }, 2000);
+    },
+    [activeFilter, searchQuery]
+  );
 
   // Filtered discussions
   const filteredMessages = useMemo(() => {
@@ -522,7 +614,10 @@ export default function CommunityPage() {
     let result = [];
 
     // Filter by topic / channel / activity
-    if (activeFilter === 'my_discussions') {
+    if (activeFilter === 'featured') {
+      const pinnedIds = new Set(pinnedDiscussionsList.map((p) => p.messageId));
+      result = messages.filter((m) => m && !m.deleted && pinnedIds.has(m.messageId));
+    } else if (activeFilter === 'my_discussions') {
       result = messages
         .filter((m) => m && !m.deleted)
         .filter((m) => isMessageAuthoredByUser(m, currentAuthUid));
@@ -593,15 +688,6 @@ export default function CommunityPage() {
       result = [...result].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
     }
 
-    // Float pinned item to the top if present
-    if (pinnedDiscussion?.messageId) {
-      const pinnedIndex = result.findIndex((m) => m.messageId === pinnedDiscussion.messageId);
-      if (pinnedIndex > 0) {
-        const [pinnedMsg] = result.splice(pinnedIndex, 1);
-        result.unshift(pinnedMsg);
-      }
-    }
-
     return result;
   }, [
     messages,
@@ -614,7 +700,7 @@ export default function CommunityPage() {
     effectiveUser?.uid,
     userRepliedDiscussions,
     savedDiscussionsMap,
-    pinnedDiscussion?.messageId,
+    pinnedDiscussionsList,
   ]);
 
   // Compute feed with chronological date dividers and consecutive message grouping
@@ -624,7 +710,7 @@ export default function CommunityPage() {
 
   // Channel discussion counts
   const discussionCounts = useMemo(() => {
-    const counts = { all: 0 };
+    const counts = { all: 0, featured: pinnedDiscussionsList.length };
     Object.values(COMMUNITY_POST_TYPES).forEach((type) => {
       counts[type] = 0;
     });
@@ -639,7 +725,7 @@ export default function CommunityPage() {
     });
 
     return counts;
-  }, [messages]);
+  }, [messages, pinnedDiscussionsList]);
 
   // Activity counts
   const activityCounts = useMemo(() => {
@@ -661,6 +747,7 @@ export default function CommunityPage() {
   // Active filter label
   const activeFilterLabel = useMemo(() => {
     if (activeFilter === 'all') return 'All Discussions';
+    if (activeFilter === 'featured') return 'Featured Discussions';
     if (activeFilter === 'my_discussions') return 'My Discussions';
     if (activeFilter === 'my_replies') return 'My Replies';
     if (activeFilter === 'saved') return 'Saved Discussions';
@@ -683,6 +770,9 @@ export default function CommunityPage() {
 
   const topicTabs = [
     { id: 'all', label: 'All', icon: Globe },
+    ...(pinnedDiscussionsList.length > 0
+      ? [{ id: 'featured', label: 'Featured', icon: Pin }]
+      : []),
     { id: COMMUNITY_POST_TYPES.IDEA, label: 'Ideas', icon: Sparkles },
     { id: COMMUNITY_POST_TYPES.QUESTION, label: 'Questions', icon: MessageCircle },
     { id: COMMUNITY_POST_TYPES.DISCUSSION, label: 'Discussions', icon: MessageCircle },
@@ -776,6 +866,23 @@ export default function CommunityPage() {
             <Users className="h-3.5 w-3.5 text-emerald-600" />
             <span>{uniqueCreatorsCount}</span>
           </button>
+
+          {/* Featured / Pinned Discussions Drawer Toggle */}
+          {pinnedDiscussionsList.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setIsPinnedDrawerOpen(true)}
+              className="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 rounded-xl border border-amber-200/80 text-xs font-semibold text-amber-800 transition-colors shadow-2xs cursor-pointer"
+              title={`View featured discussions (${pinnedDiscussionsList.length}/5)`}
+              aria-label="View featured discussions"
+            >
+              <Pin className="h-3.5 w-3.5 text-amber-600 rotate-45" />
+              <span className="hidden sm:inline">Featured</span>
+              <span className="font-mono text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded-full font-bold">
+                {pinnedDiscussionsList.length}/5
+              </span>
+            </button>
+          )}
 
           {/* Primary CTA: Start a Discussion */}
           <Button
@@ -1014,8 +1121,9 @@ export default function CommunityPage() {
                     isHighlighted={highlightedMessageId === item.message.messageId}
                     isSaved={Boolean(savedDiscussionsMap[item.message.messageId])}
                     onToggleSave={handleToggleSave}
-                    isPinned={pinnedDiscussion?.messageId === item.message.messageId}
+                    isPinned={Boolean(pinnedDiscussionsMap[item.message.messageId])}
                     onTogglePin={handleTogglePin}
+                    onOpenProfile={setProfilePopoverMember}
                     activeMenuMessageId={activeMenuState?.messageId || null}
                     menuAnchorRect={activeMenuState?.messageId === item.message.messageId ? activeMenuState.anchorRect : null}
                     onOpenMenu={handleOpenMenu}
@@ -1190,6 +1298,33 @@ export default function CommunityPage() {
         isOpen={isMembersModalOpen}
         onClose={() => setIsMembersModalOpen(false)}
         messages={messages}
+      />
+
+      {/* ======================================================== */}
+      {/* Discord User Profile Popover Modal                       */}
+      {/* ======================================================== */}
+      <ChatUserProfilePopover
+        member={profilePopoverMember}
+        isOpen={Boolean(profilePopoverMember)}
+        onClose={() => setProfilePopoverMember(null)}
+        currentUserId={effectiveUser?.uid}
+      />
+
+      {/* ======================================================== */}
+      {/* Discord Featured / Pinned Discussions Drawer             */}
+      {/* ======================================================== */}
+      <CommunityPinnedDrawer
+        isOpen={isPinnedDrawerOpen}
+        onClose={() => setIsPinnedDrawerOpen(false)}
+        pinnedList={pinnedDiscussionsList}
+        currentUserId={effectiveUser?.uid}
+        isAdmin={Boolean(
+          userProfile?.isAdmin || userProfile?.role === 'admin' || userProfile?.role === 'superadmin'
+        )}
+        onJumpToDiscussion={handleJumpToDiscussion}
+        onUnpinDiscussion={async (messageId) => {
+          await handleTogglePin({ messageId });
+        }}
       />
     </div>
   );

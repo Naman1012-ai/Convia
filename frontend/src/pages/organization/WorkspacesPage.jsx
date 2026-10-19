@@ -87,8 +87,37 @@ export default function WorkspacesPage() {
     }
   };
 
+  const now = Date.now();
   const activeWorkspaces = organizations.filter((org) => !org.isDeleted);
-  const pendingDeletionWorkspaces = organizations.filter((org) => org.isDeleted);
+  const pendingDeletionWorkspaces = organizations.filter((org) => {
+    if (!org.isDeleted) return false;
+    // Auto-purge workspaces whose 7-day scheduled deletion window has elapsed
+    if (org.scheduledDeletionAt && now >= org.scheduledDeletionAt) {
+      orgService.purgeExpiredWorkspace(org.orgId).catch((e) => console.warn('[WorkspacesPage] Auto-purge failed:', e));
+      return false;
+    }
+    return true;
+  });
+
+  const getCountdownLabel = (scheduledDeletionAt) => {
+    if (!scheduledDeletionAt) return 'Scheduled for deletion';
+    const msLeft = scheduledDeletionAt - Date.now();
+    if (msLeft <= 0) return 'Deleting permanently...';
+
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const oneHourMs = 60 * 60 * 1000;
+
+    if (msLeft > oneDayMs) {
+      const days = Math.ceil(msLeft / oneDayMs);
+      return `Deletes permanently in ${days} days`;
+    }
+
+    const hours = Math.ceil(msLeft / oneHourMs);
+    if (hours > 1) {
+      return `Deletes permanently in ${hours} hours`;
+    }
+    return `Deletes permanently in less than an hour`;
+  };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto px-4 py-8">
@@ -161,7 +190,7 @@ export default function WorkspacesPage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {pendingDeletionWorkspaces.map((org) => {
-                    const daysLeft = Math.max(1, Math.round((org.scheduledDeletionAt - Date.now()) / (24 * 60 * 60 * 1000)));
+                    const countdownText = getCountdownLabel(org.scheduledDeletionAt);
                     return (
                       <Card key={org.orgId} className="p-6 border border-rose-200 bg-rose-50/10 flex flex-col justify-between h-48 hover:shadow-md transition-shadow">
                         <div>
@@ -170,7 +199,7 @@ export default function WorkspacesPage() {
                             {org.projectType ? getProjectTypeLabel(org.projectType) : (org.hackathonName || 'General Project')}
                           </p>
                           <div className="mt-4 flex items-center gap-1 text-[11px] font-semibold text-rose-600">
-                            <Clock className="h-3.5 w-3.5" /> Deletes permanently in {daysLeft} days
+                            <Clock className="h-3.5 w-3.5" /> {countdownText}
                           </div>
                         </div>
                         <Button

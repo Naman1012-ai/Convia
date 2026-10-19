@@ -275,7 +275,7 @@ export function AdminLayout() {
           <div className="flex items-center gap-3 border-l border-slate-800 pl-4">
             <Avatar
               name={userProfile?.displayName || user?.displayName || 'Admin'}
-              src={userProfile?.photoURL || user?.photoURL}
+              src={userProfile ? (userProfile.photoURL || '') : (user?.photoURL || '')}
               size="sm"
             />
             <div className="hidden sm:block text-left">

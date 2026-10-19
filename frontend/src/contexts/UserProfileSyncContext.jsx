@@ -208,6 +208,7 @@ export function UserProfileSyncProvider({ children }) {
       if (profile) {
         const photo = profile.photoURL || profile.avatar;
         if (photo && typeof photo === 'string' && photo.trim()) return photo.trim();
+        return '';
       }
       return fallbackAvatar || '';
     },

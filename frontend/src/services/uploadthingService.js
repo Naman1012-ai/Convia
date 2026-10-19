@@ -1,4 +1,5 @@
 import { UPLOADTHING_CONFIG } from '../config/uploadthing';
+import { auth } from '../config/firebase';
 
 /**
  * UploadThing Centralized Storage Service Layer
@@ -26,6 +27,12 @@ function getMimeType(extension, defaultType = 'application/octet-stream') {
     zip: 'application/zip',
     rar: 'application/x-rar-compressed',
     '7z': 'application/x-7z-compressed',
+    webm: 'audio/webm',
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    m4a: 'audio/mp4',
+    opus: 'audio/opus',
   };
   return mimeMap[extension.toLowerCase()] || defaultType;
 }
@@ -55,6 +62,8 @@ export const uploadthingService = {
     let category = 'file';
     if (UPLOADTHING_CONFIG.categories.image.includes(ext)) {
       category = 'image';
+    } else if (UPLOADTHING_CONFIG.categories.audio?.includes(ext) || file.type?.startsWith('audio/')) {
+      category = 'audio';
     } else if (UPLOADTHING_CONFIG.categories.document.includes(ext)) {
       category = 'document';
     } else if (UPLOADTHING_CONFIG.categories.code.includes(ext)) {
@@ -105,31 +114,80 @@ export const uploadthingService = {
       throw new Error(validation.error);
     }
 
-    onProgress(20);
+    onProgress(10);
 
     try {
       let uploadthingResponse = null;
-      const secretToken = import.meta.env.UPLOADTHING_TOKEN;
 
-      if (secretToken) {
-        onProgress(50);
-        const formData = new FormData();
-        formData.append('files', file);
+      // 1. Authoritative Upload: Stream to Backend /api/upload/file -> UploadThing UTApi
+      try {
+        const baseUrl =
+          import.meta.env.VITE_API_URL ||
+          import.meta.env.VITE_BACKEND_URL ||
+          (import.meta.env.DEV ? 'http://localhost:5000' : '');
+        const uploadUrl = `${baseUrl.replace(/\/$/, '')}/api/upload/file`;
 
-        const res = await fetch('https://uploadthing.com/api/uploadFiles', {
-          method: 'POST',
-          headers: {
-            'X-Uploadthing-Api-Key': secretToken,
-          },
-          body: formData,
+        let idToken = null;
+        if (auth.currentUser) {
+          try {
+            idToken = await auth.currentUser.getIdToken();
+          } catch (tokenErr) {
+            console.warn('[uploadthingService] Could not retrieve ID token:', tokenErr);
+          }
+        }
+
+        const serverData = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', uploadUrl, true);
+
+          if (idToken) {
+            xhr.setRequestHeader('Authorization', `Bearer ${idToken}`);
+          }
+          xhr.setRequestHeader('Content-Type', validation.mimeType || 'application/octet-stream');
+          xhr.setRequestHeader('x-filename', encodeURIComponent(file.name));
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.min(95, Math.round((e.loaded / e.total) * 85) + 10);
+              onProgress(percent);
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const resJson = JSON.parse(xhr.responseText);
+                if (resJson?.success && resJson?.data) {
+                  resolve(resJson.data);
+                } else {
+                  reject(new Error(resJson?.error?.message || 'Upload failed.'));
+                }
+              } catch {
+                reject(new Error('Invalid response from upload service.'));
+              }
+            } else {
+              let msg = `Server returned HTTP ${xhr.status}`;
+              try {
+                const resJson = JSON.parse(xhr.responseText);
+                if (resJson?.error?.message) msg = resJson.error.message;
+              } catch {}
+              reject(new Error(msg));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('Network error during upload to backend.'));
+          xhr.ontimeout = () => reject(new Error('Upload request timed out.'));
+          xhr.send(file);
         });
 
-        if (res.ok) {
-          const json = await res.json();
-          uploadthingResponse = Array.isArray(json) ? json[0] : json;
+        if (serverData && (serverData.url || serverData.fileId)) {
+          uploadthingResponse = serverData;
         }
+      } catch (backendUploadErr) {
+        console.warn('[uploadthingService] Direct backend UploadThing upload unreached, using safe fallback:', backendUploadErr?.message);
       }
 
+      // 2. Safe Fallback: In offline/disconnected testing, read file locally
       if (!uploadthingResponse || (!uploadthingResponse.url && !uploadthingResponse.fileUrl)) {
         const cleanFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const generatedKey = `ut_${workspaceId}_${Date.now()}_${cleanFilename}`;
@@ -143,24 +201,27 @@ export const uploadthingService = {
 
         uploadthingResponse = {
           key: generatedKey,
+          fileId: generatedKey,
           url: dataUrl,
           name: file.name,
+          fileName: file.name,
           size: file.size,
           type: validation.mimeType,
+          mimeType: validation.mimeType,
         };
       }
 
-      onProgress(80);
+      onProgress(100);
 
       // Preserve exact returned URL & Key from UploadThing payload
-      const exactUrl = uploadthingResponse.url || uploadthingResponse.fileUrl || uploadthingResponse.appUrl;
-      const exactKey = uploadthingResponse.key || uploadthingResponse.fileKey;
+      const exactUrl = uploadthingResponse.url || uploadthingResponse.ufsUrl || uploadthingResponse.fileUrl || uploadthingResponse.appUrl;
+      const exactKey = uploadthingResponse.key || uploadthingResponse.fileId || uploadthingResponse.uploadthingKey;
 
       const metadata = {
         fileId: exactKey || `ut_${Date.now()}`,
-        fileName: uploadthingResponse.name || file.name,
+        fileName: uploadthingResponse.fileName || uploadthingResponse.name || file.name,
         extension: validation.extension,
-        mimeType: uploadthingResponse.type || validation.mimeType,
+        mimeType: uploadthingResponse.mimeType || uploadthingResponse.type || validation.mimeType,
         size: uploadthingResponse.size || file.size,
         url: exactUrl,
         uploadthingKey: exactKey,
@@ -169,33 +230,46 @@ export const uploadthingService = {
         category: validation.category,
       };
 
-      onProgress(100);
       return metadata;
     } catch (error) {
       console.error('[uploadthingService] Upload failed:', error);
-      throw new Error(`UploadThing upload failed: ${error.message}`);
+      throw new Error(`Upload failed: ${error.message}`);
     }
   },
 
   /**
-   * Delete file from UploadThing storage provider.
+   * Delete file permanently from UploadThing storage provider via backend route.
+   * Accepts either an UploadThing fileKey or full CDN URL.
    */
-  deleteFile: async (uploadthingKey) => {
-    if (!uploadthingKey) return;
+  deleteFile: async (fileKeyOrUrl) => {
+    if (!fileKeyOrUrl || typeof fileKeyOrUrl !== 'string') return false;
     try {
-      const secretToken = import.meta.env.UPLOADTHING_TOKEN;
-      if (secretToken) {
-        await fetch('https://uploadthing.com/api/deleteFile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Uploadthing-Api-Key': secretToken,
-          },
-          body: JSON.stringify({ fileKeys: [uploadthingKey] }),
-        }).catch((e) => console.warn('[UploadThing API Delete Warning]', e));
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
       }
+
+      const res = await fetch('/api/upload/delete', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fileKey: fileKeyOrUrl, url: fileKeyOrUrl }),
+      });
+
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn('[uploadthingService] Delete returned non-OK status:', res.status, errJson);
+        return false;
+      }
+
+      const result = await res.json();
+      console.log('🗑️ [uploadthingService] File deleted from UploadThing:', result);
+      return true;
     } catch (err) {
-      console.warn('[uploadthingService] Storage deletion warning:', err);
+      console.warn('[uploadthingService] Cloud deletion error:', err);
+      return false;
     }
   },
 };

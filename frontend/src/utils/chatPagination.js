@@ -137,3 +137,78 @@ export function calculatePaginationMetadata(batch = [], pageSize = CHAT_PAGE_SIZ
     count,
   };
 }
+
+/**
+ * Discord Phase 1: Generates an optimistic provisional message with client nonce.
+ *
+ * @param {Object} params
+ * @param {string} params.content
+ * @param {Object} params.user
+ * @param {Object|null} [params.attachment=null]
+ * @param {string} [params.nonce]
+ * @returns {Object}
+ */
+export function createProvisionalMessage({ content, user, attachment = null, nonce = null }) {
+  const timestamp = Date.now();
+  const clientNonce = nonce || `${timestamp}_${Math.random().toString(36).substring(2, 9)}`;
+  return {
+    messageId: `provisional_${clientNonce}`,
+    clientNonce,
+    senderId: user?.uid || 'anonymous',
+    senderName: user?.displayName || user?.name || 'Member',
+    senderAvatar: user?.photoURL || user?.avatar || '',
+    content: String(content || '').trim(),
+    createdAt: timestamp,
+    status: 'sending',
+    attachment: attachment || null,
+    isSystem: false,
+    deleted: false,
+  };
+}
+
+/**
+ * Discord Phase 1: Reconciles provisional messages with confirmed incoming message from RTDB.
+ *
+ * @param {Array<Object>} existingMessages
+ * @param {Object} confirmedMessage
+ * @returns {Array<Object>}
+ */
+export function reconcileProvisionalMessage(existingMessages = [], confirmedMessage) {
+  if (!Array.isArray(existingMessages) || !confirmedMessage) {
+    return existingMessages;
+  }
+
+  let matched = false;
+  const reconciled = existingMessages.map((msg) => {
+    if (
+      msg.clientNonce &&
+      confirmedMessage.clientNonce &&
+      msg.clientNonce === confirmedMessage.clientNonce
+    ) {
+      matched = true;
+      return { ...confirmedMessage, status: 'sent' };
+    }
+    // Fallback matching by sender, content, and close creation time (< 8s)
+    if (
+      msg.status === 'sending' &&
+      msg.senderId === confirmedMessage.senderId &&
+      msg.content === confirmedMessage.content &&
+      Math.abs((confirmedMessage.createdAt || 0) - (msg.createdAt || 0)) < 8000
+    ) {
+      matched = true;
+      return { ...confirmedMessage, status: 'sent' };
+    }
+    return msg;
+  });
+
+  if (!matched) {
+    // Check if message already exists by messageId
+    const exists = reconciled.some((m) => m && m.messageId === confirmedMessage.messageId);
+    if (!exists) {
+      reconciled.push({ ...confirmedMessage, status: 'sent' });
+    }
+  }
+
+  return reconciled.sort(compareMessages);
+}
+

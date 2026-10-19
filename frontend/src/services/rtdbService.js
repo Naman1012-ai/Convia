@@ -10,7 +10,7 @@ import {
 import { rtdb } from '../config/firebase';
 
 // Helper to prevent hanging RTDB socket calls from blocking execution
-function withRtdbTimeout(promise, ms = 2000) {
+function withRtdbTimeout(promise, ms = 8000) {
   return Promise.race([
     promise,
     new Promise((resolve) => setTimeout(() => resolve('RTDB_TIMEOUT'), ms)),
@@ -67,9 +67,14 @@ export const rtdbService = {
       const dbRef = isRefOrQuery ? path : (cleanPath ? ref(rtdb, cleanPath) : ref(rtdb));
 
       const rtdbPromise = get(dbRef);
-      const snapshot = await withRtdbTimeout(rtdbPromise, 2500);
+      const snapshot = await withRtdbTimeout(rtdbPromise, 8000);
 
-      if (snapshot && snapshot !== 'RTDB_TIMEOUT' && snapshot.exists()) {
+      if (snapshot === 'RTDB_TIMEOUT') {
+        console.warn(`[rtdbService] getData timed out after 8000ms on path: ${cleanPath}`);
+        return null;
+      }
+
+      if (snapshot && snapshot.exists()) {
         return snapshot.val();
       }
 

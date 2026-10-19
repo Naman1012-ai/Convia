@@ -21,6 +21,7 @@ import { formatMessageTime, formatFullDateTime } from '../../utils/chatFeedHelpe
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { resolveMemberDisplayName } from '../../utils/memberIdentity';
 import { COMMUNITY_POST_TYPE_CONFIG } from '../../constants/chatSchema';
+import { renderDiscordMarkdown } from '../../utils/discordMarkdown';
 import { useToast } from '../../hooks/useToast';
 
 export function CommunityThreadDrawer({
@@ -52,6 +53,7 @@ export function CommunityThreadDrawer({
       fallbackAvatar: parentMessage?.senderAvatar || '',
     }
   );
+  const isParentOwn = Boolean(currentUserId && parentMessage?.senderId === currentUserId);
 
   const scrollToBottom = () => {
     repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -166,6 +168,19 @@ export function CommunityThreadDrawer({
     }
   };
 
+  const handleDeleteReply = async (replyId) => {
+    if (!parentMessage?.messageId || !replyId || !currentUserId) return;
+    if (!window.confirm('Are you sure you want to delete this reply?')) return;
+
+    try {
+      await chatService.deletePublicIdeaReply(parentMessage.messageId, replyId, currentUserId, isAdmin);
+      toast.info('Reply deleted.');
+    } catch (err) {
+      console.error('[CommunityThreadDrawer] Delete reply error:', err);
+      toast.error(err?.message || 'Failed to delete reply.');
+    }
+  };
+
   if (!isOpen || !parentMessage) return null;
 
   const parentPostType = parentMessage.postType || 'discussion';
@@ -226,13 +241,13 @@ export function CommunityThreadDrawer({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar
                     src={parentAuthorAvatar}
-                    name={parentAuthorName}
+                    name={isParentOwn ? 'You' : parentAuthorName}
                     size="sm"
                     className="shrink-0"
                   />
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-slate-900 truncate">
-                      {parentAuthorName}
+                      {isParentOwn ? 'You' : parentAuthorName}
                     </p>
                     <p className="text-[10px] text-slate-400">
                       {formatMessageTime(parentMessage.createdAt)}
@@ -248,8 +263,8 @@ export function CommunityThreadDrawer({
                 </span>
               </div>
 
-              <div className="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap break-words">
-                {parentMessage.content}
+              <div className="text-xs text-slate-800 leading-relaxed break-words space-y-1">
+                {renderDiscordMarkdown(parentMessage.content)}
               </div>
 
               {/* Reactions summary on parent */}
@@ -304,12 +319,13 @@ export function CommunityThreadDrawer({
               </div>
             ) : (
               replies.map((reply) => {
-                const isOwnReply = currentUserId && reply.senderId === currentUserId;
                 return (
                   <ThreadReplyItem
                     key={reply.replyId}
                     reply={reply}
-                    isOwn={isOwnReply}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    onDelete={handleDeleteReply}
                   />
                 );
               })
@@ -364,8 +380,12 @@ export function CommunityThreadDrawer({
   );
 }
 
-function ThreadReplyItem({ reply, isOwn = false }) {
-  const { displayName, avatar } = useUserProfile(reply.senderId, {
+function ThreadReplyItem({ reply, currentUserId, isAdmin = false, onDelete = () => {} }) {
+  const authorId = reply.senderId || reply.authorId || reply.authorUid;
+  const isOwn = Boolean(currentUserId && authorId === currentUserId);
+  const canDelete = !reply.deleted && (isOwn || isAdmin);
+
+  const { displayName, avatar } = useUserProfile(authorId, {
     subscribe: false,
     fallbackName: resolveMemberDisplayName(reply.senderName || 'Member'),
     fallbackAvatar: reply.senderAvatar || '',
@@ -376,44 +396,52 @@ function ThreadReplyItem({ reply, isOwn = false }) {
   return (
     <div
       id={`reply_${reply.replyId}`}
-      className={`flex w-full my-1.5 transition-all duration-300 ${
-        isOwn ? 'justify-end' : 'justify-start'
-      }`}
+      className="group relative flex items-start gap-2.5 w-full my-1.5 p-2 rounded-xl hover:bg-slate-50 transition-colors"
     >
-      {isOwn ? (
-        <div className="flex flex-col items-end max-w-[85%]">
-          <div className="flex items-center justify-end gap-1.5 mb-1 px-1 text-[10px] text-slate-400 font-mono">
-            <span className="font-bold text-primary-700">You</span>
-            <span>•</span>
-            <span>{displayTime}</span>
+      <div className="shrink-0 pt-0.5 select-none">
+        <Avatar src={avatar} name={displayName} size="xs" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-0.5 leading-none select-none">
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-slate-900 text-xs truncate max-w-[150px]">
+              {isOwn ? 'You' : displayName}
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {displayTime}
+            </span>
           </div>
-          <div className="rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs p-3 space-y-1 min-w-0">
-            <p className="text-xs text-white leading-relaxed font-normal whitespace-pre-wrap break-words">
-              {reply.content}
-            </p>
-          </div>
+
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(reply.replyId)}
+              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer"
+              title="Delete reply"
+              aria-label="Delete reply"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-      ) : (
-        <div className="flex flex-row items-start gap-2 max-w-[85%]">
-          <div className="shrink-0 pt-0.5">
-            <Avatar src={avatar} name={displayName} size="xs" />
-          </div>
-          <div className="flex flex-col items-start min-w-0">
-            <div className="flex items-center gap-1.5 mb-1 px-1 text-[10px] text-slate-400 font-mono">
-              <span className="font-bold text-slate-800 text-xs truncate max-w-[120px]">
-                {displayName}
+
+        <div className="text-xs text-slate-800 leading-relaxed break-words space-y-1">
+          {reply.deleted ? (
+            <span className="inline-flex items-center gap-1.5 italic text-slate-400 text-xs bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5 text-slate-500 font-medium select-none">
+              <Trash2 className="h-3 w-3 opacity-60 text-slate-400" />
+              <span>
+                {isOwn
+                  ? 'You deleted this reply'
+                  : reply.deletedBy && reply.deletedBy !== authorId
+                  ? 'Reply deleted by Admin'
+                  : `${displayName || 'Member'} deleted this reply`}
               </span>
-              <span>•</span>
-              <span>{displayTime}</span>
-            </div>
-            <div className="rounded-2xl rounded-tl-xs bg-white border border-slate-200 text-slate-900 shadow-2xs p-3 space-y-1 min-w-0">
-              <p className="text-xs text-slate-900 leading-relaxed font-normal whitespace-pre-wrap break-words">
-                {reply.content}
-              </p>
-            </div>
-          </div>
+            </span>
+          ) : (
+            renderDiscordMarkdown(reply.content)
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -431,5 +459,7 @@ CommunityThreadDrawer.propTypes = {
 
 ThreadReplyItem.propTypes = {
   reply: PropTypes.object.isRequired,
-  isOwn: PropTypes.bool,
+  currentUserId: PropTypes.string,
+  isAdmin: PropTypes.bool,
+  onDelete: PropTypes.func,
 };

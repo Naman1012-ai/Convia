@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { Upload, Trash2, Camera, Loader2, Link as LinkIcon } from 'lucide-react';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -8,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { useUser } from '../../hooks/useUser';
 import { useToast } from '../../hooks/useToast';
+import { uploadthingService } from '../../services/uploadthingService';
 import { PRIMARY_ROLES, EXPERIENCE_LEVELS } from '../../config/constants';
 import { validateUsername, validateProjectUrl } from '../../utils/validation';
 
@@ -31,6 +33,11 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlsToDeleteOnSave, setUrlsToDeleteOnSave] = useState([]);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (userProfile && isOpen) {
@@ -48,8 +55,72 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
       setPortfolio(userProfile.portfolio || '');
       setErrors({});
       setServerError('');
+      setShowUrlInput(false);
+      setIsUploadingPhoto(false);
+      setUploadProgress(0);
+      setUrlsToDeleteOnSave([]);
     }
   }, [userProfile, isOpen]);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image format & size
+    const validation = uploadthingService.validateFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files (PNG, JPG, WEBP, GIF) are allowed for profile pictures.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Local instant preview
+    const previewUrl = URL.createObjectURL(file);
+    setPhotoURL(previewUrl);
+    setIsUploadingPhoto(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadResult = await uploadthingService.uploadFile(file, {
+        workspaceId: 'avatars',
+        userUid: userProfile?.uid,
+        onProgress: (p) => setUploadProgress(p),
+      });
+
+      if (uploadResult?.url) {
+        // If replacing an existing UploadThing photo, queue previous for deletion
+        if (photoURL && (photoURL.includes('utfs.io') || photoURL.includes('ufs.sh')) && photoURL !== uploadResult.url) {
+          setUrlsToDeleteOnSave((prev) => [...prev, photoURL]);
+        }
+        setPhotoURL(uploadResult.url);
+        toast.success('Profile photo uploaded to cloud storage!');
+      }
+    } catch (err) {
+      console.error('[EditProfileModal] Photo upload error:', err);
+      toast.error(err?.message || 'Failed to upload photo.');
+      setPhotoURL(userProfile?.photoURL || '');
+    } finally {
+      setIsUploadingPhoto(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    // If the active photo is stored in UploadThing, queue it for cloud deletion
+    if (photoURL && (photoURL.includes('utfs.io') || photoURL.includes('ufs.sh'))) {
+      setUrlsToDeleteOnSave((prev) => [...prev, photoURL]);
+    }
+    setPhotoURL('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    toast.info('Profile photo removed.');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,6 +165,18 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
     setIsSubmitting(true);
 
     try {
+      // 1. Permanently delete removed UploadThing photo(s) from cloud storage
+      const photosToDelete = [...urlsToDeleteOnSave];
+      if (!photoURL.trim() && userProfile?.photoURL && (userProfile.photoURL.includes('utfs.io') || userProfile.photoURL.includes('ufs.sh'))) {
+        photosToDelete.push(userProfile.photoURL);
+      }
+
+      for (const targetUrl of photosToDelete) {
+        uploadthingService.deleteFile(targetUrl).catch((err) =>
+          console.warn('[EditProfileModal] Cloud file deletion error:', err)
+        );
+      }
+
       const cleanUsername = username.trim().toLowerCase().replace(/^@/, '');
       await updateProfile({
         username: cleanUsername,
@@ -177,22 +260,103 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <Avatar
-              src={photoURL}
-              name={username || 'User'}
-              size="md"
-              className="h-12 w-12 text-base shrink-0 border border-primary-200"
-            />
-            <div className="flex-1">
-              <Input
-                label="Profile Photo URL"
-                placeholder="https://example.com/avatar.jpg"
-                value={photoURL}
-                onChange={(e) => setPhotoURL(e.target.value)}
-                error={errors.photoURL}
-              />
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {/* Interactive Avatar Container with Hover Overlay */}
+              <div className="relative group shrink-0">
+                <Avatar
+                  src={photoURL}
+                  name={username || 'User'}
+                  size="lg"
+                  className="h-16 w-16 text-xl border-2 border-primary-200 shadow-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto || isSubmitting}
+                  className="absolute inset-0 bg-slate-900/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white disabled:pointer-events-none"
+                  title="Upload image from device"
+                >
+                  <Camera className="h-5 w-5 drop-shadow-sm" />
+                </button>
+              </div>
+
+              {/* Upload Controls & Actions */}
+              <div className="flex-1 w-full text-center sm:text-left space-y-2">
+                <div className="flex flex-row items-center gap-2 flex-wrap sm:flex-nowrap whitespace-nowrap">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto || isSubmitting}
+                    isLoading={isUploadingPhoto}
+                    icon={Upload}
+                    className="whitespace-nowrap shrink-0 text-xs font-semibold h-8"
+                  >
+                    {isUploadingPhoto ? `Uploading (${uploadProgress}%)...` : 'Upload Image'}
+                  </Button>
+
+                  {photoURL && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRemovePhoto}
+                      disabled={isUploadingPhoto || isSubmitting}
+                      icon={Trash2}
+                      className="whitespace-nowrap shrink-0 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8"
+                    >
+                      Remove
+                    </Button>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowUrlInput((prev) => !prev)}
+                    icon={LinkIcon}
+                    className="whitespace-nowrap shrink-0 text-xs font-semibold text-slate-500 hover:text-slate-700 h-8"
+                  >
+                    {showUrlInput ? 'Hide URL input' : 'Paste image URL'}
+                  </Button>
+                </div>
+
+                <p className="text-[11px] text-slate-500">
+                  Upload square JPG, PNG, or WebP (max 5 MB). Persists permanently via cloud storage.
+                </p>
+
+                {isUploadingPhoto && (
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Optional URL Input */}
+            {showUrlInput && (
+              <div className="pt-2 border-t border-slate-200/60">
+                <Input
+                  label="Profile Photo URL"
+                  placeholder="https://example.com/avatar.jpg"
+                  value={photoURL}
+                  onChange={(e) => setPhotoURL(e.target.value)}
+                  error={errors.photoURL}
+                />
+              </div>
+            )}
           </div>
         </div>
 

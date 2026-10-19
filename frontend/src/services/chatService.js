@@ -53,6 +53,10 @@ import {
   getUserSavedDiscussionPath,
   getPublicIdeasChatPinnedPath,
   getPublicIdeasChatPinnedDiscussionPath,
+  getPublicIdeasChatPinnedMessagesRootPath,
+  getPublicIdeasChatPinnedMessagePath,
+  getChannelPinnedMessagesRootPath,
+  getChannelPinnedMessagePath,
 } from '../constants/databasePaths.js';
 import {
   DEFAULT_CHAT_CHANNEL_ID,
@@ -64,6 +68,7 @@ import {
   createCanonicalChatNotification,
   createCanonicalTypingState,
   createCanonicalChannelMetadata,
+  createCanonicalPinnedMessage,
   CHANNEL_TYPES,
   normalizeChannelSlug,
   validateChannelSlug,
@@ -1013,7 +1018,8 @@ export const chatService = {
       user,
     });
 
-    const reactionPath = getMessageReactionPath(workspaceId, activeChannelId, messageId, validation.cleanEmoji, validation.userId);
+    const cleanEmoji = encodeURIComponent(validation.cleanEmoji);
+    const reactionPath = getMessageReactionPath(workspaceId, activeChannelId, messageId, cleanEmoji, validation.userId);
     const existing = await rtdbService.getRtdbOnly(reactionPath);
 
     if (existing === true) {
@@ -1021,6 +1027,27 @@ export const chatService = {
       return { action: 'removed', emoji: validation.cleanEmoji };
     } else {
       await set(ref(rtdb, reactionPath), true);
+
+      // Dispatch reaction notification to message author if not own message
+      const msgPath = getMessagePath(workspaceId, activeChannelId, messageId);
+      rtdbService.getRtdbOnly(msgPath).then((msg) => {
+        const authorId = msg?.senderId || msg?.authorId;
+        if (authorId && authorId !== validation.userId && authorId !== 'system') {
+          inAppNotificationService.dispatchNotificationEvent(
+            NOTIFICATION_TYPES.CHAT_REACTION,
+            {
+              workspaceId,
+              channelId: activeChannelId,
+              messageId,
+              emoji: validation.cleanEmoji,
+              recipientId: authorId,
+              content: msg.content || '',
+            },
+            validation.user
+          ).catch((e) => console.warn('[chatService] Reaction notification warning:', e));
+        }
+      }).catch((e) => console.warn('[chatService] Failed to load message for reaction notif:', e));
+
       return { action: 'added', emoji: validation.cleanEmoji };
     }
   },
@@ -1799,6 +1826,42 @@ export const chatService = {
   },
 
   /**
+   * Soft-delete a reply in the community discussion thread.
+   * Can be performed by the reply author or a Platform Admin.
+   */
+  deletePublicIdeaReply: async (parentMessageId, replyId, userId, isAdmin = false) => {
+    if (!parentMessageId || !replyId || !userId) {
+      throw new Error('Parent Message ID, Reply ID, and User ID are required.');
+    }
+    const replyPath = getPublicIdeasChatMessageReplyPath(parentMessageId, replyId);
+    const currentReply = await rtdbService.getRtdbOnly(replyPath);
+    if (!currentReply) throw new Error('Reply not found.');
+
+    const authorId = currentReply.senderId || currentReply.authorId || currentReply.authorUid;
+    if (!isAdmin && authorId !== userId) {
+      throw new Error('You do not have permission to delete this reply.');
+    }
+
+    if (currentReply.attachment && (currentReply.attachment.uploadthingKey || currentReply.attachment.storagePath)) {
+      const keyToDelete = currentReply.attachment.uploadthingKey || currentReply.attachment.storagePath;
+      uploadthingService.deleteFile(keyToDelete).catch((e) =>
+        console.warn('[chatService] Error cleaning up reply attachment:', e)
+      );
+    }
+
+    const updates = {
+      deleted: true,
+      content: 'This message was deleted',
+      attachment: null,
+      deletedAt: Date.now(),
+      deletedBy: userId,
+    };
+
+    await rtdbService.updateRtdbOnly(replyPath, updates);
+    return updates;
+  },
+
+  /**
    * Send a reply to a parent community discussion message.
    */
   sendPublicIdeaReply: async (parentMessageId, content, user, parentMessage = null) => {
@@ -1997,12 +2060,13 @@ export const chatService = {
    * Toggle a reaction on a community discussion post.
    */
   togglePublicIdeaReaction: async (messageId, emoji, user) => {
-    if (!user?.uid) throw new Error('User authentication required to react.');
+    const userId = typeof user === 'string' ? user.trim() : user?.uid;
+    if (!userId) throw new Error('User authentication required to react.');
     if (!messageId) throw new Error('Message ID is required.');
     if (!isValidReactionEmoji(emoji)) throw new Error('Unsupported reaction emoji.');
 
     const cleanEmoji = encodeURIComponent(emoji.trim());
-    const reactionPath = getPublicIdeasChatMessageReactionPath(messageId, cleanEmoji, user.uid);
+    const reactionPath = getPublicIdeasChatMessageReactionPath(messageId, cleanEmoji, userId);
     const existing = await rtdbService.getRtdbOnly(reactionPath);
 
     if (existing === true) {
@@ -2010,8 +2074,37 @@ export const chatService = {
       return { action: 'removed', emoji: cleanEmoji };
     } else {
       await set(ref(rtdb, reactionPath), true);
+
+      // Dispatch reaction notification to community discussion author
+      const msgPath = getPublicIdeasChatMessagePath(messageId);
+      rtdbService.getRtdbOnly(msgPath).then((msg) => {
+        const authorId = msg?.senderId || msg?.authorId || msg?.authorUid;
+        if (authorId && authorId !== userId && authorId !== 'system') {
+          const userObj = typeof user === 'object' && user ? user : { uid: userId };
+          inAppNotificationService.dispatchNotificationEvent(
+            NOTIFICATION_TYPES.CHAT_REACTION,
+            {
+              workspaceId: 'community',
+              channelId: 'general',
+              messageId,
+              emoji: emoji.trim(),
+              recipientId: authorId,
+              content: msg.content || '',
+            },
+            userObj
+          ).catch((e) => console.warn('[chatService] Community reaction notif warning:', e));
+        }
+      }).catch((e) => console.warn('[chatService] Failed to load community message for reaction notif:', e));
+
       return { action: 'added', emoji: cleanEmoji };
     }
+  },
+
+  /**
+   * Backwards-compatible alias for togglePublicIdeaReaction.
+   */
+  togglePublicIdeaMessageReaction: async (messageId, emoji, user) => {
+    return chatService.togglePublicIdeaReaction(messageId, emoji, user);
   },
 
   /**
@@ -2151,7 +2244,7 @@ export const chatService = {
   },
 
   /**
-   * Subscribe to the pinned/featured public community discussion.
+   * Subscribe to the pinned/featured public community discussion (legacy single-pinned compatibility).
    */
   subscribeToPinnedPublicIdeaDiscussion: (callback) => {
     const pinnedPath = getPublicIdeasChatPinnedDiscussionPath();
@@ -2165,5 +2258,449 @@ export const chatService = {
       }
     });
   },
+
+  /**
+   * Pin a discussion in the public community channel (up to 5 discussions, Admin only).
+   */
+  pinPublicCommunityDiscussion: async (message, user, isAdmin = false) => {
+    if (!user?.uid) throw new Error('User authentication required.');
+    if (!isAdmin) throw new Error('Only administrators can pin discussions in the community channel.');
+
+    const messageId = message?.messageId || (typeof message === 'string' ? message : null);
+    if (!messageId) throw new Error('Message ID required.');
+
+    const rootPath = getPublicIdeasChatPinnedMessagesRootPath();
+    const existingPins = (await rtdbService.getRtdbOnly(rootPath)) || {};
+    const pinKeys = Object.keys(existingPins);
+
+    if (!existingPins[messageId] && pinKeys.length >= 5) {
+      throw new Error('Maximum of 5 pinned discussions allowed in the community channel. Please unpin an older discussion first.');
+    }
+
+    const pinPayload = createCanonicalPinnedMessage({
+      messageId,
+      pinnedBy: user.uid,
+      pinnedByName: user.displayName || user.name || 'Admin',
+      content: message?.content || '',
+      senderId: message?.senderId || message?.authorId || '',
+      senderName: message?.senderName || message?.authorName || '',
+      attachment: message?.attachment || null,
+      pinnedAt: Date.now(),
+    });
+
+    const pinPath = getPublicIdeasChatPinnedMessagePath(messageId);
+    try {
+      await set(ref(rtdb, pinPath), pinPayload);
+
+      // Keep legacy single-pinned paths synchronized for backward compatibility
+      await set(ref(rtdb, getPublicIdeasChatPinnedDiscussionPath()), pinPayload).catch(() => {});
+      await set(ref(rtdb, getPublicIdeasChatPinnedPath()), messageId).catch(() => {});
+
+      // Dispatch notification to discussion author if pinned by admin
+      const authorId = message?.senderId || message?.authorId || message?.authorUid;
+      if (authorId && authorId !== user.uid && authorId !== 'system') {
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.COMMUNITY_PINNED,
+          {
+            messageId,
+            recipientId: authorId,
+            content: message?.content || '',
+          },
+          user
+        ).catch((e) => console.warn('[chatService] Community pin notification warning:', e));
+      }
+
+      return pinPayload;
+    } catch (directErr) {
+      console.warn('[chatService] Direct RTDB community pin rejected. Executing via authoritative backend API:', directErr?.message || directErr);
+      try {
+        const res = await apiClient.post('/api/chat/community/pin', {
+          messageId,
+          message,
+        });
+        const saved = res?.data !== undefined ? res.data : res;
+        return saved || pinPayload;
+      } catch (backendErr) {
+        throw new Error(backendErr?.message || directErr?.message || 'Permission denied. Unable to pin community discussion.');
+      }
+    }
+  },
+
+  /**
+   * Unpin a discussion from the public community channel.
+   */
+  unpinPublicCommunityDiscussion: async (messageId, user, isAdmin = false) => {
+    if (!user?.uid) throw new Error('User authentication required.');
+    if (!isAdmin) throw new Error('Only administrators can unpin discussions.');
+    if (!messageId) throw new Error('Message ID required.');
+
+    const pinPath = getPublicIdeasChatPinnedMessagePath(messageId);
+    try {
+      await remove(ref(rtdb, pinPath));
+
+      // Also remove from legacy path if it matches
+      const legacySnap = await rtdbService.getRtdbOnly(getPublicIdeasChatPinnedPath());
+      if (legacySnap === messageId) {
+        await remove(ref(rtdb, getPublicIdeasChatPinnedDiscussionPath())).catch(() => {});
+        await remove(ref(rtdb, getPublicIdeasChatPinnedPath())).catch(() => {});
+      }
+
+      return { messageId, unpinned: true };
+    } catch (directErr) {
+      console.warn('[chatService] Direct RTDB community unpin rejected. Executing via authoritative backend API:', directErr?.message || directErr);
+      try {
+        const res = await apiClient.delete(`/api/chat/community/pin/${encodeURIComponent(messageId)}`);
+        const saved = res?.data !== undefined ? res.data : res;
+        return saved || { messageId, unpinned: true };
+      } catch (backendErr) {
+        throw new Error(backendErr?.message || directErr?.message || 'Permission denied. Unable to unpin community discussion.');
+      }
+    }
+  },
+
+  /**
+   * Retrieves all pinned community discussions authoritatively via backend API (with RTDB fallback).
+   * @returns {Promise<Object>} Map of { [messageId]: pinRecord }
+   */
+  getPinnedPublicCommunityDiscussions: async () => {
+    try {
+      const res = await apiClient.get('/api/chat/community/pins');
+      const data = res?.data !== undefined ? res.data : res;
+      if (data && (Array.isArray(data) || typeof data === 'object')) {
+        const map = {};
+        const list = Array.isArray(data) ? data : Object.values(data);
+        list.forEach((p) => {
+          if (p && p.messageId) map[p.messageId] = p;
+        });
+        if (Object.keys(map).length > 0) {
+          return map;
+        }
+      }
+    } catch (apiErr) {
+      console.warn('[chatService] Backend getPinnedPublicCommunityDiscussions fallback to RTDB:', apiErr?.message);
+    }
+
+    try {
+      const rootPath = getPublicIdeasChatPinnedMessagesRootPath();
+      const val = (await rtdbService.getRtdbOnly(rootPath)) || {};
+      if (val && typeof val === 'object' && Object.keys(val).length > 0) {
+        return val;
+      }
+      const legacyPin = await rtdbService.getRtdbOnly(getPublicIdeasChatPinnedDiscussionPath());
+      if (legacyPin && legacyPin.messageId) {
+        return { [legacyPin.messageId]: legacyPin };
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  },
+
+  /**
+   * Subscribe to live pinned community discussions (up to 5).
+   * Authoritatively fetches from backend API and maintains real-time RTDB synchronization.
+   */
+  subscribeToPinnedPublicCommunityDiscussions: (callback) => {
+    // 1. Initial authoritative fetch via Admin SDK endpoint
+    chatService.getPinnedPublicCommunityDiscussions().then((initialMap) => {
+      if (typeof callback === 'function' && initialMap && Object.keys(initialMap).length > 0) {
+        callback(initialMap);
+      }
+    }).catch(() => {});
+
+    // 2. Real-time RTDB listener
+    const rootPath = getPublicIdeasChatPinnedMessagesRootPath();
+    return rtdbService.subscribeRtdbOnly(rootPath, (val) => {
+      if (!val || typeof val !== 'object' || Object.keys(val).length === 0) {
+        // Fallback to legacy single pinned discussion if multi-pin collection is empty
+        const legacyPath = getPublicIdeasChatPinnedDiscussionPath();
+        rtdbService.getRtdbOnly(legacyPath).then((legacyPin) => {
+          if (legacyPin && legacyPin.messageId) {
+            callback({ [legacyPin.messageId]: legacyPin });
+          } else {
+            callback({});
+          }
+        }).catch(() => callback({}));
+        return;
+      }
+      callback(val);
+    });
+  },
+
+  /**
+   * Discord Phase 1: Pin a message in a workspace channel.
+   *
+   * Supports both signatures:
+   * - (workspaceId, channelId, message, user)
+   * - (workspaceId, channelId, messageId, message, userOrUid)
+   *
+   * @param {string} workspaceId - Workspace ID
+   * @param {string} channelId - Channel ID
+   * @param {Object|string} messageOrId - Message object or message ID
+   * @param {Object|string} maybeMessageOrUser - Message object or User object / UID
+   * @param {Object|string} [maybeUser] - User object or UID when called with 5 arguments
+   * @returns {Promise<Object>} The canonical pinned message record
+   */
+  pinMessage: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, messageOrId, maybeMessageOrUser, maybeUser) => {
+    let messageObj;
+    let userOrUid;
+
+    if (typeof messageOrId === 'string' && maybeMessageOrUser && typeof maybeMessageOrUser === 'object' && maybeMessageOrUser.messageId) {
+      // 5-argument signature: (workspaceId, channelId, messageId, message, user)
+      messageObj = maybeMessageOrUser;
+      userOrUid = maybeUser;
+    } else if (typeof messageOrId === 'object' && messageOrId) {
+      // 4-argument signature: (workspaceId, channelId, message, user)
+      messageObj = messageOrId;
+      userOrUid = maybeMessageOrUser;
+    } else {
+      messageObj = { messageId: messageOrId };
+      userOrUid = maybeMessageOrUser;
+    }
+
+    const messageId = messageObj?.messageId || (typeof messageOrId === 'string' ? messageOrId : null);
+    if (!workspaceId || !messageId) {
+      throw new Error('Workspace ID and message are required to pin a message.');
+    }
+
+    const pinnedByUid = typeof userOrUid === 'string' ? userOrUid : (userOrUid?.uid || userOrUid?.id || 'unknown');
+    const pinnedByName = typeof userOrUid === 'object' && userOrUid
+      ? (userOrUid.displayName || userOrUid.name || userOrUid.username || 'Member')
+      : 'Member';
+
+    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
+
+    // Enforce channel pin limit (maximum of 3 pinned messages per workspace channel)
+    const rootPath = getChannelPinnedMessagesRootPath(workspaceId, activeChannelId);
+    const existingPins = (await rtdbService.getRtdbOnly(rootPath)) || {};
+    const pinKeys = Object.keys(existingPins);
+
+    if (!existingPins[messageId] && pinKeys.length >= 3) {
+      throw new Error('Maximum of 3 pinned messages allowed in this channel. Please unpin an older message first.');
+    }
+
+    const pinPath = getChannelPinnedMessagePath(workspaceId, activeChannelId, messageId);
+    const pinPayload = createCanonicalPinnedMessage({
+      messageId,
+      pinnedBy: pinnedByUid,
+      pinnedByName,
+      content: messageObj?.content || '',
+      senderId: messageObj?.senderId || '',
+      senderName: messageObj?.senderName || '',
+      attachment: messageObj?.attachment || null,
+      pinnedAt: Date.now(),
+    });
+
+    try {
+      await set(ref(rtdb, pinPath), pinPayload);
+
+      // Optionally mirror isPinned flag onto the message node for direct query fast path
+      const msgPath = getMessagePath(workspaceId, activeChannelId, messageId);
+      await rtdbService.updateRtdbOnly(msgPath, {
+        isPinned: true,
+        pinnedAt: pinPayload.pinnedAt,
+      }).catch(() => {});
+
+      // Dispatch notification to message author if pinned by someone else
+      const authorId = messageObj?.senderId || messageObj?.authorId;
+      if (authorId && authorId !== pinnedByUid && authorId !== 'system') {
+        const pinnerUser = typeof userOrUid === 'object' && userOrUid ? userOrUid : { uid: pinnedByUid, displayName: pinnedByName };
+        inAppNotificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.CHAT_PINNED,
+          {
+            workspaceId,
+            channelId: activeChannelId,
+            messageId,
+            recipientId: authorId,
+            content: messageObj?.content || '',
+          },
+          pinnerUser
+        ).catch((e) => console.warn('[chatService] Pin notification warning:', e));
+      }
+
+      return pinPayload;
+    } catch (directErr) {
+      console.warn('[chatService] Direct RTDB channel pin rejected. Executing via authoritative backend API:', directErr?.message || directErr);
+      try {
+        const res = await apiClient.post(`/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/pin`, {
+          messageId,
+          message: messageObj,
+        });
+        const saved = res?.data !== undefined ? res.data : res;
+        return saved || pinPayload;
+      } catch (backendErr) {
+        throw new Error(backendErr?.message || directErr?.message || 'Permission denied. Unable to pin message.');
+      }
+    }
+  },
+
+  /**
+   * Discord Phase 1: Unpin a message from a workspace channel.
+   *
+   * @param {string} workspaceId - Workspace ID
+   * @param {string} channelId - Channel ID
+   * @param {string} messageId - Message ID to unpin
+   * @returns {Promise<{ messageId: string, unpinned: boolean }>}
+   */
+  unpinMessage: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, messageId) => {
+    if (!workspaceId || !messageId) {
+      throw new Error('Workspace ID and message ID are required to unpin a message.');
+    }
+
+    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
+    const pinPath = getChannelPinnedMessagePath(workspaceId, activeChannelId, messageId);
+
+    try {
+      await remove(ref(rtdb, pinPath));
+
+      // Mirror unpinned flag onto the message node
+      const msgPath = getMessagePath(workspaceId, activeChannelId, messageId);
+      await rtdbService.updateRtdbOnly(msgPath, {
+        isPinned: false,
+        pinnedAt: null,
+      }).catch(() => {});
+
+      return { messageId, unpinned: true };
+    } catch (directErr) {
+      console.warn('[chatService] Direct RTDB channel unpin rejected. Executing via authoritative backend API:', directErr?.message || directErr);
+      try {
+        const res = await apiClient.delete(`/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/pin/${encodeURIComponent(messageId)}`);
+        const saved = res?.data !== undefined ? res.data : res;
+        return saved || { messageId, unpinned: true };
+      } catch (backendErr) {
+        throw new Error(backendErr?.message || directErr?.message || 'Permission denied. Unable to unpin message.');
+      }
+    }
+  },
+
+  /**
+   * Discord Phase 1: Retrieves all pinned messages in a channel authoritatively via backend API.
+   * @param {string} workspaceId - Workspace ID
+   * @param {string} [channelId='general'] - Channel ID
+   * @returns {Promise<Array>} Array of pinned message records
+   */
+  getPinnedMessages: async (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID) => {
+    if (!workspaceId) return [];
+    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
+    try {
+      const res = await apiClient.get(`/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/pins`);
+      const data = res?.data !== undefined ? res.data : res;
+      if (Array.isArray(data)) {
+        return data;
+      }
+    } catch (apiErr) {
+      console.warn('[chatService] Backend getPinnedMessages fallback to RTDB:', apiErr?.message);
+    }
+
+    try {
+      const rootPath = getChannelPinnedMessagesRootPath(workspaceId, activeChannelId);
+      const val = (await rtdbService.getRtdbOnly(rootPath)) || {};
+      return Object.values(val)
+        .filter(Boolean)
+        .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+    } catch (_) {
+      return [];
+    }
+  },
+
+  /**
+   * Discord Phase 1: Subscribes to live pinned messages in a workspace channel.
+   * Authoritatively fetches from backend API and maintains real-time RTDB synchronization.
+   *
+   * @param {string} workspaceId - Workspace ID
+   * @param {string} channelId - Channel ID
+   * @param {Function} callback - Callback invoked with Array of pinned records
+   * @returns {Function} Unsubscribe function
+   */
+  subscribeToPinnedMessages: (workspaceId, channelId = DEFAULT_CHAT_CHANNEL_ID, callback) => {
+    if (!workspaceId) {
+      if (typeof callback === 'function') callback([]);
+      return () => {};
+    }
+
+    const activeChannelId = (channelId || DEFAULT_CHAT_CHANNEL_ID).trim();
+
+    // 1. Initial authoritative fetch via Admin SDK endpoint
+    chatService.getPinnedMessages(workspaceId, activeChannelId).then((initialPins) => {
+      if (typeof callback === 'function' && Array.isArray(initialPins) && initialPins.length > 0) {
+        callback(initialPins);
+      }
+    }).catch(() => {});
+
+    // 2. Real-time RTDB listener
+    const rootPath = getChannelPinnedMessagesRootPath(workspaceId, activeChannelId);
+    return rtdbService.subscribeRtdbOnly(rootPath, (val) => {
+      if (!val || typeof val !== 'object') {
+        if (typeof callback === 'function') callback([]);
+        return;
+      }
+      const pins = Object.values(val)
+        .filter(Boolean)
+        .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+      if (typeof callback === 'function') callback(pins);
+    });
+  },
+
+  /**
+   * Discord Phase 1: Generates an optimistic provisional message with client nonce.
+   */
+  createProvisionalMessage: ({ content, user, attachment, nonce }) => {
+    const timestamp = Date.now();
+    const clientNonce = nonce || `${timestamp}_${Math.random().toString(36).substring(2, 9)}`;
+    return {
+      messageId: `provisional_${clientNonce}`,
+      clientNonce,
+      senderId: user.uid,
+      senderName: user.displayName || user.name || 'Member',
+      senderAvatar: user.photoURL || user.avatar || '',
+      content: String(content || '').trim(),
+      createdAt: timestamp,
+      status: 'sending',
+      attachment: attachment || null,
+      isSystem: false,
+      deleted: false,
+    };
+  },
+
+  /**
+   * Discord Phase 1: Reconciles provisional messages with confirmed incoming message from RTDB.
+   */
+  reconcileProvisionalMessage: (existingMessages, confirmedMessage) => {
+    if (!Array.isArray(existingMessages)) return [confirmedMessage];
+    let matched = false;
+
+    const reconciled = existingMessages.map((msg) => {
+      if (
+        msg.clientNonce &&
+        confirmedMessage.clientNonce &&
+        msg.clientNonce === confirmedMessage.clientNonce
+      ) {
+        matched = true;
+        return { ...confirmedMessage, status: 'sent' };
+      }
+      // Fallback matching by sender, content, and close creation time (< 8s)
+      if (
+        msg.status === 'sending' &&
+        msg.senderId === confirmedMessage.senderId &&
+        msg.content === confirmedMessage.content &&
+        Math.abs((confirmedMessage.createdAt || 0) - (msg.createdAt || 0)) < 8000
+      ) {
+        matched = true;
+        return { ...confirmedMessage, status: 'sent' };
+      }
+      return msg;
+    });
+
+    if (!matched) {
+      // Check if message already exists by messageId
+      const exists = reconciled.some((m) => m.messageId === confirmedMessage.messageId);
+      if (!exists) {
+        reconciled.push({ ...confirmedMessage, status: 'sent' });
+      }
+    }
+
+    return reconciled;
+  },
 };
+
 

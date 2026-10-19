@@ -67,33 +67,51 @@ export function Sidebar({
   const isIdeaActive = Boolean(ideaId) && Boolean(orgId);
   const isWorkspaceMode = mode === 'workspace' && Boolean(orgId);
 
-  // Subscribe to channel unread state (workspace mode only)
+  // Subscribe to all workspace channels' unread states (workspace mode only)
   useEffect(() => {
     if (!isWorkspaceMode || !orgId || !user?.uid) {
       setHasUnreadChat(false);
       return;
     }
 
-    let lastMessageAt = 0;
-    let lastReadAt = 0;
+    let readStateUnsubs = [];
+    const readTimes = new Map();
+    let currentChannels = [];
 
-    const checkUnread = () => {
-      setHasUnreadChat(Boolean(lastMessageAt > 0 && lastMessageAt > lastReadAt));
+    const evaluateUnread = () => {
+      const hasAnyUnread = currentChannels.some((ch) => {
+        const lastMsg = ch.lastMessageAt || 0;
+        const lastRead = readTimes.get(ch.channelId) || 0;
+        return lastMsg > 0 && lastMsg > lastRead;
+      });
+      setHasUnreadChat(hasAnyUnread);
     };
 
-    const unsubMeta = chatService.subscribeToChannelMetadata(orgId, 'general', (meta) => {
-      lastMessageAt = meta?.lastMessageAt || 0;
-      checkUnread();
-    });
+    const unsubChannels = chatService.subscribeToWorkspaceChannels(orgId, (channels) => {
+      currentChannels = Array.isArray(channels) ? channels : [];
 
-    const unsubRead = chatService.subscribeToReadState(orgId, 'general', user.uid, (state) => {
-      lastReadAt = state?.lastReadAt || 0;
-      checkUnread();
+      // Clean up previous read subscriptions
+      readStateUnsubs.forEach((unsub) => {
+        if (typeof unsub === 'function') unsub();
+      });
+      readStateUnsubs = [];
+
+      currentChannels.forEach((ch) => {
+        const unsub = chatService.subscribeToReadState(orgId, ch.channelId, user.uid, (state) => {
+          readTimes.set(ch.channelId, state?.lastReadAt || 0);
+          evaluateUnread();
+        });
+        readStateUnsubs.push(unsub);
+      });
+
+      evaluateUnread();
     });
 
     return () => {
-      unsubMeta();
-      unsubRead();
+      if (typeof unsubChannels === 'function') unsubChannels();
+      readStateUnsubs.forEach((unsub) => {
+        if (typeof unsub === 'function') unsub();
+      });
     };
   }, [isWorkspaceMode, orgId, user?.uid]);
 

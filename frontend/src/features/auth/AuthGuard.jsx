@@ -26,10 +26,22 @@ export function AuthGuard({ children }) {
     return <Navigate to={`/signin?returnUrl=${returnUrl}`} replace />;
   }
 
-  // If new user profile is not completed, redirect to /setup-profile
-  if (
+  // Only redirect to /setup-profile if the profile is truly incomplete.
+  // If the user already has a valid username and primary role, they have completed setup.
+  const hasCoreIdentity = Boolean(
+    userProfile?.username &&
+    userProfile.username !== 'User' &&
+    userProfile.primaryRole
+  );
+
+  const isProfileIncomplete = Boolean(
     userProfile &&
     userProfile.profileCompleted === false &&
+    !hasCoreIdentity
+  );
+
+  if (
+    isProfileIncomplete &&
     location.pathname !== '/setup-profile' &&
     location.pathname !== '/join'
   ) {

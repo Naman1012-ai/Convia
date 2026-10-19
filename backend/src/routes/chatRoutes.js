@@ -1,6 +1,7 @@
 import express from 'express';
 import { rtdbService } from '../services/rtdbService.js';
 import { requireWorkspaceMember } from '../utils/workspaceAuthHelper.js';
+import { requireAuth, requirePlatformAdmin } from '../middleware/authMiddleware.js';
 
 export const chatRouter = express.Router({ mergeParams: true });
 
@@ -185,5 +186,253 @@ chatRouter.get('/channels/:channelId/messages/:messageId/replies', async (req, r
   } catch (err) {
     const status = err.statusCode || 500;
     res.status(status).json({ success: false, error: { message: err.message } });
+  }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/chat/channels/:channelId/pins
+ * Retrieves all pinned messages in a workspace channel authoritatively via Admin SDK.
+ */
+chatRouter.get('/channels/:channelId/pins', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const channelId = req.params.channelId || 'general';
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    await requireWorkspaceMember(workspaceId, userUid);
+
+    const rootPath = `workspaceChats/${workspaceId}/channels/${channelId}/pinnedMessages`;
+    const pinsMap = (await rtdbService.getData(rootPath)) || {};
+
+    const pinsList = Object.entries(pinsMap)
+      .map(([k, v]) => ({ ...(typeof v === 'object' ? v : {}), messageId: v?.messageId || k }))
+      .filter((p) => p && p.messageId)
+      .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+
+    res.json({ success: true, data: pinsList });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to retrieve pinned messages.' } });
+  }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/chat/channels/:channelId/pin
+ * Authoritatively pins a message in a workspace channel (up to 3 pinned messages per channel).
+ * Any active workspace member can pin a message.
+ */
+chatRouter.post('/channels/:channelId/pin', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const channelId = req.params.channelId || 'general';
+    const userUid = req.user?.uid;
+    const { messageId, message } = req.body || {};
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    if (!messageId || typeof messageId !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Message ID is required.' } });
+    }
+
+    // Require user to be an active workspace member
+    const membership = await requireWorkspaceMember(workspaceId, userUid);
+
+    // Enforce channel pin limit (maximum of 3 pinned messages per workspace channel)
+    const pinsPath = `workspaceChats/${workspaceId}/channels/${channelId}/pinnedMessages`;
+    const existingPins = (await rtdbService.getData(pinsPath)) || {};
+    const pinKeys = Object.keys(existingPins);
+
+    if (!existingPins[messageId] && pinKeys.length >= 3) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Maximum of 3 pinned messages allowed in this channel. Please unpin an older message first.' },
+      });
+    }
+
+    const pinPayload = {
+      messageId: messageId.trim(),
+      pinnedBy: userUid,
+      pinnedByName: req.user?.displayName || req.user?.name || membership.displayName || 'Member',
+      content: String(message?.content || '').substring(0, 2000),
+      senderId: String(message?.senderId || ''),
+      senderName: String(message?.senderName || ''),
+      pinnedAt: Date.now(),
+    };
+
+    await rtdbService.setData(`${pinsPath}/${messageId.trim()}`, pinPayload);
+
+    // Optionally mirror isPinned flag onto the message node for direct query fast path
+    const msgPath = `workspaceChats/${workspaceId}/channels/${channelId}/messages/${messageId.trim()}`;
+    await rtdbService.updateData(msgPath, {
+      isPinned: true,
+      pinnedAt: pinPayload.pinnedAt,
+    }).catch(() => {});
+
+    res.json({ success: true, data: pinPayload });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to pin message.' } });
+  }
+});
+
+/**
+ * DELETE /api/workspaces/:workspaceId/chat/channels/:channelId/pin/:messageId
+ * Unpins a message from a workspace channel.
+ */
+chatRouter.delete('/channels/:channelId/pin/:messageId', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const channelId = req.params.channelId || 'general';
+    const messageId = req.params.messageId;
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    if (!messageId) {
+      return res.status(400).json({ success: false, error: { message: 'Message ID is required.' } });
+    }
+
+    await requireWorkspaceMember(workspaceId, userUid);
+
+    const pinPath = `workspaceChats/${workspaceId}/channels/${channelId}/pinnedMessages/${messageId.trim()}`;
+    await rtdbService.removeData(pinPath);
+
+    // Optionally remove isPinned flag from message node
+    const msgPath = `workspaceChats/${workspaceId}/channels/${channelId}/messages/${messageId.trim()}`;
+    await rtdbService.updateData(msgPath, {
+      isPinned: false,
+    }).catch(() => {});
+
+    res.json({ success: true, data: { messageId, unpinned: true } });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to unpin message.' } });
+  }
+});
+
+/**
+ * GET /api/chat/community/pins (or /api/workspaces/:workspaceId/chat/community/pins)
+ * Retrieves all pinned community discussions (up to 5) authoritatively via Admin SDK.
+ */
+chatRouter.get('/community/pins', async (req, res) => {
+  try {
+    const rootPath = 'publicChats/ideas/pinnedMessages';
+    let pinsMap = (await rtdbService.getData(rootPath)) || {};
+
+    // If multi-pin collection is empty, check legacy single pinned node
+    if (!pinsMap || Object.keys(pinsMap).length === 0) {
+      const legacyPin = await rtdbService.getData('publicChats/ideas/pinned');
+      if (legacyPin && legacyPin.messageId) {
+        pinsMap = { [legacyPin.messageId]: legacyPin };
+      }
+    }
+
+    const pinsList = Object.entries(pinsMap)
+      .map(([k, v]) => ({ ...(typeof v === 'object' ? v : {}), messageId: v?.messageId || k }))
+      .filter((p) => p && p.messageId)
+      .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+
+    res.json({ success: true, data: pinsList });
+  } catch (err) {
+    res.status(500).json({ success: false, error: { message: err.message || 'Failed to retrieve pinned discussions.' } });
+  }
+});
+
+/**
+ * POST /api/chat/community/pin (or /api/workspaces/:workspaceId/chat/community/pin)
+ * Pins a discussion in the public community channel (up to 5 discussions, Admin only).
+ */
+chatRouter.post('/community/pin', requireAuth, requirePlatformAdmin, async (req, res) => {
+  try {
+    const userUid = req.user?.uid;
+    const { messageId, message } = req.body || {};
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    if (!messageId || typeof messageId !== 'string') {
+      return res.status(400).json({ success: false, error: { message: 'Message ID is required.' } });
+    }
+
+    const rootPath = 'publicChats/ideas/pinnedMessages';
+    const existingPins = (await rtdbService.getData(rootPath)) || {};
+    const pinKeys = Object.keys(existingPins);
+
+    if (!existingPins[messageId] && pinKeys.length >= 5) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'Maximum of 5 pinned discussions allowed in the community channel. Please unpin an older discussion first.' },
+      });
+    }
+
+    const pinPayload = {
+      messageId: messageId.trim(),
+      pinnedBy: userUid,
+      pinnedByName: req.user?.displayName || req.user?.name || 'Admin',
+      content: String(message?.content || '').substring(0, 2000),
+      senderId: String(message?.senderId || message?.authorId || ''),
+      senderName: String(message?.senderName || message?.authorName || ''),
+      pinnedAt: Date.now(),
+    };
+
+    await rtdbService.setData(`${rootPath}/${messageId.trim()}`, pinPayload);
+    await rtdbService.setData('publicChats/ideas/pinned', pinPayload).catch(() => {});
+    await rtdbService.setData('publicChats/ideas/pinnedMessageId', messageId.trim()).catch(() => {});
+
+    res.json({ success: true, data: pinPayload });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to pin community discussion.' } });
+  }
+});
+
+/**
+ * DELETE /api/chat/community/pin/:messageId (or /api/workspaces/:workspaceId/chat/community/pin/:messageId)
+ * Unpins a discussion from the public community channel (Admin only).
+ */
+chatRouter.delete('/community/pin/:messageId', requireAuth, requirePlatformAdmin, async (req, res) => {
+  try {
+    const userUid = req.user?.uid;
+    const messageId = req.params.messageId;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    if (!messageId) {
+      return res.status(400).json({ success: false, error: { message: 'Message ID is required.' } });
+    }
+
+    await rtdbService.removeData(`publicChats/ideas/pinnedMessages/${messageId.trim()}`);
+
+    // Synchronize legacy single-pinned paths with remaining pinned items
+    try {
+      const legacyPinnedId = await rtdbService.getData('publicChats/ideas/pinnedMessageId');
+      if (legacyPinnedId === messageId.trim()) {
+        const remainingPins = (await rtdbService.getData('publicChats/ideas/pinnedMessages')) || {};
+        const remainingList = Object.values(remainingPins).sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+        if (remainingList.length > 0) {
+          await rtdbService.setData('publicChats/ideas/pinned', remainingList[0]).catch(() => {});
+          await rtdbService.setData('publicChats/ideas/pinnedMessageId', remainingList[0].messageId).catch(() => {});
+        } else {
+          await rtdbService.removeData('publicChats/ideas/pinned').catch(() => {});
+          await rtdbService.removeData('publicChats/ideas/pinnedMessageId').catch(() => {});
+        }
+      }
+    } catch (_) {}
+
+    res.json({ success: true, data: { messageId, unpinned: true } });
+  } catch (err) {
+    const status = err.statusCode || 500;
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to unpin community discussion.' } });
   }
 });

@@ -118,6 +118,40 @@ export const reportService = {
         actionUrl: '/dashboard',
       }).catch((e) => console.warn('[reportService] Notification delivery warning:', e.message));
 
+      // 5. Notify Platform Admins about newly filed report
+      try {
+        const usersSnap = await rtdbService.getData('users');
+        if (usersSnap && typeof usersSnap === 'object') {
+          const adminUids = Object.values(usersSnap)
+            .filter((u) => u && (u.role === 'admin' || u.role === 'superadmin' || u.role === 'moderator' || u.isAdmin))
+            .map((u) => u.uid)
+            .filter(Boolean);
+
+          const adminNotifId = `notif_rep_${reportId}_${timestamp}`;
+          for (const adminUid of adminUids) {
+            await rtdbService.setData(`user_notifications/${adminUid}/${adminNotifId}`, {
+              notificationId: adminNotifId,
+              recipientId: adminUid,
+              type: 'ADMIN_BROADCAST',
+              title: `New Issue Reported: [${category}] ${title.trim().slice(0, 50)}`,
+              body: `${user.displayName || 'A user'} filed report #${reportId}: "${description.trim().slice(0, 100)}"`,
+              previewText: description.trim().slice(0, 100),
+              senderId: user.uid,
+              actorId: user.uid,
+              senderName: user.displayName || user.email || 'User',
+              actorName: user.displayName || user.email || 'User',
+              resourceType: 'report',
+              resourceId: reportId,
+              read: false,
+              createdAt: timestamp,
+              actionUrl: `/admin/reports/${reportId}`,
+            }).catch(() => {});
+          }
+        }
+      } catch (adminNotifErr) {
+        console.warn('[reportService] Failed to notify admins of report:', adminNotifErr?.message || adminNotifErr);
+      }
+
       return reportData;
     } catch (error) {
       console.error('[reportService] createReport error:', error);

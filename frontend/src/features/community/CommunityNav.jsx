@@ -11,6 +11,7 @@ import {
   CornerDownRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Pin,
 } from 'lucide-react';
 import { COMMUNITY_POST_TYPES } from '../../constants/chatSchema';
 import { cn } from '../../utils/cn';
@@ -33,6 +34,18 @@ export function CommunityNav({
       count: discussionCounts.all ?? 0,
       description: 'The entire community stream',
     },
+    ...((discussionCounts.featured > 0 || activeFilter === 'featured')
+      ? [
+          {
+            id: 'featured',
+            label: 'Featured',
+            icon: Pin,
+            count: discussionCounts.featured ?? 0,
+            description: 'Highlighted community announcements',
+            color: 'text-amber-600',
+          },
+        ]
+      : []),
     {
       id: COMMUNITY_POST_TYPES.IDEA,
       label: 'Ideas',

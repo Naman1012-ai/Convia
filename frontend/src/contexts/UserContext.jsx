@@ -28,18 +28,26 @@ export function UserProvider({ children }) {
 
     const initProfile = async () => {
       try {
-        // Ensure profile node exists in RTDB
-        await profileService.createUserProfile(user, {
-          displayName: user.displayName || undefined,
-          photoURL: user.photoURL || undefined,
-        });
-
         // Setup presence tracking
         unsubscribePresence = profileService.setupPresence(user.uid);
 
-        // Subscribe to real-time profile node updates
-        unsubscribeProfile = profileService.subscribeToProfile(user.uid, (profileData) => {
+        // Subscribe to real-time profile node updates first
+        let hasInitialized = false;
+        unsubscribeProfile = profileService.subscribeToProfile(user.uid, async (profileData) => {
           if (profileData) {
+            // Self-heal: If user already has username and primaryRole, guarantee profileCompleted is true
+            const hasCoreIdentity = Boolean(
+              profileData.username &&
+              profileData.username !== 'User' &&
+              profileData.primaryRole
+            );
+            if (hasCoreIdentity && profileData.profileCompleted !== true) {
+              profileService.updateUserProfile(user.uid, { profileCompleted: true }).catch((err) => {
+                console.warn('[UserContext] Failed to self-heal profileCompleted:', err);
+              });
+              profileData.profileCompleted = true;
+            }
+
             // Safely synchronize RTDB email with canonical Firebase Auth email if they diverge
             if (user.email && profileData.email !== user.email) {
               profileService.updateUserProfile(user.uid, { email: user.email }).catch((err) => {
@@ -90,10 +98,26 @@ export function UserProvider({ children }) {
               displayName: resolvedDisplayName,
               email: user.email || profileData.email,
             });
+            setLoadingProfile(false);
           } else {
-            setUserProfile(null);
+            // Profile node does not exist in RTDB yet (brand new registration)
+            if (!hasInitialized) {
+              hasInitialized = true;
+              try {
+                await profileService.createUserProfile(user, {
+                  displayName: user.displayName || undefined,
+                  photoURL: user.photoURL || undefined,
+                });
+              } catch (createErr) {
+                console.error('[UserContext] Error initializing initial profile node:', createErr);
+                setUserProfile(null);
+                setLoadingProfile(false);
+              }
+            } else {
+              setUserProfile(null);
+              setLoadingProfile(false);
+            }
           }
-          setLoadingProfile(false);
         });
       } catch (err) {
         console.error('[UserContext] Error initializing profile:', err);
@@ -129,13 +153,16 @@ export function UserProvider({ children }) {
         if (typeof updateCurrentUserProfile === 'function') {
           await updateCurrentUserProfile({
             ...(authDisplayName !== undefined ? { displayName: authDisplayName } : {}),
-            ...(syncData.photoURL !== undefined ? { photoURL: syncData.photoURL } : {}),
+            ...(syncData.photoURL !== undefined ? { photoURL: syncData.photoURL || '' } : {}),
           }).catch((err) => console.warn('[UserContext] auth update error:', err));
         }
       }
 
       // 4. Update local state immediately for zero-lag reactivity
-      setUserProfile((prev) => (prev ? { ...prev, ...syncData } : syncData));
+      setUserProfile((prev) => {
+        const nextPhoto = syncData.photoURL !== undefined ? (syncData.photoURL || null) : (prev?.photoURL || null);
+        return prev ? { ...prev, ...syncData, photoURL: nextPhoto } : { ...syncData, photoURL: nextPhoto };
+      });
     },
     [user, updateCurrentUserProfile]
   );

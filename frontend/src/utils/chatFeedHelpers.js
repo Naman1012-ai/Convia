@@ -115,6 +115,7 @@ export function getDateDividerLabel(timestamp, referenceDate = new Date()) {
 export function isConsecutiveMessageGroup(prevMsg, currMsg, windowMs = 5 * 60 * 1000) {
   if (!prevMsg || !currMsg) return false;
   if (prevMsg.isSystem || currMsg.isSystem) return false;
+  if (prevMsg.deleted || currMsg.deleted) return false;
   if (prevMsg.senderId !== currMsg.senderId) return false;
   if (!isSameCalendarDay(prevMsg.createdAt, currMsg.createdAt)) return false;
 

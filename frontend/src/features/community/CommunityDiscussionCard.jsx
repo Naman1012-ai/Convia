@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   MessageCircle,
@@ -13,7 +13,11 @@ import {
   Sparkles,
   Lightbulb,
   Pin,
+  PinOff,
   Loader2,
+  Shield,
+  Crown,
+  CornerDownRight,
 } from 'lucide-react';
 import {
   COMMUNITY_POST_TYPE_CONFIG,
@@ -29,12 +33,19 @@ import {
   isMessageAuthoredByUser,
   getMessageAuthorUid,
 } from '../../utils/memberIdentity';
+import { renderDiscordMarkdown } from '../../utils/discordMarkdown';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useToast } from '../../hooks/useToast';
 import { ChatReactionPicker } from '../chat/ChatReactionPicker';
 import { ChatReactionParticipantsModal } from '../chat/ChatReactionParticipantsModal';
-import { ContextMenuPortal } from '../../components/ui/ContextMenuPortal';
+import { ChatFileCard } from '../chat/ChatFileCard';
+import { VoiceMessagePlayer } from '../chat/VoiceMessagePlayer';
 
+/**
+ * Discord-style Community Discussion Card for Convia.
+ * Features full-width linear layout, Discord markdown AST engine (syntax-highlighted code blocks,
+ * spoilers, blockquotes, mentions), hover action bar, thread count badges, and role indicators.
+ */
 export function CommunityDiscussionCard({
   message,
   currentUserId,
@@ -56,70 +67,88 @@ export function CommunityDiscussionCard({
   onToggleSave = () => {},
   isPinned = false,
   onTogglePin = () => {},
+  onOpenProfile = null,
   activeMenuMessageId = null,
   onSetActiveMenuMessageId = null,
   menuAnchorRect = null,
   onOpenMenu = null,
   onCloseMenu = null,
+  onOpenPreview = null,
 }) {
   const { toast } = useToast();
   const [localMenuOpen, setLocalMenuOpen] = useState(false);
-  const [localAnchorRect, setLocalAnchorRect] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content || '');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedText, setCopiedText] = useState(false);
-  const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
+  const [reactionPickerSource, setReactionPickerSource] = useState(null); // 'floating' | 'footer' | null
   const [inspectReactionEmoji, setInspectReactionEmoji] = useState(null);
 
-  const isMenuOpen = onOpenMenu
+  const currentUserReactions = useMemo(() => {
+    if (!currentUserId || !reactions || typeof reactions !== 'object') return [];
+    return Object.entries(reactions)
+      .filter(([_, data]) => Array.isArray(data?.users) && data.users.includes(currentUserId))
+      .map(([emoji]) => emoji);
+  }, [reactions, currentUserId]);
+
+  const menuButtonRef = useRef(null);
+  const menuRef = useRef(null);
+  const editTextareaRef = useRef(null);
+
+  const isMenuOpen = onSetActiveMenuMessageId
     ? activeMenuMessageId === message.messageId
     : localMenuOpen;
 
-  const currentAnchorRect = onOpenMenu ? menuAnchorRect : localAnchorRect;
+  const setIsMenuOpen = (open) => {
+    if (onSetActiveMenuMessageId) {
+      onSetActiveMenuMessageId(open ? message.messageId : null);
+    } else {
+      setLocalMenuOpen(open);
+    }
+  };
 
-  const handleCloseThisMenu = () => {
-    if (onCloseMenu) onCloseMenu();
-    else {
-      setLocalMenuOpen(false);
-      setLocalAnchorRect(null);
-      if (onSetActiveMenuMessageId) onSetActiveMenuMessageId(null);
+  const handleCloseMenu = () => {
+    setIsMenuOpen(false);
+    if (typeof onCloseMenu === 'function') {
+      onCloseMenu();
     }
   };
 
   const handleToggleMenu = (e) => {
     e.stopPropagation();
-    if (!isMenuOpen) {
-      const buttonEl = e.currentTarget;
-      if (buttonEl) {
-        const rect = buttonEl.getBoundingClientRect();
-        const buttonRect = {
-          top: rect.top,
-          bottom: rect.bottom,
-          left: rect.left,
-          right: rect.right,
-          width: rect.width,
-          height: rect.height,
-        };
-        if (onOpenMenu) onOpenMenu(message.messageId, buttonRect);
-        else {
-          if (onSetActiveMenuMessageId) onSetActiveMenuMessageId(message.messageId);
-          setLocalAnchorRect(buttonRect);
-          setLocalMenuOpen(true);
-        }
-      }
-    } else {
-      handleCloseThisMenu();
+    const nextState = !isMenuOpen;
+    setIsMenuOpen(nextState);
+    if (nextState && typeof onOpenMenu === 'function' && menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      onOpenMenu(message.messageId, rect);
+    } else if (!nextState && typeof onCloseMenu === 'function') {
+      onCloseMenu();
     }
   };
 
-  const menuButtonRef = useRef(null);
-  const editTextareaRef = useRef(null);
+  // Close context menu on outside click or Escape
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        handleCloseMenu();
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleCloseMenu();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMenuOpen]);
 
   // Author resolution
   const messageAuthorUid = getMessageAuthorUid(message) || message.senderId;
-  const { displayName: resolvedName, avatar: resolvedAvatar } = useUserProfile(
+  const { displayName: resolvedName, avatar: resolvedAvatar, profile: liveProfile } = useUserProfile(
     messageAuthorUid,
     {
       subscribe: false,
@@ -128,9 +157,22 @@ export function CommunityDiscussionCard({
     }
   );
 
-  // Canonical ownership comparison
+  const memberProfile = liveProfile || {
+    uid: messageAuthorUid,
+    displayName: resolvedName,
+    avatar: resolvedAvatar,
+    username: message.authorUsername || message.senderUsername || (resolvedName.toLowerCase().replace(/[^a-z0-9_]/g, '')),
+  };
+
+  // Ownership comparison
   const isOwnMessage = Boolean(
     currentUserId && isMessageAuthoredByUser(message, currentUserId)
+  );
+
+  const isAuthorAdmin = Boolean(
+    liveProfile?.isAdmin ||
+    liveProfile?.role === 'superadmin' ||
+    liveProfile?.role === 'admin'
   );
 
   const canEdit = isOwnMessage && !message.deleted;
@@ -138,11 +180,20 @@ export function CommunityDiscussionCard({
   const canReply = !message.deleted;
   const canReact = !message.deleted;
 
-  const postType = message.postType || null;
+  const postType = (message.postType || message.type || '').toLowerCase();
   const typeConfig = postType ? COMMUNITY_POST_TYPE_CONFIG[postType] : null;
 
   const displayTime = timeLabel || formatMessageTime(message.createdAt);
   const displayFullDate = fullDateLabel || formatFullDateTime(message.createdAt);
+
+  // Auto-focus and resize textarea when entering edit mode
+  useEffect(() => {
+    if (isEditing && editTextareaRef.current) {
+      editTextareaRef.current.focus();
+      editTextareaRef.current.style.height = 'auto';
+      editTextareaRef.current.style.height = `${editTextareaRef.current.scrollHeight}px`;
+    }
+  }, [isEditing]);
 
   const handleCopyText = async () => {
     try {
@@ -152,7 +203,7 @@ export function CommunityDiscussionCard({
       setCopiedText(true);
       toast.success('Text copied to clipboard.');
       setTimeout(() => setCopiedText(false), 2000);
-      handleCloseThisMenu();
+      handleCloseMenu();
     } catch {
       toast.error('Failed to copy text.');
     }
@@ -166,7 +217,7 @@ export function CommunityDiscussionCard({
       setCopiedLink(true);
       toast.success('Link copied to clipboard.');
       setTimeout(() => setCopiedLink(false), 2000);
-      handleCloseThisMenu();
+      handleCloseMenu();
     } catch {
       toast.error('Failed to copy link.');
     }
@@ -204,339 +255,380 @@ export function CommunityDiscussionCard({
     }
   };
 
-  const renderContentWithLinks = (text, isOwn) => {
-    if (!text) return null;
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-
-    return parts.map((part, i) => {
-      if (part.match(urlRegex)) {
-        return (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className={`${
-              isOwn
-                ? 'text-primary-200 underline font-semibold hover:text-white'
-                : 'text-emerald-700 underline font-semibold hover:text-emerald-900'
-            } break-all`}
-          >
-            {part}
-          </a>
-        );
-      }
-      return part;
-    });
+  const handleAuthorClick = (e) => {
+    e.stopPropagation();
+    if (typeof onOpenProfile === 'function') {
+      onOpenProfile(memberProfile);
+    }
   };
 
-  // 1. Soft-Deleted Message Tombstone
-  if (message.deleted) {
+  // Discord Floating Action Bar on hover
+  const renderFloatingActionBar = () => {
+    if (message.deleted) return null;
+
     return (
-      <div
-        id={`msg_${message.messageId}`}
-        className={`flex w-full px-2 sm:px-3 ${isGrouped ? 'my-0.5' : 'my-1'} ${
-          isOwnMessage ? 'justify-end' : 'justify-start'
+      <aside
+        className={`absolute -top-3.5 right-4 z-20 items-center bg-white border border-slate-200/90 rounded-lg shadow-sm px-1 py-0.5 gap-0.5 select-none transition-opacity ${
+          isMenuOpen
+            ? 'flex opacity-100'
+            : 'hidden group-hover:flex group-focus-within:flex opacity-100'
         }`}
+        aria-label="Discussion quick actions"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs italic ${
-            isOwnMessage
-              ? 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tr-xs'
-              : 'bg-slate-100/90 text-slate-400 border border-slate-200/80 rounded-tl-xs'
-          }`}
-        >
-          <Trash2 className="h-3 w-3 opacity-60" />
-          <span>This discussion was deleted</span>
-          <span className="text-[10px] font-mono opacity-60" title={displayFullDate}>
-            • {displayTime}
-          </span>
-          {isSaved && (
-            <button
-              type="button"
-              onClick={() => onToggleSave(message)}
-              className="ml-2 not-italic text-[10px] text-amber-700 hover:text-amber-900 font-semibold underline cursor-pointer"
-            >
-              Remove from Saved
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Helper: Action Toolbar on Hover & Mobile
-  const renderActionToolbar = (isOwn) => {
-    if (isEditing) return null;
-
-    return (
-      <div
-        className={`absolute -top-3.5 z-20 items-center justify-center transition-all ${
-          isOwn ? 'right-1 sm:right-2' : 'left-1 sm:left-2'
-        } ${isMenuOpen ? 'flex' : 'hidden sm:group-hover:flex sm:group-focus-within:flex max-sm:flex'}`}
-      >
-        <button
-          ref={menuButtonRef}
-          type="button"
-          onClick={handleToggleMenu}
-          className={`h-6 w-6 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200 shadow-xs flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer ${
-            isMenuOpen ? 'ring-2 ring-emerald-500 text-emerald-600 bg-white shadow-sm' : ''
-          }`}
-          title="More actions"
-          aria-label="More actions"
-          aria-haspopup="menu"
-          aria-expanded={isMenuOpen}
-        >
-          <MoreVertical className="h-3.5 w-3.5" />
-        </button>
-
-        {/* Portal-based Floating Context Menu */}
-        <ContextMenuPortal
-          isOpen={isMenuOpen}
-          onClose={handleCloseThisMenu}
-          anchorRect={currentAnchorRect}
-          triggerRef={menuButtonRef}
-          align={isOwn ? 'right' : 'left'}
-          title="Discussion Actions"
-        >
-          {/* Copy Link */}
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-            role="menuitem"
-          >
-            {copiedLink ? (
-              <>
-                <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                <span className="text-emerald-700 font-semibold">Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                <span>Copy link</span>
-              </>
-            )}
-          </button>
-
-          {/* Copy Text */}
-          {message.content && (
-            <button
-              type="button"
-              onClick={handleCopyText}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-              role="menuitem"
-            >
-              {copiedText ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  <span className="text-emerald-700 font-semibold">Text copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>Copy text</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Turn into Idea */}
-          <button
-            type="button"
-            onClick={() => {
-              handleCloseThisMenu();
-              onTurnIntoIdea(message);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 transition-colors cursor-pointer"
-            role="menuitem"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary-600 shrink-0" />
-            <span>Turn into Idea</span>
-          </button>
-
-          {/* Save / Bookmark Discussion */}
-          {currentUserId && (
-            <button
-              type="button"
-              onClick={() => {
-                handleCloseThisMenu();
-                onToggleSave(message);
-              }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
-              role="menuitem"
-            >
-              {isSaved ? (
-                <>
-                  <BookmarkCheck className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                  <span className="text-amber-800 font-semibold">Remove from Saved</span>
-                </>
-              ) : (
-                <>
-                  <Bookmark className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  <span>Save Discussion</span>
-                </>
-              )}
-            </button>
-          )}
-
-          {/* Pin / Featured Discussion (Admin only) */}
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => {
-                handleCloseThisMenu();
-                onTogglePin(message);
-              }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
-              role="menuitem"
-            >
-              <Pin className={`h-3.5 w-3.5 text-amber-600 shrink-0 ${isPinned ? 'rotate-0' : 'rotate-45'}`} />
-              <span>{isPinned ? 'Unpin Discussion' : 'Pin to Top'}</span>
-            </button>
-          )}
-
-          {/* Edit Message (Author Only) */}
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => {
-                handleCloseThisMenu();
-                setIsEditing(true);
-              }}
-              className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-emerald-700 transition-colors cursor-pointer"
-              role="menuitem"
-            >
-              <Pencil className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-              <span>Edit</span>
-            </button>
-          )}
-
-          {/* Delete Message (Author or Admin) */}
-          {canDelete && (
-            <>
-              <div className="my-1 border-t border-slate-100" />
-              <button
-                type="button"
-                onClick={() => {
-                  handleCloseThisMenu();
-                  onDeleteMessage(message);
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl sm:rounded-lg px-3 sm:px-2.5 py-2 sm:py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                role="menuitem"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                <span>Delete</span>
-              </button>
-            </>
-          )}
-        </ContextMenuPortal>
-      </div>
-    );
-  };
-
-  // Helper: Reaction Chips & Reply Action
-  const renderReactionsAndReplies = (isOwn) => {
-    const hasReactions = Object.keys(reactions).some(
-      (k) => reactions[k]?.count > 0
-    );
-    const hasReplies = replyCount > 0;
-    if (!hasReactions && !hasReplies && !canReact && !canReply) return null;
-
-    return (
-      <div
-        className={`flex flex-wrap items-center gap-1.5 pt-1 ${
-          isOwn ? 'justify-end' : 'justify-start'
-        }`}
-      >
-        {/* Existing Reaction Chips */}
-        {Object.entries(reactions).map(([emoji, data]) => {
-          if (!data || !data.count || data.count <= 0) return null;
-          const hasUserReacted =
-            currentUserId &&
-            Array.isArray(data.users) &&
-            data.users.includes(currentUserId);
-
-          return (
-            <button
-              key={emoji}
-              type="button"
-              onClick={() => onToggleReaction(message.messageId, emoji)}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all cursor-pointer select-none ${
-                hasUserReacted
-                  ? 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold shadow-2xs hover:bg-emerald-200/70'
-                  : 'bg-slate-100/90 hover:bg-slate-200/90 border border-slate-200/70 text-slate-700 font-medium'
-              }`}
-              title={`React with ${emoji} (${data.count})`}
-              aria-label={`${emoji} reaction, ${data.count} count`}
-            >
-              <span>{emoji}</span>
-              <span className="text-[10px] font-mono">{data.count}</span>
-            </button>
-          );
-        })}
-
-        {/* Quick Add Reaction Button */}
+        {/* Quick Add Reaction (WhatsApp-Style Bar) */}
         {canReact && (
           <div className="relative">
             <button
               type="button"
-              onClick={() => setIsReactionPickerOpen((prev) => !prev)}
-              className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer"
+              onClick={() =>
+                setReactionPickerSource((prev) => (prev === 'floating' ? null : 'floating'))
+              }
+              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                reactionPickerSource === 'floating'
+                  ? 'bg-slate-200 text-slate-900'
+                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+              }`}
               title="Add reaction"
               aria-label="Add reaction"
             >
               <SmilePlus className="h-3.5 w-3.5" />
             </button>
 
-            {isReactionPickerOpen && (
+            {reactionPickerSource === 'floating' && (
               <ChatReactionPicker
                 isOpen={true}
-                align={isOwn ? 'right' : 'left'}
+                align="right"
+                userReactions={currentUserReactions}
                 onSelectReaction={(emoji) => {
                   onToggleReaction(message.messageId, emoji);
-                  setIsReactionPickerOpen(false);
+                  setReactionPickerSource(null);
                 }}
-                onClose={() => setIsReactionPickerOpen(false)}
+                onClose={() => setReactionPickerSource(null)}
               />
             )}
           </div>
         )}
 
-        {/* Thread Reply Button */}
+        <div className="h-3.5 w-px bg-slate-200 mx-0.5" />
+
+        {/* Reply in Thread Button */}
         {canReply && (
           <button
             type="button"
             onClick={() => onOpenThread(message)}
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
-              replyCount > 0
-                ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 shadow-2xs hover:bg-emerald-100'
-                : 'bg-slate-100 hover:bg-slate-200/80 border border-slate-200/60 text-slate-600'
-            }`}
-            title={
-              replyCount > 0
-                ? `${formatReplyCountLabel(replyCount)} - Click to open discussion thread`
-                : 'Reply in thread'
-            }
-            aria-label={`Reply in thread, ${formatReplyCountLabel(replyCount)}`}
+            className="p-1.5 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+            title="Reply in thread"
+            aria-label="Reply in thread"
           >
-            <MessageCircle className="h-3 w-3" />
-            <span>{formatReplyCountLabel(replyCount)}</span>
+            <MessageCircle className="h-3.5 w-3.5" />
           </button>
         )}
 
-        {/* Contextual Proposal action for Idea post type */}
-        {postType === 'idea' && (
+        {/* Turn into Idea Button */}
+        <button
+          type="button"
+          onClick={() => onTurnIntoIdea(message)}
+          className="p-1.5 rounded-md text-slate-500 hover:text-primary-700 hover:bg-primary-50 transition-colors cursor-pointer"
+          title="Turn into Proposal / Idea"
+          aria-label="Turn into Proposal / Idea"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Save / Bookmark Button */}
+        {currentUserId && (
           <button
             type="button"
-            onClick={() => onTurnIntoIdea(message)}
-            className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200/60 transition-colors cursor-pointer"
-            title="Create an official proposal from this idea"
+            onClick={() => onToggleSave(message)}
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              isSaved
+                ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+            title={isSaved ? 'Remove from saved' : 'Save discussion'}
+            aria-label={isSaved ? 'Remove from saved' : 'Save discussion'}
           >
-            <Lightbulb className="h-2.5 w-2.5 text-amber-600" />
-            <span>Propose</span>
+            {isSaved ? (
+              <BookmarkCheck className="h-3.5 w-3.5 fill-current" />
+            ) : (
+              <Bookmark className="h-3.5 w-3.5" />
+            )}
+          </button>
+        )}
+
+        {/* Pin to Top Button (Admin only) */}
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => onTogglePin(message)}
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              isPinned
+                ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+            title={isPinned ? 'Unpin discussion' : 'Pin to top as featured'}
+            aria-label={isPinned ? 'Unpin discussion' : 'Pin to top as featured'}
+          >
+            {isPinned ? (
+              <PinOff className="h-3.5 w-3.5 text-amber-600" />
+            ) : (
+              <Pin className="h-3.5 w-3.5 rotate-45" />
+            )}
+          </button>
+        )}
+
+        {/* More Actions Trigger & Dropdown */}
+        <div className="relative" ref={menuRef}>
+          <button
+            ref={menuButtonRef}
+            type="button"
+            onClick={handleToggleMenu}
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              isMenuOpen
+                ? 'bg-slate-100 text-slate-900'
+                : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+            }`}
+            title="More actions"
+            aria-label="More actions"
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+
+          {isMenuOpen && (
+            <div
+              className="absolute right-0 top-full mt-1.5 z-50 min-w-[180px] rounded-xl border border-slate-200 bg-white p-1 shadow-xl transition-all"
+              role="menu"
+              aria-label="Discussion actions"
+            >
+              {/* Copy Link */}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                {copiedLink ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span className="text-emerald-700 font-semibold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span>Copy link</span>
+                  </>
+                )}
+              </button>
+
+              {/* Copy Text */}
+              {message.content && (
+                <button
+                  type="button"
+                  onClick={handleCopyText}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                  role="menuitem"
+                >
+                  {copiedText ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span className="text-emerald-700 font-semibold">Text copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Copy text</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Turn into Idea */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleCloseMenu();
+                  onTurnIntoIdea(message);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-50 transition-colors cursor-pointer"
+                role="menuitem"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-primary-600 shrink-0" />
+                <span>Turn into Idea</span>
+              </button>
+
+              {/* Save / Bookmark Discussion */}
+              {currentUserId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseMenu();
+                    onToggleSave(message);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                  role="menuitem"
+                >
+                  {isSaved ? (
+                    <>
+                      <BookmarkCheck className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                      <span className="text-amber-800 font-semibold">Remove from Saved</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bookmark className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                      <span>Save Discussion</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Pin / Featured Discussion (Admin only) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseMenu();
+                    onTogglePin(message);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer"
+                  role="menuitem"
+                >
+                  {isPinned ? (
+                    <PinOff className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  ) : (
+                    <Pin className="h-3.5 w-3.5 text-amber-600 shrink-0 rotate-45" />
+                  )}
+                  <span>{isPinned ? 'Unpin Discussion' : 'Pin to Top'}</span>
+                </button>
+              )}
+
+              {/* Edit Message (Author only) */}
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseMenu();
+                    setIsEditing(true);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                  role="menuitem"
+                >
+                  <Pencil className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                  <span>Edit Discussion</span>
+                </button>
+              )}
+
+              {/* Delete Message (Author or Admin) */}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseMenu();
+                    onDeleteMessage(message);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                  role="menuitem"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                  <span>Delete Discussion</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  };
+
+  // Reactions summary pill bar
+  const renderReactionsSummary = () => {
+    const reactionEntries = Object.entries(reactions).filter(
+      ([, data]) => data && data.count > 0
+    );
+
+    if (reactionEntries.length === 0 && !replyCount) return null;
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 mt-1.5 pt-0.5 select-none">
+        {reactionEntries.map(([emoji, data]) => {
+          const hasReacted = currentUserId && Array.isArray(data.users) && data.users.includes(currentUserId);
+          return (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onToggleReaction(message.messageId, emoji)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setInspectReactionEmoji(emoji);
+              }}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs transition-all cursor-pointer ${
+                hasReacted
+                  ? 'bg-primary-50 border border-primary-300 text-primary-900 font-bold shadow-2xs'
+                  : 'bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/80 text-slate-700'
+              }`}
+              title={`${hasReacted ? 'Click to remove reaction' : 'Click to react'} • Right-click or click count to view participants (${data.count})`}
+            >
+              <span className="text-sm leading-none">{emoji}</span>
+              <span
+                className="font-mono text-[11px] font-semibold hover:underline cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setInspectReactionEmoji(emoji);
+                }}
+                title="View who reacted"
+              >
+                {data.count}
+              </span>
+            </button>
+          );
+        })}
+
+        {/* Add reaction mini-pill in Footer */}
+        {canReact && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() =>
+                setReactionPickerSource((prev) => (prev === 'footer' ? null : 'footer'))
+              }
+              className={`inline-flex items-center justify-center h-6 w-6 rounded-full transition-colors text-xs cursor-pointer ${
+                reactionPickerSource === 'footer'
+                  ? 'bg-slate-200 text-slate-800'
+                  : 'bg-slate-100/70 hover:bg-slate-200/80 text-slate-500 hover:text-slate-800'
+              }`}
+              title="Add reaction"
+              aria-label="Add emoji reaction"
+            >
+              <SmilePlus className="h-3.5 w-3.5" />
+            </button>
+
+            {reactionPickerSource === 'footer' && (
+              <ChatReactionPicker
+                isOpen={true}
+                align="left"
+                userReactions={currentUserReactions}
+                onSelectReaction={(emoji) => {
+                  onToggleReaction(message.messageId, emoji);
+                  setReactionPickerSource(null);
+                }}
+                onClose={() => setReactionPickerSource(null)}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Thread reply count pill */}
+        {replyCount > 0 && (
+          <button
+            type="button"
+            onClick={() => onOpenThread(message)}
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/80 shadow-2xs hover:bg-emerald-100 transition-all cursor-pointer ml-1"
+            title={`${formatReplyCountLabel(replyCount)} - Click to open discussion thread`}
+          >
+            <MessageCircle className="h-3 w-3" />
+            <span>{formatReplyCountLabel(replyCount)}</span>
           </button>
         )}
       </div>
@@ -547,267 +639,216 @@ export function CommunityDiscussionCard({
     <div
       id={`msg_${message.messageId}`}
       tabIndex={0}
-      className={`group relative flex w-full px-2 sm:px-3 transition-all duration-150 ${
-        isGrouped ? 'my-0.5' : 'mt-2.5 mb-0.5'
-      } ${isOwnMessage ? 'justify-end' : 'justify-start'} ${
+      className={`group relative flex w-full transition-all duration-700 ease-out px-3 sm:px-4 ${
+        isGrouped ? 'py-0.5' : 'pt-2.5 pb-1 mt-1'
+      } hover:bg-slate-50/80 rounded-xl ${
         isHighlighted
-          ? 'bg-emerald-50/70 ring-2 ring-emerald-500 rounded-2xl py-1'
+          ? 'bg-emerald-500/15 ring-2 ring-emerald-500/50 shadow-sm'
           : isPinned
-          ? 'bg-amber-50/40 rounded-2xl py-1 border border-amber-200/50'
+          ? 'bg-amber-50/40 border-l-2 border-amber-500'
           : ''
       }`}
     >
-      {isOwnMessage ? (
-        /* ======================================================== */
-        /* CURRENT USER (OWN MESSAGE) — RIGHT-ALIGNED              */
-        /* ======================================================== */
-        <div className="relative flex flex-col items-end max-w-[90%] sm:max-w-[80%] lg:max-w-[72%]">
-          {!isGrouped && (
-            <div className="flex items-center justify-end gap-1.5 mb-1 px-1 flex-wrap">
-              {isPinned && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
-                  <Pin className="h-2.5 w-2.5 text-amber-700 rotate-45" />
-                  Featured
-                </span>
-              )}
-              <span className="text-xs font-bold text-primary-700">You</span>
-              {typeConfig && (
-                <>
-                  <span className="text-slate-300 text-xs font-mono">•</span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                    <span>{typeConfig.icon}</span>
-                    <span>{typeConfig.label}</span>
-                  </span>
-                </>
-              )}
-              <span className="text-slate-300 text-xs font-mono">•</span>
-              <span
-                className="text-[10px] text-slate-400 font-mono"
-                title={displayFullDate}
-              >
-                {displayTime}
-              </span>
-            </div>
-          )}
+      {/* Discord Floating Action Bar */}
+      {renderFloatingActionBar()}
 
-          <div className="relative group/bubble flex flex-col items-end">
-            {renderActionToolbar(true)}
-
-            {/* Bubble Surface */}
-            <div
-              className={`relative rounded-2xl rounded-tr-xs bg-primary-600 text-white shadow-xs px-3.5 py-2 space-y-1 ${
-                isHighlighted ? 'ring-2 ring-primary-300' : ''
-              }`}
-            >
-              {isEditing ? (
-                <form
-                  onSubmit={handleSaveEdit}
-                  className="space-y-2 min-w-[240px] max-w-md"
-                >
-                  <div className="relative">
-                    <textarea
-                      ref={editTextareaRef}
-                      value={editContent}
-                      onChange={(e) => {
-                        setEditContent(e.target.value.substring(0, 2000));
-                        e.target.style.height = 'auto';
-                        e.target.style.height = `${e.target.scrollHeight}px`;
-                      }}
-                      onKeyDown={handleEditKeyDown}
-                      rows={2}
-                      disabled={isSavingEdit}
-                      className="w-full rounded-xl border border-primary-300 bg-white p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-300 shadow-inner resize-none leading-relaxed"
-                      aria-label="Edit discussion content"
-                    />
-                    <span className="absolute bottom-2 right-2.5 text-[10px] font-mono text-slate-400">
-                      {editContent.length}/2000
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs">
-                    <button
-                      type="submit"
-                      disabled={isSavingEdit || !editContent.trim()}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-primary-700 hover:bg-primary-50 disabled:bg-primary-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                    >
-                      {isSavingEdit ? (
-                        <>
-                          <Loader2 className="animate-spin h-3.5 w-3.5" />
-                          <span>Saving...</span>
-                        </>
-                      ) : (
-                        <span>Save</span>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditing(false);
-                        setEditContent(message.content || '');
-                      }}
-                      disabled={isSavingEdit}
-                      className="px-2.5 py-1.5 rounded-lg bg-primary-700/60 hover:bg-primary-700 text-primary-100 font-medium text-xs transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <span className="text-[10px] text-primary-200/80 font-mono hidden sm:inline">
-                      Enter to save, Esc to cancel
-                    </span>
-                  </div>
-                </form>
-              ) : (
-                <>
-                  {message.content && (
-                    <div className="text-xs sm:text-sm text-white leading-relaxed font-normal whitespace-pre-wrap break-words">
-                      {renderContentWithLinks(message.content, true)}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end gap-1 text-[10px] text-primary-200/90 font-mono select-none pt-0.5">
-                    {isSaved && (
-                      <span title="Saved discussion" className="inline-flex items-center">
-                        <Bookmark className="h-3 w-3 text-amber-300 fill-amber-300 shrink-0 mr-0.5" />
-                      </span>
-                    )}
-                    <span title={displayFullDate}>{displayTime}</span>
-                    {message.editedAt && (
-                      <span
-                        className="italic hover:underline cursor-help"
-                        title={`Edited at ${formatFullDateTime(message.editedAt)}`}
-                      >
-                        (edited)
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {renderReactionsAndReplies(true)}
-        </div>
-      ) : (
-        /* ======================================================== */
-        /* OTHER COMMUNITY MEMBER — LEFT-ALIGNED                   */
-        /* ======================================================== */
-        <div className="relative flex flex-row items-start gap-2 max-w-[90%] sm:max-w-[80%] lg:max-w-[72%]">
-          {!isGrouped ? (
-            <div className="relative shrink-0 pt-0.5">
-              {resolvedAvatar ? (
-                <img
-                  src={resolvedAvatar}
-                  alt={resolvedName}
-                  className="h-7 w-7 rounded-full object-cover border border-slate-200 shadow-2xs"
-                />
-              ) : (
-                <div className="h-7 w-7 rounded-full flex items-center justify-center font-bold text-xs bg-slate-700 text-white shadow-2xs">
-                  {(resolvedName || 'M').charAt(0).toUpperCase()}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="w-7 shrink-0" />
-          )}
-
-          <div className="flex flex-col items-start min-w-0">
-            {!isGrouped && (
-              <div className="flex items-center gap-1.5 mb-1 px-1 flex-wrap">
-                {isPinned && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100/90 border border-amber-300 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-2xs">
-                    <Pin className="h-2.5 w-2.5 text-amber-700 rotate-45" />
-                    Featured
-                  </span>
-                )}
-                <span className="text-xs font-bold text-slate-800 truncate">
-                  {resolvedName}
-                </span>
-                {typeConfig && (
-                  <>
-                    <span className="text-slate-300 text-xs font-mono">•</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                      <span>{typeConfig.icon}</span>
-                      <span>{typeConfig.label}</span>
-                    </span>
-                  </>
-                )}
-                <span className="text-slate-300 text-xs font-mono">•</span>
-                <span
-                  className="text-[10px] text-slate-400 font-mono"
-                  title={displayFullDate}
-                >
-                  {displayTime}
-                </span>
+      {/* Left Column: Avatar or Grouped Timestamp Gutter */}
+      <div className="w-10 shrink-0 flex items-start justify-center pt-0.5 mr-3 select-none">
+        {!isGrouped ? (
+          <button
+            type="button"
+            onClick={handleAuthorClick}
+            className="relative cursor-pointer rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500"
+            title={isOwnMessage ? 'View your profile' : `View ${resolvedName}'s profile`}
+          >
+            {resolvedAvatar ? (
+              <img
+                src={resolvedAvatar}
+                alt={isOwnMessage ? 'You' : resolvedName}
+                className="h-10 w-10 rounded-full object-cover border border-slate-200/80 shadow-2xs hover:opacity-90 transition-opacity"
+              />
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-2xs">
+                {(isOwnMessage ? 'Y' : (resolvedName || 'C')).charAt(0).toUpperCase()}
               </div>
             )}
+          </button>
+        ) : (
+          <span
+            className="hidden group-hover:inline-block text-[10px] text-slate-400 font-mono tracking-tighter"
+            title={displayFullDate}
+          >
+            {displayTime.replace(/\s?[AP]M/, '')}
+          </span>
+        )}
+      </div>
 
-            <div className="relative group/bubble flex flex-col items-start">
-              {renderActionToolbar(false)}
+      {/* Right Column: Author Header, Post Type, Markdown Content, Reactions */}
+      <div className="flex-1 min-w-0 pr-2">
+        {!isGrouped && (
+          <div className="flex items-center gap-2 mb-1 leading-none flex-wrap">
+            {/* Author Display Name */}
+            <button
+              type="button"
+              onClick={handleAuthorClick}
+              className="text-xs font-bold text-slate-900 hover:underline cursor-pointer truncate"
+            >
+              {isOwnMessage ? 'You' : resolvedName}
+            </button>
 
-              {/* Bubble Surface */}
-              <div
-                className={`relative rounded-2xl rounded-tl-xs bg-white border border-slate-200/90 text-slate-900 shadow-2xs px-3.5 py-2 space-y-1 hover:border-slate-300 transition-colors ${
-                  isHighlighted ? 'ring-2 ring-emerald-500 border-emerald-400' : ''
+            {/* Admin Badge — Only visible when an admin pins a message */}
+            {isAuthorAdmin && isPinned && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-purple-100 text-purple-800 border border-purple-200 text-[10px] font-bold uppercase tracking-wider">
+                <Shield className="h-2.5 w-2.5" />
+                Admin
+              </span>
+            )}
+
+            {/* Community Post Type Badge */}
+            {typeConfig && (
+              <span
+                className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider ${
+                  typeConfig.bgColor || 'bg-slate-100'
+                } ${typeConfig.textColor || 'text-slate-700'} border ${
+                  typeConfig.borderColor || 'border-slate-200'
                 }`}
               >
-                {message.content && (
-                  <div className="text-xs sm:text-sm text-slate-900 leading-relaxed font-normal whitespace-pre-wrap break-words">
-                    {renderContentWithLinks(message.content, false)}
-                  </div>
-                )}
+                <span>{typeConfig.icon}</span>
+                <span>{typeConfig.label}</span>
+              </span>
+            )}
 
-                <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-mono select-none pt-0.5">
-                  {isSaved && (
-                    <span title="Saved discussion" className="inline-flex items-center">
-                      <Bookmark className="h-3 w-3 text-amber-500 fill-amber-500 shrink-0 mr-0.5" />
-                    </span>
-                  )}
-                  <span title={displayFullDate}>{displayTime}</span>
-                  {message.editedAt && (
-                    <span
-                      className="italic hover:underline cursor-help"
-                      title={`Edited at ${formatFullDateTime(message.editedAt)}`}
-                    >
-                      (edited)
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Featured / Pinned Badge */}
+            {isPinned && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                <Pin className="h-2.5 w-2.5 text-amber-700 rotate-45" />
+                Featured
+              </span>
+            )}
 
-            {renderReactionsAndReplies(false)}
+            {/* Timestamp */}
+            <span
+              className="text-[11px] text-slate-400 font-mono select-none"
+              title={displayFullDate}
+            >
+              {displayTime}
+            </span>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Content Body: In-place edit or Discord Markdown */}
+        {isEditing ? (
+          <div className="mt-1 space-y-1.5">
+            <textarea
+              ref={editTextareaRef}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={handleEditKeyDown}
+              className="w-full resize-none rounded-lg border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 bg-white leading-relaxed font-sans"
+              rows={2}
+            />
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+              <span>
+                escape to{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditContent(message.content || '');
+                  }}
+                  className="text-emerald-600 hover:underline cursor-pointer"
+                >
+                  cancel
+                </button>
+              </span>
+              <span>•</span>
+              <span>
+                enter to{' '}
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || !editContent.trim()}
+                  className="font-semibold text-emerald-600 hover:underline disabled:opacity-50 cursor-pointer"
+                >
+                  {isSavingEdit ? 'saving...' : 'save'}
+                </button>
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-[13px] sm:text-sm text-slate-800 leading-relaxed break-words space-y-1">
+            {message.deleted ? (
+              <span className="inline-flex items-center gap-1.5 italic text-slate-400 text-xs bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5 text-slate-500 font-medium select-none">
+                <Trash2 className="h-3 w-3 opacity-60 text-slate-400" />
+                <span>
+                  {isOwnMessage
+                    ? 'You deleted this discussion'
+                    : message.deletedBy && message.deletedBy !== messageAuthorUid
+                    ? 'Discussion deleted by Admin'
+                    : `${resolvedName || 'Member'} deleted this discussion`}
+                </span>
+              </span>
+            ) : (
+              renderDiscordMarkdown(message.content)
+            )}
+          </div>
+        )}
+
+        {/* File Attachments & Voice Notes */}
+        {!message.deleted && message.attachment && (
+          <div className="pt-1.5 w-full max-w-md overflow-hidden">
+            {message.attachment.isVoiceNote ||
+            message.attachment.category === 'audio' ||
+            message.attachment.mimeType?.startsWith('audio/') ? (
+              <VoiceMessagePlayer
+                audioUrl={message.attachment.url}
+                duration={message.attachment.duration}
+                waveform={message.attachment.waveform}
+                isOwnMessage={isOwnMessage}
+              />
+            ) : (
+              <ChatFileCard
+                attachment={message.attachment}
+                onOpenPreview={onOpenPreview || ((att) => att?.url && window.open(att.url, '_blank'))}
+              />
+            )}
+          </div>
+        )}
+
+        {/* Reactions & Replies Summary Bar */}
+        {renderReactionsSummary()}
+      </div>
 
       {/* Reaction Participants Inspection Modal */}
-      {inspectReactionEmoji && (
-        <ChatReactionParticipantsModal
-          isOpen={Boolean(inspectReactionEmoji)}
-          initialEmoji={inspectReactionEmoji || 'all'}
-          reactions={reactions}
-          members={[]}
-          currentUserId={currentUserId}
-          onClose={() => setInspectReactionEmoji(null)}
-          onToggleReaction={(emoji) => onToggleReaction(message.messageId, emoji)}
-        />
-      )}
+      <ChatReactionParticipantsModal
+        isOpen={Boolean(inspectReactionEmoji)}
+        initialEmoji={inspectReactionEmoji || 'all'}
+        reactions={reactions}
+        currentUserId={currentUserId}
+        onClose={() => setInspectReactionEmoji(null)}
+        onToggleReaction={(emoji) => onToggleReaction(message.messageId, emoji)}
+      />
     </div>
   );
 }
 
 CommunityDiscussionCard.propTypes = {
   message: PropTypes.shape({
-    messageId: PropTypes.string.isRequired,
+    messageId: PropTypes.string,
+    id: PropTypes.string,
+    content: PropTypes.string,
+    createdAt: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
     senderId: PropTypes.string,
     authorId: PropTypes.string,
     senderName: PropTypes.string,
+    authorName: PropTypes.string,
     senderAvatar: PropTypes.string,
-    content: PropTypes.string,
-    createdAt: PropTypes.number,
-    editedAt: PropTypes.number,
-    deleted: PropTypes.bool,
+    authorAvatar: PropTypes.string,
+    senderUsername: PropTypes.string,
+    authorUsername: PropTypes.string,
     postType: PropTypes.string,
+    type: PropTypes.string,
+    deleted: PropTypes.bool,
   }).isRequired,
   currentUserId: PropTypes.string,
   isAdmin: PropTypes.bool,
@@ -828,9 +869,11 @@ CommunityDiscussionCard.propTypes = {
   onToggleSave: PropTypes.func,
   isPinned: PropTypes.bool,
   onTogglePin: PropTypes.func,
+  onOpenProfile: PropTypes.func,
   activeMenuMessageId: PropTypes.string,
   onSetActiveMenuMessageId: PropTypes.func,
   menuAnchorRect: PropTypes.object,
   onOpenMenu: PropTypes.func,
   onCloseMenu: PropTypes.func,
+  onOpenPreview: PropTypes.func,
 };

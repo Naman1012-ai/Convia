@@ -9,12 +9,15 @@ import {
   AlertCircle,
   Loader2,
   CornerDownLeft,
+  Mic,
 } from 'lucide-react';
 import { uploadthingService } from '../../services/uploadthingService';
 import { chatService } from '../../services/chatService';
 import { AttachmentButton } from '../../components/upload/AttachmentButton';
 import { ChatMentionAutocomplete } from './ChatMentionAutocomplete';
 import { ChatTypingIndicator } from './ChatTypingIndicator';
+import { VoiceRecorderBar } from './VoiceRecorderBar';
+import { useVoiceRecorder } from '../../hooks/useVoiceRecorder';
 import { getMentionSuggestions } from '../../utils/chatMentions';
 import { resolveMemberDisplayName } from '../../utils/memberIdentity';
 
@@ -42,6 +45,74 @@ export function ChatMessageInput({
   const textareaRef = useRef(null);
   const lastTypingPublishRef = useRef(0);
   const typingTimeoutRef = useRef(null);
+
+  // WhatsApp-style Voice Note Recorder
+  const voiceRecorder = useVoiceRecorder();
+  const [isUploadingVoice, setIsUploadingVoice] = useState(false);
+  const [voiceUploadProgress, setVoiceUploadProgress] = useState(0);
+
+  // Sync recorder errors to fileError banner
+  useEffect(() => {
+    if (voiceRecorder.error) {
+      setFileError(voiceRecorder.error);
+    }
+  }, [voiceRecorder.error]);
+
+  const handleStartVoiceRecording = async () => {
+    if (disabled || isSubmitting || isUploadingVoice) return;
+    setFileError(null);
+    await voiceRecorder.startRecording();
+  };
+
+  const handleCancelVoiceRecording = () => {
+    voiceRecorder.cancelRecording();
+    setIsUploadingVoice(false);
+    setVoiceUploadProgress(0);
+  };
+
+  const handleSendVoiceRecording = async () => {
+    try {
+      setIsUploadingVoice(true);
+      setVoiceUploadProgress(15);
+      const recordResult = await voiceRecorder.stopRecording();
+      if (!recordResult || !recordResult.blob) {
+        setIsUploadingVoice(false);
+        return;
+      }
+
+      const { blob, duration, waveform, mimeType } = recordResult;
+      const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+      const audioFileName = `voice_note_${Date.now()}.${ext}`;
+      const audioFile = new File([blob], audioFileName, { type: mimeType });
+
+      // Upload audio file directly through UploadThing pipeline
+      const uploaded = await uploadthingService.uploadFile(audioFile, {
+        workspaceId: workspaceId || 'chat_audio',
+        userUid: user?.uid,
+        onProgress: (p) => setVoiceUploadProgress(p),
+      });
+
+      if (!uploaded || !uploaded.url) {
+        throw new Error('Failed to upload voice message to storage.');
+      }
+
+      const voiceAttachment = {
+        ...uploaded,
+        category: 'audio',
+        isVoiceNote: true,
+        duration,
+        waveform,
+      };
+
+      await onSendMessage('', voiceAttachment);
+    } catch (err) {
+      console.error('[ChatMessageInput] Voice send error:', err);
+      setFileError(err?.message || 'Failed to send voice message.');
+    } finally {
+      setIsUploadingVoice(false);
+      setVoiceUploadProgress(0);
+    }
+  };
 
   // Auto-resize textarea to fit multiline content up to 140px
   useEffect(() => {
@@ -347,63 +418,102 @@ export function ChatMessageInput({
         </div>
       )}
 
-      {/* Main Composer Box */}
-      <div className="flex flex-col gap-1.5 rounded-2xl border border-slate-300/90 bg-slate-50/70 p-2 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:bg-white transition-all shadow-2xs">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          placeholder={`Message #${channelName}... (Type @ to mention, Enter to send)`}
-          disabled={disabled || isSubmitting}
-          rows={1}
-          className="w-full resize-none bg-transparent p-1.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-50 min-h-[36px] leading-relaxed"
-          aria-label={`Message #${channelName}`}
+      {/* WhatsApp Voice Recording Bar OR Main Composer Box */}
+      {voiceRecorder.isRecording ? (
+        <VoiceRecorderBar
+          duration={voiceRecorder.duration}
+          isPaused={voiceRecorder.isPaused}
+          liveVolume={voiceRecorder.liveVolume}
+          isUploading={isUploadingVoice}
+          uploadProgress={voiceUploadProgress}
+          onCancel={handleCancelVoiceRecording}
+          onPause={voiceRecorder.pauseRecording}
+          onResume={voiceRecorder.resumeRecording}
+          onSend={handleSendVoiceRecording}
         />
+      ) : (
+        <div className="flex flex-col gap-1.5 rounded-2xl border border-slate-300/90 bg-slate-50/70 p-2 focus-within:border-primary-500 focus-within:ring-2 focus-within:ring-primary-500/20 focus-within:bg-white transition-all shadow-2xs">
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleContentChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            placeholder={`Message #${channelName}... (Type @ to mention, Enter to send)`}
+            disabled={disabled || isSubmitting}
+            rows={1}
+            className="w-full resize-none bg-transparent p-1.5 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:opacity-50 min-h-[36px] leading-relaxed"
+            aria-label={`Message #${channelName}`}
+          />
 
-        <div className="flex items-center justify-between border-t border-slate-200/70 pt-2 px-1 text-xs">
-          <div className="flex items-center gap-2">
-            <AttachmentButton
-              onSelectFile={handleSelectFile}
-              disabled={disabled || isSubmitting}
-            />
+          <div className="flex items-center justify-between border-t border-slate-200/70 pt-2 px-1 text-xs">
+            <div className="flex items-center gap-2">
+              <AttachmentButton
+                onSelectFile={handleSelectFile}
+                disabled={disabled || isSubmitting}
+              />
 
-            <span
-              className={`text-[10px] font-mono font-medium ${
-                isAtLimit
-                  ? 'text-rose-600 font-bold'
-                  : isNearLimit
-                  ? 'text-amber-600 font-bold'
-                  : 'text-slate-400'
-              }`}
-            >
-              {charCount}/2000
-            </span>
-          </div>
+              <span
+                className={`text-[10px] font-mono font-medium ${
+                  isAtLimit
+                    ? 'text-rose-600 font-bold'
+                    : isNearLimit
+                    ? 'text-amber-600 font-bold'
+                    : 'text-slate-400'
+                }`}
+              >
+                {charCount}/2000
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              aria-label="Send Message"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="animate-spin h-3.5 w-3.5" />
-                  <span>{uploadProgress > 0 ? 'Uploading...' : 'Sending...'}</span>
-                </>
+            <div className="flex items-center gap-2">
+              {!canSubmit ? (
+                isUploadingVoice ? (
+                  <div
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold animate-pulse shadow-2xs border border-emerald-200/60 select-none"
+                    title="Uploading and sending voice note..."
+                  >
+                    <Loader2 className="animate-spin h-3.5 w-3.5 text-emerald-600" />
+                    <span className="text-[11px] font-mono font-bold">
+                      {voiceUploadProgress > 0 ? `${voiceUploadProgress}%` : 'Sending...'}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleStartVoiceRecording}
+                    disabled={disabled || isSubmitting}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-600 hover:text-emerald-600 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs active:scale-95"
+                    title="Record voice message"
+                    aria-label="Record voice message"
+                  >
+                    <Mic className="h-4 w-4" />
+                  </button>
+                )
               ) : (
-                <>
-                  <span>Send</span>
-                  <Send className="h-3.5 w-3.5" />
-                </>
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs font-bold transition-all shadow-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  aria-label="Send Message"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="animate-spin h-3.5 w-3.5" />
+                      <span>{uploadProgress > 0 ? 'Uploading...' : 'Sending...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send</span>
+                      <Send className="h-3.5 w-3.5" />
+                    </>
+                  )}
+                </button>
               )}
-            </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </form>
   );
 }

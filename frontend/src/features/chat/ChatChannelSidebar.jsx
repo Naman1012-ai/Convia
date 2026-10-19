@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Hash,
@@ -6,13 +6,24 @@ import {
   Plus,
   Settings,
   Archive,
+  ChevronDown,
+  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Megaphone,
+  Briefcase,
+  MessagesSquare,
 } from 'lucide-react';
 import { DEFAULT_CHAT_CHANNEL_ID } from '../../constants/chatSchema';
 import { chatService } from '../../services/chatService';
 import { useSidebarCollapse } from '../../hooks/useSidebarCollapse';
 import { cn } from '../../utils/cn';
+
+const CATEGORY_NAMES = {
+  ANNOUNCEMENTS: 'ANNOUNCEMENTS',
+  TEXT_CHANNELS: 'TEXT CHANNELS',
+  PROJECTS: 'PROJECTS & SPRINTS',
+};
 
 export function ChatChannelSidebar({
   workspaceId,
@@ -28,6 +39,7 @@ export function ChatChannelSidebar({
   forceExpanded = false,
 }) {
   const [unreadMap, setUnreadMap] = useState({});
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   // Persistent collapse state
   const [storedIsCollapsed, toggleStoredCollapse] = useSidebarCollapse(
@@ -42,6 +54,13 @@ export function ChatChannelSidebar({
     : storedIsCollapsed;
 
   const handleToggleCollapse = propOnToggleCollapse || toggleStoredCollapse;
+
+  const toggleCategory = (catName) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [catName]: !prev[catName],
+    }));
+  };
 
   // Subscribe to readState for each channel to maintain live unread indicators
   useEffect(() => {
@@ -73,9 +92,45 @@ export function ChatChannelSidebar({
   }, [workspaceId, currentUserId, channels, activeChannelId]);
 
   // Strictly workspace-only channels (filter out any public channels)
-  const workspaceChannels = channels.filter(
-    (ch) => ch && ch.type !== 'public' && ch.channelId !== 'public'
-  );
+  const workspaceChannels = useMemo(() => {
+    return channels.filter((ch) => ch && ch.type !== 'public' && ch.channelId !== 'public');
+  }, [channels]);
+
+  // Group channels into categories
+  const categorizedChannels = useMemo(() => {
+    const groups = {
+      [CATEGORY_NAMES.ANNOUNCEMENTS]: [],
+      [CATEGORY_NAMES.TEXT_CHANNELS]: [],
+      [CATEGORY_NAMES.PROJECTS]: [],
+    };
+
+    workspaceChannels.forEach((ch) => {
+      const explicitCat = (ch.category || '').toUpperCase();
+      if (explicitCat && groups[explicitCat]) {
+        groups[explicitCat].push(ch);
+        return;
+      }
+
+      const name = (ch.name || ch.channelId || '').toLowerCase();
+      const type = (ch.type || '').toLowerCase();
+
+      if (type === 'announcements' || name.includes('announcement') || name.includes('notice')) {
+        groups[CATEGORY_NAMES.ANNOUNCEMENTS].push(ch);
+      } else if (
+        type === 'projects' ||
+        name.includes('sprint') ||
+        name.includes('task') ||
+        name.includes('dev') ||
+        name.includes('build')
+      ) {
+        groups[CATEGORY_NAMES.PROJECTS].push(ch);
+      } else {
+        groups[CATEGORY_NAMES.TEXT_CHANNELS].push(ch);
+      }
+    });
+
+    return groups;
+  }, [workspaceChannels]);
 
   const renderChannelItem = (ch) => {
     const isActive = ch.channelId === activeChannelId;
@@ -133,6 +188,18 @@ export function ChatChannelSidebar({
         }`}
         onClick={() => onSelectChannel(ch.channelId)}
       >
+        {/* Discord Left Indicator Pip */}
+        <span
+          className={cn(
+            'absolute -left-1.5 w-1 rounded-r-full transition-all duration-150',
+            isActive
+              ? 'h-5 bg-white -left-2'
+              : isUnread
+              ? 'h-2 bg-primary-500 group-hover:h-3'
+              : 'h-0'
+          )}
+        />
+
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Channel Icon */}
           <span className={`shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`}>
@@ -154,9 +221,9 @@ export function ChatChannelSidebar({
             />
           )}
 
-          {/* Live Unread Indicator Dot */}
+          {/* Live Unread Indicator Badge */}
           {isUnread && !isActive && (
-            <span className="h-2 w-2 rounded-full bg-primary-600 ring-2 ring-white shrink-0 ml-auto mr-1" />
+            <span className="ml-auto mr-1 h-2 w-2 rounded-full bg-primary-600 ring-2 ring-white shrink-0" />
           )}
         </div>
 
@@ -205,7 +272,7 @@ export function ChatChannelSidebar({
               type="button"
               onClick={onOpenCreateChannel}
               title="Create New Channel"
-              className="p-1 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors"
+              className="p-1 rounded-lg text-slate-500 hover:text-primary-600 hover:bg-primary-50 transition-colors cursor-pointer"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -248,8 +315,42 @@ export function ChatChannelSidebar({
       </div>
 
       {/* Channels List Body */}
-      <div className={`flex-1 overflow-y-auto space-y-1 ${isCollapsed ? 'p-1.5' : 'p-2'}`}>
-        {workspaceChannels.map(renderChannelItem)}
+      <div className={`flex-1 overflow-y-auto space-y-3 ${isCollapsed ? 'p-1.5' : 'p-2'}`}>
+        {isCollapsed ? (
+          <div className="space-y-1">{workspaceChannels.map(renderChannelItem)}</div>
+        ) : (
+          Object.entries(categorizedChannels).map(([categoryName, chList]) => {
+            if (!chList || chList.length === 0) return null;
+            const isCategoryCollapsed = Boolean(collapsedCategories[categoryName]);
+
+            return (
+              <div key={categoryName} className="space-y-1">
+                {/* Collapsible Category Header */}
+                <div
+                  onClick={() => toggleCategory(categoryName)}
+                  className="flex items-center justify-between px-1.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-700 cursor-pointer select-none transition-colors group"
+                >
+                  <div className="flex items-center gap-1 min-w-0">
+                    {isCategoryCollapsed ? (
+                      <ChevronRight className="h-3 w-3 shrink-0 text-slate-400 group-hover:text-slate-700 transition-transform" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3 shrink-0 text-slate-400 group-hover:text-slate-700 transition-transform" />
+                    )}
+                    <span className="truncate">{categoryName}</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-slate-400 opacity-60">
+                    {chList.length}
+                  </span>
+                </div>
+
+                {/* Category Channel Items */}
+                {!isCategoryCollapsed && (
+                  <div className="space-y-0.5">{chList.map(renderChannelItem)}</div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </aside>
   );

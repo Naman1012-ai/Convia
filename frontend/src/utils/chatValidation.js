@@ -238,6 +238,19 @@ export function validateAttachment(attachment, uploaderUid = null) {
     category,
   };
 
+  // Preserve Voice Note metadata if present
+  if (attachment.isVoiceNote || category === 'audio') {
+    if (attachment.isVoiceNote) sanitizedAttachment.isVoiceNote = true;
+    if (typeof attachment.duration === 'number' && attachment.duration >= 0) {
+      sanitizedAttachment.duration = Math.round(attachment.duration * 10) / 10;
+    }
+    if (Array.isArray(attachment.waveform)) {
+      sanitizedAttachment.waveform = attachment.waveform
+        .slice(0, 60)
+        .map((v) => Math.min(100, Math.max(0, Math.round(Number(v) || 0))));
+    }
+  }
+
   return {
     valid: true,
     sanitizedAttachment,
@@ -370,6 +383,8 @@ export function normalizeChatMessage(raw, messageKey = null) {
     systemType: isSystem ? (raw.systemType || SYSTEM_MESSAGE_TYPES.SYSTEM) : null,
     attachment: isDeleted ? null : normalizedAttachment,
     postType: raw.postType || raw.type || null,
+    clientNonce: raw.clientNonce || null,
+    status: raw.status || (isDeleted ? 'deleted' : 'sent'),
   };
 }
 
@@ -552,7 +567,7 @@ export function validateReactionToggle({
   }
 
   if (!emoji || typeof emoji !== 'string' || !isValidReactionEmoji(emoji.trim())) {
-    throw new Error(`Unsupported emoji reaction: "${emoji}". Supported reactions: ${SUPPORTED_REACTIONS.join(' ')}`);
+    throw new Error(`Unsupported emoji reaction: "${emoji}".`);
   }
 
   return {

@@ -40,6 +40,7 @@ export const SYSTEM_MESSAGE_TYPES = {
 /** Permitted attachment categories */
 export const ATTACHMENT_CATEGORIES = {
   IMAGE: 'image',
+  AUDIO: 'audio',
   DOCUMENT: 'document',
   CODE: 'code',
   ARCHIVE: 'archive',
@@ -131,20 +132,42 @@ export function createCanonicalMessage({
 export const SUPPORTED_REACTIONS = ['👍', '❤️', '🔥', '🎉', '💡', '🚀', '👀', '🙌'];
 
 /**
+ * WhatsApp Canonical Quick Reaction Emojis
+ */
+export const WHATSAPP_QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+/**
  * Permitted / Supported reaction emojis for community discussions.
  */
 export const COMMUNITY_SUPPORTED_REACTIONS = ['👍', '💡', '❤️', '🔥', '🎯'];
 
 /**
- * Checks whether an emoji is in the supported reaction set.
+ * Checks whether an emoji is a valid reaction emoji.
+ * Supports canonical quick reaction sets and any valid Unicode emoji from emoji pickers.
  * @param {string} emoji
  * @returns {boolean}
  */
 export function isValidReactionEmoji(emoji) {
-  return (
-    typeof emoji === 'string' &&
-    (SUPPORTED_REACTIONS.includes(emoji) || COMMUNITY_SUPPORTED_REACTIONS.includes(emoji))
-  );
+  if (typeof emoji !== 'string') return false;
+  const trimmed = emoji.trim();
+  if (!trimmed || trimmed.length > 32) return false;
+
+  // Canonical workspace and community sets
+  if (
+    SUPPORTED_REACTIONS.includes(trimmed) ||
+    COMMUNITY_SUPPORTED_REACTIONS.includes(trimmed) ||
+    WHATSAPP_QUICK_REACTIONS.includes(trimmed)
+  ) {
+    return true;
+  }
+
+  // Reject alphanumeric strings, URLs, script tags, and plain text
+  if (/^[a-zA-Z0-9\s:;._\-/]+$/.test(trimmed)) {
+    return false;
+  }
+
+  // Unicode Emoji detection (Extended Pictographic, Emoji Presentation, and Keycap sequences)
+  return /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u20E3/u.test(trimmed);
 }
 
 /**
@@ -546,6 +569,44 @@ export function createCanonicalChannelMetadata({
   };
 }
 
+/**
+ * Factory to create a clean canonical PinnedMessage record for workspace channels.
+ *
+ * @param {Object} params
+ * @param {string} params.messageId - Target message ID
+ * @param {string} params.pinnedBy - UID of the pinning user
+ * @param {string} [params.pinnedByName=''] - Display name of the pinner
+ * @param {string} [params.content=''] - Preview snippet of the message
+ * @param {string} [params.senderId=''] - Original message author UID
+ * @param {string} [params.senderName=''] - Original message author name
+ * @param {number} [params.pinnedAt=Date.now()] - Timestamp of pinning
+ * @returns {Object}
+ */
+export function createCanonicalPinnedMessage({
+  messageId,
+  pinnedBy,
+  pinnedByName = '',
+  content = '',
+  senderId = '',
+  senderName = '',
+  attachment = null,
+  pinnedAt = Date.now(),
+}) {
+  if (!messageId || typeof messageId !== 'string' || !messageId.trim()) {
+    throw new Error('[chatSchema] messageId is required for canonical pinned message.');
+  }
+  if (!pinnedBy || typeof pinnedBy !== 'string' || !pinnedBy.trim()) {
+    throw new Error('[chatSchema] pinnedBy UID is required for canonical pinned message.');
+  }
 
-
-
+  return {
+    messageId: messageId.trim(),
+    pinnedBy: pinnedBy.trim(),
+    pinnedByName: String(pinnedByName || '').trim(),
+    content: String(content || '').trim().substring(0, 2000),
+    senderId: String(senderId || '').trim(),
+    senderName: String(senderName || '').trim(),
+    attachment: attachment || null,
+    pinnedAt: typeof pinnedAt === 'number' ? pinnedAt : Date.now(),
+  };
+}

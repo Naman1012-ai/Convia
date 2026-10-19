@@ -26,6 +26,7 @@ import {
 } from '../../services/fcmService';
 import {
   Pencil,
+  Camera,
   Calendar,
   ShieldCheck,
   Sparkles,
@@ -334,13 +335,22 @@ export default function ProfilePage() {
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10">
           {/* Avatar & Core Identity */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 group">
               <Avatar
-                src={userProfile.photoURL || user?.photoURL}
+                src={userProfile ? (userProfile.photoURL || '') : (user?.photoURL || '')}
                 name={resolvedDisplayName}
                 size="lg"
                 className="h-24 w-24 text-2xl border-4 border-primary-500/50 shadow-xl ring-4 ring-primary-500/20"
               />
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="absolute inset-0 bg-slate-900/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white"
+                title="Edit profile & photo"
+              >
+                <Camera className="h-6 w-6 drop-shadow-md" />
+                <span className="text-[10px] font-bold mt-0.5">Edit</span>
+              </button>
             </div>
 
             <div className="space-y-2">

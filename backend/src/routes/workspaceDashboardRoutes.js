@@ -5,6 +5,8 @@ import { activityController } from '../controllers/activityController.js';
 import { requireAuth } from '../middleware/authMiddleware.js';
 import { standardRateLimiter } from '../middleware/rateLimitMiddleware.js';
 import { validatePathSegment } from '../utils/blueprintPathBuilder.js';
+import { workspaceDeletionService } from '../services/workspaceDeletionService.js';
+import { rtdbService } from '../services/rtdbService.js';
 
 export const workspaceDashboardRouter = Router();
 
@@ -242,4 +244,74 @@ workspaceDashboardRouter.post('/:workspaceId/transfer-ownership', async (req, re
     });
   }
 });
+
+/**
+ * POST /api/workspace/purge-expired
+ * Sweeps and purges all workspaces whose 7-day grace period has elapsed.
+ */
+workspaceDashboardRouter.post('/purge-expired', async (req, res) => {
+  try {
+    const result = await workspaceDeletionService.purgeExpiredWorkspaces();
+    return res.json({ success: true, data: result });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'PURGE_EXPIRED_ERROR' },
+    });
+  }
+});
+
+/**
+ * DELETE /api/workspace/:workspaceId/purge
+ * Authoritative permanent cascade deletion of an expired or owner-deleted workspace.
+ */
+const handleWorkspacePurge = async (req, res) => {
+  try {
+    const rawWorkspaceId = req.params.workspaceId;
+    const verifiedUserUid = req.user.uid;
+
+    if (!rawWorkspaceId || typeof rawWorkspaceId !== 'string' || !rawWorkspaceId.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: { message: 'A valid Workspace ID is required.', code: 'INVALID_PARAMETERS' },
+      });
+    }
+
+    const resolvedWorkspaceId = validatePathSegment(rawWorkspaceId, 'workspaceId');
+    const org = await rtdbService.getData(`organizations/${resolvedWorkspaceId}`);
+
+    if (!org) {
+      return res.status(404).json({
+        success: false,
+        error: { message: 'Workspace not found.', code: 'WORKSPACE_NOT_FOUND' },
+      });
+    }
+
+    const isOwner = org.ownerId === verifiedUserUid || org.ownerUid === verifiedUserUid;
+    const isAdmin = Boolean(req.user.isAdmin);
+    const isExpired = org.isDeleted === true && typeof org.scheduledDeletionAt === 'number' && Date.now() >= org.scheduledDeletionAt;
+
+    // Must be either owner/admin, or the workspace grace period must have formally expired
+    if (!isOwner && !isAdmin && !isExpired) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Only workspace owners or admins can permanently delete a workspace before grace period expiration.', code: 'FORBIDDEN' },
+      });
+    }
+
+    const result = await workspaceDeletionService.deleteWorkspaceCascade(resolvedWorkspaceId);
+    return res.json({ success: true, data: result, message: 'Workspace permanently deleted.' });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      error: { message: err.message, code: err.code || 'PURGE_WORKSPACE_ERROR' },
+    });
+  }
+};
+
+workspaceDashboardRouter.delete('/:workspaceId/purge', handleWorkspacePurge);
+workspaceDashboardRouter.delete('/:workspaceId', handleWorkspacePurge);
+
 

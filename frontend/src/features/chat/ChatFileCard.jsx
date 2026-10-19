@@ -10,6 +10,7 @@ import {
   Maximize2,
   Check,
   Cloud,
+  Headphones,
 } from 'lucide-react';
 import { uploadthingService } from '../../services/uploadthingService';
 
@@ -94,51 +95,54 @@ export function ChatFileCard({ attachment, onOpenPreview = () => {} }) {
   } else if (type === 'archive') {
     FileIcon = Archive;
     iconBg = 'bg-amber-50 text-amber-600 border-amber-200';
+  } else if (type === 'audio') {
+    FileIcon = Headphones;
+    iconBg = 'bg-emerald-50 text-emerald-600 border-emerald-200';
   }
 
   return (
-    <div className="mt-2 flex items-center justify-between gap-4 p-3 max-w-md rounded-2xl border border-slate-200 bg-white hover:border-primary-300 shadow-2xs transition-all">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`h-10 w-10 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}`}>
-          <FileIcon className="h-5 w-5" />
+    <div className="mt-2 flex items-center justify-between gap-2.5 sm:gap-4 p-2.5 sm:p-3 w-full max-w-sm sm:max-w-md rounded-2xl border border-slate-200 bg-white hover:border-primary-300 shadow-2xs transition-all overflow-hidden">
+      <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
+        <div className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl border flex items-center justify-center shrink-0 ${iconBg}`}>
+          <FileIcon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
 
-        <div className="min-w-0">
-          <p className="text-xs font-bold text-slate-900 truncate" title={filename}>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className="text-xs font-bold text-slate-900 truncate block w-full" title={filename}>
             {filename}
           </p>
-          <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
-            <span className="uppercase font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] text-slate-500 font-mono mt-0.5 truncate">
+            <span className="uppercase font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
               {extension}
             </span>
-            <span>{formattedSize}</span>
-            <span className="text-[9px] text-primary-600 font-extrabold flex items-center gap-0.5" title="Stored securely on UploadThing CDN">
+            <span className="shrink-0">{formattedSize}</span>
+            <span className="text-[9px] text-primary-600 font-extrabold hidden sm:inline-flex items-center gap-0.5 shrink-0" title="Stored securely on UploadThing CDN">
               <Cloud className="h-3 w-3" /> UploadThing
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-1 sm:ml-2">
         {extension === 'pdf' && (
           <button
             onClick={() => onOpenPreview(attachment)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-primary-50 hover:text-primary-600 text-slate-600 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-primary-50 hover:text-primary-600 text-slate-600 transition-colors cursor-pointer"
             title="Preview PDF"
             aria-label="Preview PDF"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         )}
 
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="p-2 rounded-xl bg-primary-50 hover:bg-primary-600 text-primary-600 hover:text-white transition-colors"
+          className="p-1.5 sm:p-2 rounded-xl bg-primary-50 hover:bg-primary-600 text-primary-600 hover:text-white transition-colors cursor-pointer"
           title="Download File"
           aria-label="Download File"
         >
-          {downloading ? <Check className="h-4 w-4 text-emerald-600" /> : <Download className="h-4 w-4" />}
+          {downloading ? <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" /> : <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
         </button>
       </div>
     </div>

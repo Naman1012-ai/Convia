@@ -261,7 +261,7 @@ export const orgService = {
 
           // Auto-purge workspaces whose 7-day scheduled deletion window has elapsed
           if (orgData.isDeleted && orgData.scheduledDeletionAt && Date.now() >= orgData.scheduledDeletionAt) {
-            orgService.deleteWorkspace(orgId).catch((e) => console.warn('[orgService] Auto-purge failed:', e));
+            orgService.purgeExpiredWorkspace(orgId).catch((e) => console.warn('[orgService] Auto-purge failed:', e));
             continue;
           }
 
@@ -331,6 +331,12 @@ export const orgService = {
       for (const [orgId, orgData] of Object.entries(latestOrgs)) {
         if (!orgData || !orgId) continue;
         if (orgData.isDeleted && orgData.ownerId !== uid) continue;
+
+        // Auto-purge and filter workspaces whose 7-day scheduled deletion window has elapsed
+        if (orgData.isDeleted && orgData.scheduledDeletionAt && Date.now() >= orgData.scheduledDeletionAt) {
+          orgService.purgeExpiredWorkspace(orgId).catch((e) => console.warn('[orgService] Auto-purge failed:', e));
+          continue;
+        }
 
         const orgMembers = membersMap[orgId] || {};
         const isOwner = orgData.ownerId === uid;
@@ -667,20 +673,30 @@ export const orgService = {
   },
 
   /**
-   * Atomic Workspace Deletion. Deletes everything related to the workspace cleanly.
+   * Authoritative Workspace Deletion. Deletes everything related to the workspace cleanly.
    */
   deleteWorkspace: async (orgId) => {
     if (!orgId) throw new Error('Workspace ID is required.');
     
-    // 1. Fetch members to clean up user references
+    // First attempt authoritative backend cascade purge via Firebase Admin SDK
+    try {
+      const response = await apiClient.delete(`/api/workspace/${orgId}/purge`);
+      if (response && response.success) {
+        return;
+      }
+    } catch (apiErr) {
+      console.warn('[orgService] Backend cascade purge failed, falling back to client write:', apiErr.message);
+    }
+
+    // Fallback: Fetch members to clean up user references
     const membersObj = (await rtdbService.getData(`organization_members/${orgId}`)) || {};
     const memberUids = Object.keys(membersObj);
 
-    // 2. Fetch ideas to delete discussions and votes
+    // Fetch ideas to delete discussions and votes
     const ideasObj = (await rtdbService.getData(`ideas/${orgId}`)) || {};
     const ideaIds = Object.keys(ideasObj);
 
-    // 3. Accumulate root-level updates
+    // Accumulate root-level updates
     const updates = {};
     updates[`organizations/${orgId}`] = null;
     updates[`organization_members/${orgId}`] = null;
@@ -699,14 +715,30 @@ export const orgService = {
 
     // Reset member organizationId profile parameters
     for (const uid of memberUids) {
-      const userProfile = await rtdbService.getData(`users/${uid}`);
-      if (userProfile && userProfile.organizationId === orgId) {
-        updates[`users/${uid}/organizationId`] = null;
+      try {
+        const userProfile = await rtdbService.getData(`users/${uid}`);
+        if (userProfile && userProfile.organizationId === orgId) {
+          updates[`users/${uid}/organizationId`] = null;
+        }
+      } catch (e) {
+        // Ignore read/permission error during fallback
       }
     }
 
     // Perform atomic update write
     await rtdbService.updateData('', updates);
+  },
+
+  /**
+   * Authoritative purge helper for expired workspaces.
+   */
+  purgeExpiredWorkspace: async (orgId) => {
+    if (!orgId) return;
+    try {
+      return await apiClient.delete(`/api/workspace/${orgId}/purge`);
+    } catch (err) {
+      return await apiClient.post('/api/workspace/purge-expired');
+    }
   },
 
   /**

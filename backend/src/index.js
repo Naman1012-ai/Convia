@@ -10,13 +10,14 @@ import { userRouter } from './routes/userRoutes.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { workspaceDashboardRouter } from './routes/workspaceDashboardRoutes.js';
 import { workspaceInvitationRouter } from './routes/workspaceInvitationRoutes.js';
-import { uploadthingExpressHandler } from './routes/uploadthingRouter.js';
+import { uploadthingExpressHandler, directUploadRouter } from './routes/uploadthingRouter.js';
 import { fcmRouter } from './routes/fcmRoutes.js';
 import { publicIdeaRouter } from './routes/publicIdeaRoutes.js';
 import { importRequestRouter } from './routes/importRequestRoutes.js';
 import { chatRouter } from './routes/chatRoutes.js';
 import { taskRouter } from './routes/taskRoutes.js';
 import { globalStatsService } from './services/globalStatsService.js';
+import { workspaceDeletionService } from './services/workspaceDeletionService.js';
 
 // Resolve current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -97,12 +98,14 @@ app.use('/api/user', userRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/workspace', workspaceDashboardRouter);
 app.use('/api/invitations', workspaceInvitationRouter);
+app.use('/api/upload', directUploadRouter);
 app.use('/api/uploadthing', uploadthingExpressHandler);
 app.use('/api/notifications/fcm', fcmRouter);
 app.use('/api/public-ideas', publicIdeaRouter);
 app.use('/api/public-ideas', importRequestRouter);
 app.use('/api/workspaces/:workspaceId/chat', chatRouter);
 app.use('/api/workspace/:workspaceId/chat', chatRouter);
+app.use('/api/chat', chatRouter);
 app.use('/api/workspaces/:workspaceId/tasks', taskRouter);
 app.use('/api/workspace/:workspaceId/tasks', taskRouter);
 
@@ -135,6 +138,9 @@ if (!process.env.VERCEL) {
     globalStatsService.calculateAndSyncGlobalStats().catch((err) => {
       console.warn('⚠️ [globalStats] Startup aggregate sync warning:', err.message);
     });
+
+    // Start background scheduled sweep for expired soft-deleted workspaces
+    workspaceDeletionService.startScheduledPurgeRunner();
   });
 }
 

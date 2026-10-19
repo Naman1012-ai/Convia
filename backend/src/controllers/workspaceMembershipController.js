@@ -389,6 +389,26 @@ export const workspaceMembershipController = {
       createdAt: timestamp,
     }).catch(() => {});
 
+    // In-app notification for Team Captain role change
+    notificationService.createNotification(targetUid, {
+      type: normalizedAction === 'remove'
+        ? NOTIFICATION_TYPES.WORKSPACE_MEMBER_LEFT
+        : NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+      workspaceId,
+      orgId: workspaceId,
+      title: normalizedAction === 'remove' ? 'Team Captain Role Updated' : 'Promoted to Team Captain',
+      body: normalizedAction === 'remove'
+        ? `${callerName} removed your Team Captain role in ${org.name || 'the workspace'}.`
+        : `${callerName} appointed you as Team Captain in ${org.name || 'the workspace'}.`,
+      actorId: callerUid,
+      actorName: callerName,
+      resourceType: 'workspace',
+      resourceId: workspaceId,
+      actionUrl: `/workspaces/${workspaceId}`,
+      metadata: { workspaceId, role: normalizedAction === 'remove' ? 'member' : 'team_captain' },
+      dedupeKey: `team_captain_${normalizedAction}_${workspaceId}_${targetUid}_${timestamp}`,
+    }).catch((e) => console.warn('[workspaceMembershipController] Team captain notification warning:', e?.message || e));
+
     return {
       success: true,
       workspaceId,
@@ -529,6 +549,22 @@ export const workspaceMembershipController = {
       summary: `${callerName} transferred workspace ownership to ${newOwnerName} (Former owner role: ${formerOwnerRole})`,
       createdAt: timestamp,
     }).catch(() => {});
+
+    // In-app notification for ownership transfer to new owner
+    notificationService.createNotification(newOwnerUid, {
+      type: NOTIFICATION_TYPES.WORKSPACE_MEMBER_INVITED,
+      workspaceId,
+      orgId: workspaceId,
+      title: 'Workspace Ownership Transferred',
+      body: `${callerName} transferred ownership of ${membership.org?.name || 'the workspace'} to you.`,
+      actorId: callerUid,
+      actorName: callerName,
+      resourceType: 'workspace',
+      resourceId: workspaceId,
+      actionUrl: `/workspaces/${workspaceId}`,
+      metadata: { workspaceId, role: 'owner' },
+      dedupeKey: `ownership_transferred_${workspaceId}_${newOwnerUid}_${timestamp}`,
+    }).catch((e) => console.warn('[workspaceMembershipController] Ownership transfer notification warning:', e?.message || e));
 
     return {
       success: true,

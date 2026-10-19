@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useUser } from '../../hooks/useUser';
@@ -9,10 +9,11 @@ import { Select } from '../../components/ui/Select';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
+import { uploadthingService } from '../../services/uploadthingService';
 import { PRIMARY_ROLES, EXPERIENCE_LEVELS } from '../../config/constants';
 import { validateUsername, validateProjectUrl } from '../../utils/validation';
 import { resolveUserDisplayName } from '../../utils/memberIdentity';
-import { Sparkles, UserCheck, ArrowRight, ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { Sparkles, UserCheck, ArrowRight, ShieldCheck, Image as ImageIcon, Upload, Trash2, Camera, Loader2, Link as LinkIcon } from 'lucide-react';
 
 export default function ProfileSetupPage() {
   const { user } = useAuth();
@@ -20,9 +21,18 @@ export default function ProfileSetupPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  // If already completed profile, redirect away
+  // If already completed profile or user already has core identity, redirect away
   useEffect(() => {
-    if (userProfile?.profileCompleted === true) {
+    const hasCoreIdentity = Boolean(
+      userProfile?.username &&
+      userProfile.username !== 'User' &&
+      userProfile.primaryRole
+    );
+
+    if (userProfile?.profileCompleted === true || hasCoreIdentity) {
+      if (userProfile?.profileCompleted !== true && hasCoreIdentity) {
+        updateProfile({ profileCompleted: true }).catch(() => {});
+      }
       navigate('/dashboard', { replace: true });
       return;
     }
@@ -35,7 +45,7 @@ export default function ProfileSetupPage() {
         setFullName(userProfile.fullName);
       }
     }
-  }, [userProfile, navigate, user?.displayName]);
+  }, [userProfile, navigate, user?.displayName, updateProfile]);
 
   // Form states
   const initialUsername = (userProfile?.username || userProfile?.displayName || (user?.displayName && user.displayName !== 'User' ? user.displayName : '')).trim().toLowerCase().replace(/^@/, '');
@@ -55,6 +65,68 @@ export default function ProfileSetupPage() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image format & size
+    const validation = uploadthingService.validateFile(file);
+    if (!validation.valid) {
+      toast.error(validation.error);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Only image files (PNG, JPG, WEBP, GIF) are allowed for profile pictures.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    // Local instant preview
+    const previewUrl = URL.createObjectURL(file);
+    setPhotoURL(previewUrl);
+    setIsUploadingPhoto(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadResult = await uploadthingService.uploadFile(file, {
+        workspaceId: 'avatars',
+        userUid: userProfile?.uid || user?.uid,
+        onProgress: (p) => setUploadProgress(p),
+      });
+
+      if (uploadResult?.url) {
+        if (photoURL && (photoURL.includes('utfs.io') || photoURL.includes('ufs.sh')) && photoURL !== uploadResult.url) {
+          uploadthingService.deleteFile(photoURL).catch(() => {});
+        }
+        setPhotoURL(uploadResult.url);
+        toast.success('Profile photo uploaded to cloud storage!');
+      }
+    } catch (err) {
+      console.error('[ProfileSetupPage] Photo upload error:', err);
+      toast.error(err?.message || 'Failed to upload photo.');
+      setPhotoURL(userProfile?.photoURL || user?.photoURL || '');
+    } finally {
+      setIsUploadingPhoto(false);
+      setUploadProgress(0);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    if (photoURL && (photoURL.includes('utfs.io') || photoURL.includes('ufs.sh'))) {
+      uploadthingService.deleteFile(photoURL).catch(() => {});
+    }
+    setPhotoURL('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    toast.info('Profile photo removed.');
+  };
 
   const validateForm = (isSkippingOptional = false) => {
     const errs = {};
@@ -235,25 +307,103 @@ export default function ProfileSetupPage() {
               </h2>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl bg-slate-50 border border-slate-100">
-              <Avatar
-                src={photoURL}
-                name={resolveUserDisplayName(userProfile, user)}
-                size="lg"
-                className="h-16 w-16 text-xl shrink-0 border-2 border-primary-300 shadow-sm"
-              />
-              <div className="w-full">
-                <Input
-                  label="Profile Photo URL"
-                  placeholder="https://example.com/avatar.jpg or GitHub avatar URL"
-                  value={photoURL}
-                  onChange={(e) => setPhotoURL(e.target.value)}
-                  error={errors.photoURL}
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Paste a direct image link from GitHub, Gravatar, or Imgur.
-                </p>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                {/* Interactive Avatar Container with Hover Overlay */}
+                <div className="relative group shrink-0">
+                  <Avatar
+                    src={photoURL}
+                    name={resolveUserDisplayName(userProfile, user)}
+                    size="lg"
+                    className="h-16 w-16 text-xl border-2 border-primary-300 shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingPhoto || isSubmitting}
+                    className="absolute inset-0 bg-slate-900/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white disabled:pointer-events-none"
+                    title="Upload image from device"
+                  >
+                    <Camera className="h-5 w-5 drop-shadow-sm" />
+                  </button>
+                </div>
+
+                {/* Upload Controls & Actions */}
+                <div className="flex-1 w-full text-center sm:text-left space-y-2">
+                  <div className="flex flex-row items-center gap-2 flex-wrap sm:flex-nowrap whitespace-nowrap">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploadingPhoto || isSubmitting}
+                      isLoading={isUploadingPhoto}
+                      icon={Upload}
+                      className="whitespace-nowrap shrink-0 text-xs font-semibold h-8"
+                    >
+                      {isUploadingPhoto ? `Uploading (${uploadProgress}%)...` : 'Upload Image'}
+                    </Button>
+
+                    {photoURL && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemovePhoto}
+                        disabled={isUploadingPhoto || isSubmitting}
+                        icon={Trash2}
+                        className="whitespace-nowrap shrink-0 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 h-8"
+                      >
+                        Remove
+                      </Button>
+                    )}
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowUrlInput((prev) => !prev)}
+                      icon={LinkIcon}
+                      className="whitespace-nowrap shrink-0 text-xs font-semibold text-slate-500 hover:text-slate-700 h-8"
+                    >
+                      {showUrlInput ? 'Hide URL input' : 'Paste image URL'}
+                    </Button>
+                  </div>
+
+                  <p className="text-[11px] text-slate-500">
+                    Upload square JPG, PNG, or WebP (max 5 MB). Persists permanently via cloud storage.
+                  </p>
+
+                  {isUploadingPhoto && (
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Optional URL Input */}
+              {showUrlInput && (
+                <div className="pt-2 border-t border-slate-200/60">
+                  <Input
+                    label="Profile Photo URL"
+                    placeholder="https://example.com/avatar.jpg or GitHub avatar URL"
+                    value={photoURL}
+                    onChange={(e) => setPhotoURL(e.target.value)}
+                    error={errors.photoURL}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="w-full">

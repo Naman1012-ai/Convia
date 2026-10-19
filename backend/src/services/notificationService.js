@@ -574,15 +574,54 @@ export const notificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+          const isCommunity = workspaceId === 'community' || activeChannel === 'community';
+          const deepLink = isCommunity
+            ? `/community?threadId=${messageId}`
+            : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
 
           return await notificationService.createNotificationsForRecipients([recipientId], {
             type: NOTIFICATION_TYPES.CHAT_REACTION,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
-            title: `${actorName} reacted ${emoji || '👍'} to your message`,
-            body: preview ? `"${preview}"` : `${actorName} reacted to your message in #${activeChannel}.`,
+            title: isCommunity
+              ? `${actorName} reacted ${emoji || '👍'} to your discussion`
+              : `${actorName} reacted ${emoji || '👍'} to your message`,
+            body: preview
+              ? `"${preview}"`
+              : isCommunity
+              ? `${actorName} reacted to your discussion in Community Hub.`
+              : `${actorName} reacted to your message in #${activeChannel}.`,
+            previewText: preview,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: isCommunity ? 'community_discussion' : 'chat_message',
+            resourceId: messageId,
+            actionUrl: deepLink,
+            metadata: { channelId: activeChannel, messageId, emoji, workspaceId },
+            dedupeKey: `chat_react_${workspaceId}_${activeChannel}_${messageId}_${actorUid}_${emoji}`,
+          });
+        }
+
+        case NOTIFICATION_TYPES.CHAT_PINNED: {
+          const { workspaceId, channelId = 'general', messageId, recipientId, content } = eventData;
+          if (!workspaceId || !messageId || !recipientId || recipientId === actorUid) return [];
+
+          const activeChannel = (channelId || 'general').trim();
+          const preview = (content || '').substring(0, 100);
+          const deepLink = `/workspaces/${workspaceId}/chat?channel=${activeChannel}&messageId=${messageId}`;
+
+          return await notificationService.createNotificationsForRecipients([recipientId], {
+            type: NOTIFICATION_TYPES.CHAT_PINNED,
+            workspaceId,
+            orgId: workspaceId,
+            channelId: activeChannel,
+            title: `Your message was pinned in #${activeChannel}`,
+            body: preview ? `"${preview}" was pinned by ${actorName}.` : `${actorName} pinned your message.`,
             previewText: preview,
             actorId: actorUid,
             senderId: actorUid,
@@ -593,8 +632,36 @@ export const notificationService = {
             resourceType: 'chat_message',
             resourceId: messageId,
             actionUrl: deepLink,
-            metadata: { channelId: activeChannel, messageId, emoji, workspaceId },
-            dedupeKey: `chat_react_${workspaceId}_${activeChannel}_${messageId}_${actorUid}_${emoji}`,
+            metadata: { channelId: activeChannel, messageId, workspaceId },
+            dedupeKey: `chat_pin_${workspaceId}_${activeChannel}_${messageId}_${Date.now()}`,
+          });
+        }
+
+        case NOTIFICATION_TYPES.COMMUNITY_PINNED: {
+          const { messageId, recipientId, content } = eventData;
+          if (!messageId || !recipientId || recipientId === actorUid) return [];
+
+          const preview = (content || '').substring(0, 100);
+          const deepLink = `/community?threadId=${messageId}`;
+
+          return await notificationService.createNotificationsForRecipients([recipientId], {
+            type: NOTIFICATION_TYPES.COMMUNITY_PINNED,
+            workspaceId: 'community',
+            orgId: 'community',
+            title: 'Your discussion was featured in Community',
+            body: preview ? `"${preview}" was pinned by Admin.` : `${actorName} pinned your community discussion.`,
+            previewText: preview,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'community_discussion',
+            resourceId: messageId,
+            actionUrl: deepLink,
+            metadata: { messageId },
+            dedupeKey: `community_pin_${messageId}_${Date.now()}`,
           });
         }
 
