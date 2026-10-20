@@ -162,17 +162,17 @@ export default function IdeaDetailPage() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 overflow-x-hidden pb-12">
       {/* Main Proposal Card */}
-      <Card className="p-8">
+      <Card className="p-4 sm:p-6 lg:p-8">
         {/* Imported Attribution Section */}
         {(idea.importedFromPublicId || idea.origin?.publicIdeaId) && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-primary-50/80 border border-primary-200/80 mb-6">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <Badge variant="info" className="bg-primary-600 text-white font-bold text-[10px] flex items-center gap-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-primary-50/80 border border-primary-200/80 mb-6">
+            <div className="space-y-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <Badge variant="info" className="bg-primary-600 text-white font-bold text-[10px] flex items-center gap-1 w-fit whitespace-nowrap shrink-0">
                   <Globe className="h-3 w-3" /> Imported from Public Ideas
                 </Badge>
-                <span className="text-xs text-primary-900 font-semibold">
-                  Originally created by <strong className="text-primary-950">{idea.originalAuthorName || idea.authorName}</strong>
+                <span className="text-xs text-primary-900 font-semibold truncate sm:whitespace-normal">
+                  Originally created by <strong className="text-primary-950 font-bold">{idea.originalAuthorName || idea.authorName}</strong>
                 </span>
               </div>
               <p className="text-[11px] text-primary-700">
@@ -185,7 +185,7 @@ export default function IdeaDetailPage() {
               size="sm"
               icon={<Globe className="h-3.5 w-3.5 text-primary-600" />}
               onClick={handleViewOriginalPublicIdea}
-              className="bg-white border-primary-200 text-primary-700 hover:bg-primary-100 shrink-0 font-bold"
+              className="bg-white border-primary-200 text-primary-700 hover:bg-primary-100 shrink-0 font-bold w-full sm:w-auto justify-center whitespace-nowrap"
             >
               View Original Public Idea
             </Button>

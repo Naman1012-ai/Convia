@@ -147,9 +147,10 @@ export function TransferOwnershipModal({
                   m.isTeamCaptain || m.role === 'team_captain' || m.isSecondOwner || m.role === 'second_owner'
                     ? '⚡ Team Captain'
                     : 'Member';
+                const name = m.displayName || m.name || m.email;
                 return {
                   value: uid,
-                  label: `${m.displayName || m.name || m.email} (${m.email}) — [${roleLabel}]`,
+                  label: `${name} • ${roleLabel}`,
                 };
               })}
               disabled={isSubmitting}
@@ -242,8 +243,14 @@ export function TransferOwnershipModal({
         )}
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-          <Button type="button" variant="secondary" onClick={onClose} disabled={isSubmitting}>
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 pt-2 border-t border-slate-100">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
           <Button
@@ -251,7 +258,7 @@ export function TransferOwnershipModal({
             variant="warning"
             isLoading={isSubmitting}
             disabled={isSubmitting || candidateMembers.length === 0 || (isCaptainLimitExceeded && formerOwnerRole === 'team_captain')}
-            className="font-bold flex items-center gap-1.5 shadow-xs"
+            className="w-full sm:w-auto font-bold flex items-center justify-center gap-1.5 shadow-xs whitespace-nowrap"
           >
             <Crown className="h-4 w-4 shrink-0" />
             <span>{isSubmitting ? 'Transferring Ownership...' : 'Confirm Transfer Ownership'}</span>

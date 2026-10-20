@@ -1,6 +1,8 @@
 import { rtdbService } from './rtdbService';
 import { ideaService } from './ideaService';
 import { getErrorMessage } from '../utils/errorMessages';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 
 /**
  * Service Layer for Global Public Ideas Feed (publicIdeas/{ideaId}).
@@ -38,8 +40,22 @@ export const publicIdeaService = {
     };
 
     try {
-      // Confirmed write to Cloud Firestore
+      // Confirmed write to Cloud Firestore / RTDB
       await rtdbService.setData(`publicIdeas/${ideaId}`, newPublicIdea);
+
+      // Phase 7: Dispatch public idea notification across active community users
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.PUBLIC_IDEA_CREATED,
+        {
+          ideaId,
+          title: newPublicIdea.title,
+          category: newPublicIdea.category,
+        },
+        author
+      ).catch((notifErr) => {
+        console.warn('⚠️ [Public Idea Notification Warning]', notifErr?.message || notifErr);
+      });
+
       return newPublicIdea;
     } catch (error) {
       console.error('[publicIdeaService] createPublicIdea error:', error);

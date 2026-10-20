@@ -226,7 +226,7 @@ export function BlueprintHeader({
           </div>
 
           {/* Action Toolbar */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-start lg:justify-end">
             {/* Phase 11: Approval Gate Action - Displayed ONLY when approval is pending */}
             {onOpenApprovalModal && approvalStatus !== 'approved' && !isGenerating && (
               <Button
@@ -234,9 +234,10 @@ export function BlueprintHeader({
                 size="sm"
                 icon={<ShieldCheck className="h-4 w-4 text-emerald-200" />}
                 onClick={onOpenApprovalModal}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-3.5 shadow-md shadow-emerald-950/40"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs py-2 px-3 sm:px-3.5 shadow-md shadow-emerald-950/40"
               >
-                Review & Approve
+                <span>Approve</span>
+                <span className="hidden sm:inline">&nbsp;Blueprint</span>
               </Button>
             )}
 
@@ -246,10 +247,11 @@ export function BlueprintHeader({
               size="sm"
               icon={<Search className="h-4 w-4 text-primary-400" />}
               onClick={onOpenSearch}
-              className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm"
+              className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm"
+              title="Search Blueprint (⌘K)"
             >
               <span className="hidden sm:inline">Search</span>
-              <kbd className="ml-1.5 px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-400 font-mono">
+              <kbd className="hidden md:inline-block ml-1.5 px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-slate-400 font-mono">
                 ⌘K
               </kbd>
             </Button>
@@ -261,7 +263,7 @@ export function BlueprintHeader({
                 size="sm"
                 icon={<Download className="h-4 w-4" />}
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm"
+                className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm"
               >
                 <span>Export</span>
                 <ChevronDown className="h-3 w-3 ml-1 text-slate-400" />
@@ -344,16 +346,17 @@ export function BlueprintHeader({
                 icon={<Sparkles className="h-4 w-4 text-primary-200" />}
                 onClick={onRegenerateClick}
                 disabled={isGenerating || isEditing}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-black text-xs py-2 px-4 shadow-lg shadow-primary-600/20"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-black text-xs py-2 px-3 sm:px-4 shadow-lg shadow-primary-600/20"
               >
-                Regenerate AI
+                <span>Regenerate</span>
+                <span className="hidden sm:inline">&nbsp;AI</span>
               </Button>
             )}
           </div>
         </div>
 
         {/* 8-Tab Navigation Bar */}
-        <div className="flex items-center gap-1.5 border-t border-slate-800/80 pt-4 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 border-t border-slate-800/80 pt-4 pb-1 overflow-x-auto no-scrollbar scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

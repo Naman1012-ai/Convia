@@ -134,6 +134,22 @@ export default function WorkspaceChatPage() {
   const isInitialLoadCompleteRef = useRef(false);
   const scrollAdjustmentRef = useRef(null);
 
+  // Auto-scroll helper: Scrolls message container and sentinel into view
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    requestAnimationFrame(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+      }
+      if (messageListContainerRef.current) {
+        messageListContainerRef.current.scrollTo({
+          top: messageListContainerRef.current.scrollHeight,
+          behavior,
+        });
+      }
+      setHasUnreadBelow(false);
+    });
+  }, []);
+
   // Preserve scroll position seamlessly when older messages are prepended
   useLayoutEffect(() => {
     if (scrollAdjustmentRef.current && messageListContainerRef.current) {
@@ -233,14 +249,16 @@ export default function WorkspaceChatPage() {
       const map = {};
       if (Array.isArray(pinnedData)) {
         pinnedData.forEach((p) => {
-          if (p?.messageId) map[p.messageId] = p;
+          if (p?.messageId && !p.deleted && p.content !== 'This message was deleted') {
+            map[p.messageId] = p;
+          }
         });
       } else if (pinnedData && typeof pinnedData === 'object') {
         Object.entries(pinnedData).forEach(([k, v]) => {
-          if (v && typeof v === 'object' && v.messageId) {
-            map[v.messageId] = v;
-          } else if (v && typeof v === 'object') {
-            map[k] = { ...v, messageId: k };
+          const item = v && typeof v === 'object' ? v : {};
+          const msgId = item.messageId || k;
+          if (msgId && !item.deleted && item.content !== 'This message was deleted') {
+            map[msgId] = { ...item, messageId: msgId };
           }
         });
       }
@@ -251,6 +269,17 @@ export default function WorkspaceChatPage() {
       if (typeof unsubPinned === 'function') unsubPinned();
     };
   }, [orgId, activeChannelId]);
+
+  // Filter active, non-deleted pinned messages count
+  const activePinnedMessagesCount = useMemo(() => {
+    return Object.keys(channelPinnedMessages).filter((msgId) => {
+      const pin = channelPinnedMessages[msgId];
+      if (!pin || pin.deleted || pin.content === 'This message was deleted') return false;
+      const matched = messages.find((m) => m && (m.messageId === msgId || m.id === msgId));
+      if (matched && (matched.deleted || matched.content === 'This message was deleted')) return false;
+      return true;
+    }).length;
+  }, [channelPinnedMessages, messages]);
 
   // Keyboard shortcut for search modal (Ctrl+K / Cmd+K)
   useEffect(() => {
@@ -442,17 +471,11 @@ export default function WorkspaceChatPage() {
         if (activeSessionIdRef.current !== currentSession) return;
         setMessages((prev) => {
           const updated = upsertMessage(prev, newMsg);
-          if (isNearBottomRef.current || !isInitialLoadCompleteRef.current) {
-            requestAnimationFrame(() => {
-              if (messagesEndRef.current) {
-                messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-              }
-            });
+          if (isNearBottomRef.current || !isInitialLoadCompleteRef.current || newMsg.senderId === user?.uid) {
+            scrollToBottom('smooth');
             setHasUnreadBelow(false);
           } else {
-            if (newMsg.senderId !== user?.uid) {
-              setHasUnreadBelow(true);
-            }
+            setHasUnreadBelow(true);
           }
           return updated;
         });
@@ -484,11 +507,10 @@ export default function WorkspaceChatPage() {
         setLoadingMessages(false);
         isInitialLoadCompleteRef.current = true;
 
-        requestAnimationFrame(() => {
-          if (messagesEndRef.current) {
-            messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
-          }
-        });
+        // Auto-scroll to bottom like community channel on load
+        scrollToBottom('auto');
+        setTimeout(() => scrollToBottom('auto'), 80);
+        setTimeout(() => scrollToBottom('auto'), 250);
       })
       .catch((err) => {
         if (activeSessionIdRef.current !== currentSession) return;
@@ -499,7 +521,7 @@ export default function WorkspaceChatPage() {
       });
 
     return unsubscribeLive;
-  }, [orgId, activeChannelId, user?.uid, memberJoinedAt]);
+  }, [orgId, activeChannelId, user?.uid, memberJoinedAt, scrollToBottom]);
 
   useEffect(() => {
     const unsubscribe = initializeChat();
@@ -519,21 +541,13 @@ export default function WorkspaceChatPage() {
     const { scrollTop, scrollHeight, clientHeight } = container;
     const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
 
-    isNearBottomRef.current = distanceFromBottom < 100;
+    isNearBottomRef.current = distanceFromBottom < 160;
     if (isNearBottomRef.current && hasUnreadBelow) {
       setHasUnreadBelow(false);
     }
 
     if (scrollTop < 80 && !isLoadingOlder && hasMoreOlder && !loadingMessages) {
       handleLoadOlder();
-    }
-  };
-
-  // Scroll smoothly to bottom
-  const scrollToBottom = () => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      setHasUnreadBelow(false);
     }
   };
 
@@ -611,11 +625,10 @@ export default function WorkspaceChatPage() {
 
       await chatService.sendMessage(orgId, activeChannelId, content, effectiveUser || user, attachmentData, members);
 
-      requestAnimationFrame(() => {
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      });
+      // Automatically keep user at bottom like community channel after sending
+      scrollToBottom('smooth');
+      setTimeout(() => scrollToBottom('smooth'), 80);
+      setTimeout(() => scrollToBottom('smooth'), 220);
     } catch (err) {
       console.error('[WorkspaceChatPage] Send error:', err);
       toast.error(err.message || 'Failed to send message.');
@@ -772,7 +785,7 @@ export default function WorkspaceChatPage() {
 
   if (orgError) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center p-4 bg-slate-50">
+      <div className="flex h-full items-center justify-center p-4 bg-slate-50">
         <div className="max-w-md w-full p-6 bg-white border border-rose-200 rounded-2xl shadow-xl text-center space-y-4">
           <div className="mx-auto w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
             <ShieldAlert className="h-6 w-6" />
@@ -785,7 +798,7 @@ export default function WorkspaceChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-white overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden relative">
       {/* Phase 8: Connection Offline/Reconnecting Alert Banner */}
       {!isConnected && (
         <div className="bg-rose-600 text-white px-4 py-1.5 text-xs font-semibold flex items-center justify-center gap-2 select-none animate-in fade-in duration-150 z-30 shrink-0 shadow-xs">
@@ -928,9 +941,9 @@ export default function WorkspaceChatPage() {
                   }`}
                 />
                 <span className="hidden sm:inline">Pins</span>
-                {Object.keys(channelPinnedMessages).length > 0 && (
+                {activePinnedMessagesCount > 0 && (
                   <span className="px-1 sm:px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[9px] sm:text-[10px] font-bold font-mono">
-                    {Object.keys(channelPinnedMessages).length}
+                    {activePinnedMessagesCount}
                   </span>
                 )}
               </button>
@@ -974,7 +987,7 @@ export default function WorkspaceChatPage() {
           <div
             ref={messageListContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 space-y-0.5 relative"
+            className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-4 space-y-0.5 relative"
           >
             {/* Older Messages Loading Indicator */}
             {isLoadingOlder && (
@@ -1052,7 +1065,7 @@ export default function WorkspaceChatPage() {
               );
             })}
 
-            <div ref={messagesEndRef} className="h-2" />
+            <div ref={messagesEndRef} className="h-2 shrink-0" aria-hidden="true" />
           </div>
 
           {/* Floating Unread Scroll-To-Bottom Pill */}

@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
+import { Select } from '../../components/ui/Select';
 import { Pencil, Trash2, Calendar, User, ArrowRightLeft } from 'lucide-react';
 
 export function TaskCard({ task, onEdit = null, onDelete = null, onStatusChange = null }) {
@@ -73,21 +74,16 @@ export function TaskCard({ task, onEdit = null, onDelete = null, onStatusChange 
 
       {/* Quick Move Status Selector */}
       {onStatusChange && (
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1">
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1 shrink-0">
             <ArrowRightLeft className="h-3 w-3" /> Move:
           </span>
-          <select
+          <Select
             value={task.status}
             onChange={(e) => onStatusChange(task.taskId, e.target.value)}
-            className="text-xs bg-slate-50 border border-slate-200 rounded-md py-0.5 px-2 font-semibold text-slate-700 focus:ring-1 focus:ring-indigo-500"
-          >
-            {statusOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            options={statusOptions.map((opt) => ({ value: opt, label: opt }))}
+            className="w-32 py-0.5 px-2 text-xs font-semibold rounded-md border-slate-200 bg-slate-50"
+          />
         </div>
       )}
     </Card>

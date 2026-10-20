@@ -122,42 +122,46 @@ function TaskBoardContent() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
       {/* Real-time Sprint Progress Metric Header */}
-      <Card className="p-6 bg-white border border-slate-200 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <Card className="p-4 sm:p-6 bg-white border border-slate-200 shadow-sm space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <span className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary-600" /> Overall Sprint Build Completion
+            <Sparkles className="h-4 w-4 text-primary-600 shrink-0" /> Overall Sprint Build Completion
           </span>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-500">
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 w-full lg:w-auto">
+            <span className="text-xs font-bold text-slate-500 w-full sm:w-auto text-left sm:text-right">
               {completedTasks} of {totalTasks} Tasks Done ({progressPercentage}%)
             </span>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={<Sparkles className="h-4 w-4 text-primary-600" />}
-              onClick={handleSyncBlueprintTasks}
-              isLoading={isSyncing}
-              className="shrink-0 border-primary-200 hover:bg-primary-50 text-primary-700 font-bold"
-            >
-              Sync Blueprint Tasks
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Plus className="h-4 w-4" />}
-              onClick={() => setIsCreateModalOpen(true)}
-              className="shrink-0"
-            >
-              + New Sprint Task
-            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Sparkles className="h-4 w-4 text-primary-600" />}
+                onClick={handleSyncBlueprintTasks}
+                isLoading={isSyncing}
+                className="shrink-0 border-primary-200 hover:bg-primary-50 text-primary-700 font-bold text-xs"
+              >
+                <span className="hidden sm:inline">Sync Blueprint Tasks</span>
+                <span className="sm:hidden">Sync Tasks</span>
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Plus className="h-4 w-4" />}
+                onClick={() => setIsCreateModalOpen(true)}
+                className="shrink-0 font-bold text-xs"
+              >
+                <span>New Task</span>
+                <span className="hidden sm:inline">&nbsp;Sprint</span>
+              </Button>
+            </div>
           </div>
         </div>
         <ProgressBar percentage={progressPercentage} size="md" />
       </Card>
 
       {/* Filter & Sort Controls Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="relative w-full sm:w-80">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="relative w-full md:w-80">
           <Input
             placeholder="Search tasks or assignee..."
             value={searchQuery}
@@ -167,9 +171,9 @@ function TaskBoardContent() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-start md:justify-end">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
               Priority:
             </span>
             <Select
@@ -182,12 +186,12 @@ function TaskBoardContent() {
               ]}
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="w-32 py-1 text-xs"
+              className="w-full sm:w-36 py-1 text-xs"
             />
           </div>
 
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 flex-1 sm:flex-none">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider shrink-0">
               Sort By:
             </span>
             <Select
@@ -198,7 +202,7 @@ function TaskBoardContent() {
               ]}
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="w-36 py-1 text-xs"
+              className="w-full sm:w-36 py-1 text-xs"
             />
           </div>
         </div>

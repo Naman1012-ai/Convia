@@ -91,11 +91,11 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
   return (
     <div className="space-y-6">
       {/* Discussion Tabs Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-3">
-        <div className="flex items-center gap-2">
+      <div className="border-b border-slate-200 pb-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full">
           <button
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+            className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
               filter === 'all'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -106,7 +106,7 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
 
           <button
             onClick={() => setFilter('comment')}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
               filter === 'comment'
                 ? 'bg-indigo-600 text-white'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -117,7 +117,7 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
 
           <button
             onClick={() => setFilter('suggestion')}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
               filter === 'suggestion'
                 ? 'bg-amber-500 text-white'
                 : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
@@ -128,7 +128,7 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
 
           <button
             onClick={() => setFilter('question')}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+            className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-colors shrink-0 ${
               filter === 'question'
                 ? 'bg-indigo-500 text-white'
                 : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100'
@@ -141,18 +141,18 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
 
       {/* Write New Discussion Input */}
       {user ? (
-        <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-3.5 sm:p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-indigo-600" /> Post to Discussion
+              <Sparkles className="h-4 w-4 text-indigo-600 shrink-0" /> Post to Discussion
             </h3>
 
             {/* Type Selector */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 sm:p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
               <button
                 type="button"
                 onClick={() => setType('comment')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-colors whitespace-nowrap text-[11px] sm:text-xs ${
                   type === 'comment'
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-500 hover:text-slate-900'
@@ -163,7 +163,7 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
               <button
                 type="button"
                 onClick={() => setType('suggestion')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-colors whitespace-nowrap text-[11px] sm:text-xs ${
                   type === 'suggestion'
                     ? 'bg-amber-500 text-white shadow-sm'
                     : 'text-amber-800 hover:text-amber-900'
@@ -174,7 +174,7 @@ export function DiscussionPanel({ idea, onToast = () => {} }) {
               <button
                 type="button"
                 onClick={() => setType('question')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-colors ${
+                className={`flex-1 sm:flex-none text-center px-2 sm:px-2.5 py-1 rounded-lg font-bold transition-colors whitespace-nowrap text-[11px] sm:text-xs ${
                   type === 'question'
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-indigo-800 hover:text-indigo-900'

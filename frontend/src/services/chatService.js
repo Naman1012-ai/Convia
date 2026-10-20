@@ -179,6 +179,20 @@ export const chatService = {
           user
         ).catch((e) => console.warn('[chatService] Mention notification warning:', e));
       }
+
+      // Dispatch CHAT_MESSAGE to other channel/workspace members (excluding sender and mentioned users)
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.CHAT_MESSAGE,
+        {
+          workspaceId,
+          channelId: activeChannelId,
+          messageId,
+          content: validation.trimmedContent,
+          members,
+          excludedUids: mentionedUids,
+        },
+        user
+      ).catch((e) => console.warn('[chatService] Channel message notification warning:', e));
     } catch (notifErr) {
       console.warn('[chatService] Notification dispatch error:', notifErr.message);
     }
@@ -646,9 +660,23 @@ export const chatService = {
       attachment: null,
       deletedAt: Date.now(),
       deletedBy: userId,
+      isPinned: false,
+      pinnedAt: null,
     };
 
     await rtdbService.updateRtdbOnly(msgPath, updates);
+
+    // Automatically unpin the message if it was pinned
+    const pinPath = getChannelPinnedMessagePath(workspaceId, activeChannelId, messageId);
+    try {
+      await remove(ref(rtdb, pinPath));
+    } catch (unpinErr) {
+      console.warn('[chatService] Direct RTDB unpin on delete fallback to backend API:', unpinErr?.message);
+      apiClient
+        .delete(`/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/pin/${encodeURIComponent(messageId)}`)
+        .catch(() => {});
+    }
+
     return updates;
   },
 
@@ -1033,6 +1061,7 @@ export const chatService = {
       rtdbService.getRtdbOnly(msgPath).then((msg) => {
         const authorId = msg?.senderId || msg?.authorId;
         if (authorId && authorId !== validation.userId && authorId !== 'system') {
+          const actorUser = user || validation.user || { uid: validation.userId };
           inAppNotificationService.dispatchNotificationEvent(
             NOTIFICATION_TYPES.CHAT_REACTION,
             {
@@ -1042,8 +1071,11 @@ export const chatService = {
               emoji: validation.cleanEmoji,
               recipientId: authorId,
               content: msg.content || '',
+              actorId: validation.userId,
+              actorName: actorUser.displayName || actorUser.name || 'Member',
+              actorAvatar: actorUser.photoURL || actorUser.avatar || '',
             },
-            validation.user
+            actorUser
           ).catch((e) => console.warn('[chatService] Reaction notification warning:', e));
         }
       }).catch((e) => console.warn('[chatService] Failed to load message for reaction notif:', e));
@@ -1694,7 +1726,20 @@ export const chatService = {
     await set(newMsgRef, canonicalMsg);
 
     try {
-      const members = contentOrOptions?.members || [];
+      let members = contentOrOptions?.members || [];
+      if (!Array.isArray(members) || members.length === 0) {
+        // Fallback: load registered users from RTDB users node so mentions always resolve
+        const usersSnap = await rtdbService.getRtdbOnly('users').catch(() => null);
+        if (usersSnap && typeof usersSnap === 'object') {
+          members = Object.entries(usersSnap).map(([uid, u]) => ({
+            uid,
+            displayName: u?.displayName || u?.name || u?.username || 'Member',
+            username: u?.username || '',
+            name: u?.name || '',
+          }));
+        }
+      }
+
       const mentions = Array.isArray(members) && members.length > 0 ? extractMentions(trimmedContent, members) : [];
       const mentionedUids = mentions.map((m) => m.uid).filter((uid) => uid && uid !== user.uid);
       if (mentionedUids.length > 0) {
@@ -1710,6 +1755,20 @@ export const chatService = {
           user
         ).catch((e) => console.warn('[chatService] Community mention notification warning:', e));
       }
+
+      // Dispatch COMMUNITY_POST notification for new community discussion/post
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.COMMUNITY_POST,
+        {
+          workspaceId: 'community',
+          channelId: 'general',
+          messageId,
+          content: trimmedContent,
+          postType: resolvedPostType,
+          excludedUids: mentionedUids,
+        },
+        user
+      ).catch((e) => console.warn('[chatService] Community post notification warning:', e));
     } catch (err) {
       console.warn('[chatService] Community message mention warning:', err?.message);
     }
@@ -1815,14 +1874,31 @@ export const chatService = {
    */
   deletePublicIdeaChatMessage: async (messageId, userId, isAdmin = false) => {
     if (!messageId || !userId) throw new Error('Message ID and User ID are required.');
-    const msgPath = getPublicIdeasChatMessagePath(messageId);
+    const cleanId = String(messageId).trim();
+    const msgPath = getPublicIdeasChatMessagePath(cleanId);
     await rtdbService.updateRtdbOnly(msgPath, {
       content: 'This message was deleted',
       deleted: true,
       deletedAt: Date.now(),
       deletedBy: userId,
       attachment: null,
+      isPinned: false,
+      pinnedAt: null,
     });
+
+    // Automatically unpin the discussion from community pinned messages if it was pinned
+    const pinPath = getPublicIdeasChatPinnedMessagePath(cleanId);
+    try {
+      await remove(ref(rtdb, pinPath));
+      const legacyId = await rtdbService.getRtdbOnly(getPublicIdeasChatPinnedPath());
+      if (legacyId === cleanId) {
+        await remove(ref(rtdb, getPublicIdeasChatPinnedDiscussionPath())).catch(() => {});
+        await remove(ref(rtdb, getPublicIdeasChatPinnedPath())).catch(() => {});
+      }
+    } catch (unpinErr) {
+      console.warn('[chatService] Direct RTDB community unpin on delete fallback to backend API:', unpinErr?.message);
+      apiClient.delete(`/api/chat/community/pin/${encodeURIComponent(cleanId)}`).catch(() => {});
+    }
   },
 
   /**
@@ -1892,10 +1968,16 @@ export const chatService = {
     await set(newReplyRef, canonicalReply);
 
       // Dispatch in-app notification if parent message author is another user
-      const parentAuthorId = parentMessage?.senderId || parentMessage?.authorId;
+      let parent = parentMessage;
+      if (!parent || (!parent.senderId && !parent.authorId && !parent.authorUid)) {
+        parent = await rtdbService.getRtdbOnly(getPublicIdeasChatMessagePath(parentMessageId)).catch(() => null);
+      }
+
+      const parentAuthorId = parent?.senderId || parent?.authorId || parent?.authorUid || parent?.userId;
       if (parentAuthorId && parentAuthorId !== user.uid && parentAuthorId !== 'system') {
+        const actorName = resolveMemberDisplayName(user);
         inAppNotificationService.dispatchNotificationEvent(
-          NOTIFICATION_TYPES.MESSAGE_REPLY,
+          NOTIFICATION_TYPES.COMMUNITY_REPLY,
           {
             workspaceId: 'community',
             channelId: 'general',
@@ -1903,14 +1985,31 @@ export const chatService = {
             replyId,
             content: trimmed,
             parentAuthorId,
+            recipientId: parentAuthorId,
+            actorId: user.uid,
+            actorName,
+            actorAvatar: user.photoURL || user.avatar || '',
           },
           user
         ).catch((e) => console.warn('[chatService] Public community reply notification error:', e));
       }
 
-      // Dispatch mention notifications in reply if members provided
-      const replyMentions = Array.isArray(parentMessage?.members) && parentMessage.members.length > 0
-        ? extractMentions(trimmed, parentMessage.members)
+      // Dispatch mention notifications in reply
+      let replyMembers = parent?.members || [];
+      if (!Array.isArray(replyMembers) || replyMembers.length === 0) {
+        const usersSnap = await rtdbService.getRtdbOnly('users').catch(() => null);
+        if (usersSnap && typeof usersSnap === 'object') {
+          replyMembers = Object.entries(usersSnap).map(([uid, u]) => ({
+            uid,
+            displayName: u?.displayName || u?.name || u?.username || 'Member',
+            username: u?.username || '',
+            name: u?.name || '',
+          }));
+        }
+      }
+
+      const replyMentions = Array.isArray(replyMembers) && replyMembers.length > 0
+        ? extractMentions(trimmed, replyMembers)
         : [];
       const replyMentionedUids = replyMentions
         .map((m) => m.uid)
@@ -2078,7 +2177,7 @@ export const chatService = {
       // Dispatch reaction notification to community discussion author
       const msgPath = getPublicIdeasChatMessagePath(messageId);
       rtdbService.getRtdbOnly(msgPath).then((msg) => {
-        const authorId = msg?.senderId || msg?.authorId || msg?.authorUid;
+        const authorId = msg?.senderId || msg?.authorId || msg?.authorUid || msg?.userId;
         if (authorId && authorId !== userId && authorId !== 'system') {
           const userObj = typeof user === 'object' && user ? user : { uid: userId };
           inAppNotificationService.dispatchNotificationEvent(
@@ -2090,6 +2189,9 @@ export const chatService = {
               emoji: emoji.trim(),
               recipientId: authorId,
               content: msg.content || '',
+              actorId: userId,
+              actorName: userObj.displayName || userObj.name || 'Community Member',
+              actorAvatar: userObj.photoURL || userObj.avatar || '',
             },
             userObj
           ).catch((e) => console.warn('[chatService] Community reaction notif warning:', e));
@@ -2370,7 +2472,9 @@ export const chatService = {
         const map = {};
         const list = Array.isArray(data) ? data : Object.values(data);
         list.forEach((p) => {
-          if (p && p.messageId) map[p.messageId] = p;
+          if (p && p.messageId && !p.deleted && p.content !== 'This message was deleted') {
+            map[p.messageId] = p;
+          }
         });
         if (Object.keys(map).length > 0) {
           return map;
@@ -2384,10 +2488,16 @@ export const chatService = {
       const rootPath = getPublicIdeasChatPinnedMessagesRootPath();
       const val = (await rtdbService.getRtdbOnly(rootPath)) || {};
       if (val && typeof val === 'object' && Object.keys(val).length > 0) {
-        return val;
+        const cleanMap = {};
+        Object.entries(val).forEach(([k, p]) => {
+          if (p && !p.deleted && p.content !== 'This message was deleted') {
+            cleanMap[k] = p;
+          }
+        });
+        return cleanMap;
       }
       const legacyPin = await rtdbService.getRtdbOnly(getPublicIdeasChatPinnedDiscussionPath());
-      if (legacyPin && legacyPin.messageId) {
+      if (legacyPin && legacyPin.messageId && !legacyPin.deleted && legacyPin.content !== 'This message was deleted') {
         return { [legacyPin.messageId]: legacyPin };
       }
       return {};
@@ -2415,7 +2525,7 @@ export const chatService = {
         // Fallback to legacy single pinned discussion if multi-pin collection is empty
         const legacyPath = getPublicIdeasChatPinnedDiscussionPath();
         rtdbService.getRtdbOnly(legacyPath).then((legacyPin) => {
-          if (legacyPin && legacyPin.messageId) {
+          if (legacyPin && legacyPin.messageId && !legacyPin.deleted && legacyPin.content !== 'This message was deleted') {
             callback({ [legacyPin.messageId]: legacyPin });
           } else {
             callback({});
@@ -2423,7 +2533,13 @@ export const chatService = {
         }).catch(() => callback({}));
         return;
       }
-      callback(val);
+      const cleanMap = {};
+      Object.entries(val).forEach(([k, p]) => {
+        if (p && !p.deleted && p.content !== 'This message was deleted') {
+          cleanMap[k] = p;
+        }
+      });
+      callback(cleanMap);
     });
   },
 
@@ -2586,7 +2702,7 @@ export const chatService = {
       const res = await apiClient.get(`/api/workspaces/${encodeURIComponent(workspaceId)}/chat/channels/${encodeURIComponent(activeChannelId)}/pins`);
       const data = res?.data !== undefined ? res.data : res;
       if (Array.isArray(data)) {
-        return data;
+        return data.filter((p) => p && !p.deleted && p.content !== 'This message was deleted');
       }
     } catch (apiErr) {
       console.warn('[chatService] Backend getPinnedMessages fallback to RTDB:', apiErr?.message);
@@ -2597,6 +2713,7 @@ export const chatService = {
       const val = (await rtdbService.getRtdbOnly(rootPath)) || {};
       return Object.values(val)
         .filter(Boolean)
+        .filter((p) => !p.deleted && p.content !== 'This message was deleted')
         .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
     } catch (_) {
       return [];
@@ -2636,6 +2753,7 @@ export const chatService = {
       }
       const pins = Object.values(val)
         .filter(Boolean)
+        .filter((p) => !p.deleted && p.content !== 'This message was deleted')
         .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
       if (typeof callback === 'function') callback(pins);
     });

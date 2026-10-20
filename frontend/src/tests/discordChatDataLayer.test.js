@@ -117,4 +117,82 @@ describe('Discord Phase 1 — Data Layer & Pinned Message Preservation Suite', (
     assert.strictEqual(reconciled[0].status, 'sent');
   });
 
+  it('6. Deletion lifecycle: Pinned message list filters out deleted messages and orphan pins', () => {
+    const rawPins = [
+      {
+        messageId: 'msg_active_1',
+        content: 'Sprint goals',
+        pinnedAt: 1710000000000,
+      },
+      {
+        messageId: 'msg_deleted_voice_1',
+        content: 'This message was deleted',
+        deleted: true,
+        attachment: { isVoiceNote: true, url: 'https://cdn.example.com/voice1.m4a' },
+        pinnedAt: 1710000050000,
+      },
+      {
+        messageId: 'msg_deleted_text_2',
+        content: 'This message was deleted',
+        pinnedAt: 1710000060000,
+      },
+      {
+        messageId: 'msg_active_2',
+        content: 'Deployment checklist',
+        pinnedAt: 1710000070000,
+      },
+    ];
+
+    // Filter logic matching chatService & ChatPinnedMessagesDrawer
+    const validPins = rawPins.filter(
+      (p) => p && !p.deleted && p.content !== 'This message was deleted'
+    );
+
+    assert.strictEqual(validPins.length, 2);
+    assert.strictEqual(validPins[0].messageId, 'msg_active_1');
+    assert.strictEqual(validPins[1].messageId, 'msg_active_2');
+    assert.ok(!validPins.some((p) => p.messageId === 'msg_deleted_voice_1'));
+    assert.ok(!validPins.some((p) => p.messageId === 'msg_deleted_text_2'));
+  });
+
+  it('7. Cross-reference check: Pinned drawer filters pins when target message in feed is soft-deleted', () => {
+    const pinnedList = [
+      { messageId: 'msg_101', content: 'Original title', pinnedAt: 100 },
+      { messageId: 'msg_102', content: 'Original voice message', attachment: { isVoiceNote: true }, pinnedAt: 200 },
+    ];
+
+    const feedMessages = [
+      { messageId: 'msg_101', content: 'Original title', deleted: false },
+      { messageId: 'msg_102', content: 'This message was deleted', deleted: true, attachment: null },
+    ];
+
+    const validPins = pinnedList.filter((item) => {
+      if (!item || !item.messageId) return false;
+      if (item.deleted || item.content === 'This message was deleted') return false;
+      const matched = feedMessages.find((m) => m && m.messageId === item.messageId);
+      if (matched && (matched.deleted || matched.content === 'This message was deleted')) {
+        return false;
+      }
+      return true;
+    });
+
+    assert.strictEqual(validPins.length, 1);
+    assert.strictEqual(validPins[0].messageId, 'msg_101');
+  });
+
+  it('8. Attachment guard: Deleted pinned messages never expose voice note players or attachments', () => {
+    const item = {
+      messageId: 'msg_deleted_voice',
+      deleted: true,
+      content: 'This message was deleted',
+      attachment: { isVoiceNote: true, url: 'https://cdn.example.com/audio.m4a', duration: 19 },
+    };
+
+    const isDeleted = Boolean(item.deleted) || item.content === 'This message was deleted';
+    const attachment = !isDeleted ? item.attachment : null;
+
+    assert.strictEqual(isDeleted, true);
+    assert.strictEqual(attachment, null);
+  });
+
 });

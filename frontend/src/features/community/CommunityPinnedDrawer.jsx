@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Pin, PinOff, X, ExternalLink, Loader2, Sparkles, MessageCircle, Users, Mic } from 'lucide-react';
 import { renderDiscordMarkdown } from '../../utils/discordMarkdown';
@@ -32,6 +32,26 @@ export function CommunityPinnedDrawer({
 }) {
   const [unpinningId, setUnpinningId] = useState(null);
 
+  // Filter out soft-deleted discussions
+  const validPinnedList = useMemo(() => {
+    return (pinnedList || []).filter((item) => {
+      if (!item || !item.messageId) return false;
+      if (item.deleted || item.content === 'This message was deleted') return false;
+      return true;
+    });
+  }, [pinnedList]);
+
+  // Self-healing: Purge orphan deleted pins if detected
+  useEffect(() => {
+    if (!isOpen || !isAdmin || typeof onUnpinDiscussion !== 'function') return;
+    (pinnedList || []).forEach((item) => {
+      if (item && item.messageId && (item.deleted || item.content === 'This message was deleted')) {
+        console.info('[CommunityPinnedDrawer] Auto-purging deleted community pin:', item.messageId);
+        onUnpinDiscussion(item.messageId).catch(() => {});
+      }
+    });
+  }, [isOpen, isAdmin, pinnedList, onUnpinDiscussion]);
+
   if (!isOpen) return null;
 
   const handleUnpin = async (messageId) => {
@@ -61,7 +81,7 @@ export function CommunityPinnedDrawer({
           <Pin className="h-4 w-4 text-amber-600 fill-amber-500 rotate-45" />
           <h2 className="text-sm font-bold text-slate-800">Featured Discussions</h2>
           <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
-            {pinnedList.length}/5
+            {validPinnedList.length}/5
           </span>
         </div>
         <button
@@ -83,7 +103,7 @@ export function CommunityPinnedDrawer({
 
       {/* Drawer Body */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {pinnedList.length === 0 ? (
+        {validPinnedList.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center px-4 text-slate-400">
             <div className="h-12 w-12 rounded-full bg-amber-50 border border-amber-200/60 flex items-center justify-center mb-3">
               <Pin className="h-6 w-6 text-amber-500 rotate-45" />
@@ -94,7 +114,7 @@ export function CommunityPinnedDrawer({
             </p>
           </div>
         ) : (
-          pinnedList.map((item) => (
+          validPinnedList.map((item) => (
             <CommunityPinnedItem
               key={item.messageId}
               item={item}
@@ -123,6 +143,7 @@ function CommunityPinnedItem({ item, currentUserId, isAdmin, isUnpinning, onJump
   const displayName = isOwn ? 'You' : (liveDisplayName || resolveMemberDisplayName(item.senderName || item.authorName || 'Member'));
   const avatar = liveAvatar || item.senderAvatar || item.avatar || '';
   const PostIcon = POST_TYPE_ICONS[item.postType] || MessageCircle;
+  const isDeleted = Boolean(item.deleted) || item.content === 'This message was deleted';
 
   return (
     <div
@@ -160,20 +181,24 @@ function CommunityPinnedItem({ item, currentUserId, isAdmin, isUnpinning, onJump
         </div>
 
         {/* Jump Action */}
-        <button
-          type="button"
-          onClick={() => onJump(item.messageId)}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-          title="Jump to discussion in feed"
-        >
-          <span>Jump</span>
-          <ExternalLink className="h-3 w-3" />
-        </button>
+        {!isDeleted && (
+          <button
+            type="button"
+            onClick={() => onJump(item.messageId)}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+            title="Jump to discussion in feed"
+          >
+            <span>Jump</span>
+            <ExternalLink className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       {/* Message Content Preview */}
-      <div className="text-xs text-slate-800 leading-relaxed max-h-32 overflow-y-auto mb-2 select-text bg-white/80 p-2 rounded-lg border border-slate-100">
-        {item.content ? (
+      <div className={`text-xs leading-relaxed max-h-32 overflow-y-auto mb-2 select-text p-2 rounded-lg border ${isDeleted ? 'italic text-slate-400 bg-slate-50 border-slate-200/60' : 'text-slate-800 bg-white/80 border-slate-100'}`}>
+        {isDeleted ? (
+          <span>This message was deleted</span>
+        ) : item.content ? (
           renderDiscordMarkdown(item.content)
         ) : (
           <span className="italic text-slate-400">No content preview</span>
@@ -181,7 +206,7 @@ function CommunityPinnedItem({ item, currentUserId, isAdmin, isUnpinning, onJump
       </div>
 
       {/* Attachment Preview (Voice Note / File) */}
-      {item.attachment ? (
+      {!isDeleted && item.attachment ? (
         <div className="mb-2 w-full max-w-md overflow-hidden">
           {item.attachment.isVoiceNote ||
           item.attachment.category === 'audio' ||

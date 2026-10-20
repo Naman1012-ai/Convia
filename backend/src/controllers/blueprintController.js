@@ -1676,6 +1676,21 @@ export const blueprintController = {
 
     console.log(`✅ [Task Assignment Completed] Task ${taskId} successfully assigned to ${targetUserName} (${assignedUserId || 'null'})`);
 
+    // Phase 7: Dispatch TASK_ASSIGNED notification if assigned to another team member
+    if (assignedUserId && assignedUserId !== userUid) {
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.TASK_ASSIGNED,
+        {
+          workspaceId,
+          taskId: targetTask.convertedTaskId || taskId,
+          taskTitle: targetTask.title || 'Blueprint Execution Task',
+          assignedToUid: assignedUserId,
+          priority: targetTask.priority || 'Medium',
+        },
+        { uid: userUid, displayName: memberRecord?.displayName || 'Team Captain' }
+      ).catch((e) => console.warn('[blueprintController] Task assignment notification warning:', e?.message || e));
+    }
+
     return {
       success: true,
       taskId,

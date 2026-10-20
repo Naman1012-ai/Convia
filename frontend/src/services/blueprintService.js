@@ -1,5 +1,7 @@
 import { rtdbService } from './rtdbService';
 import { getErrorMessage } from '../utils/errorMessages';
+import { inAppNotificationService } from './inAppNotificationService';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants';
 
 /**
  * Service Layer for MVP Selection & Project Blueprint Generation.
@@ -128,6 +130,21 @@ export const blueprintService = {
           updatedAt: timestamp,
         }),
       ]);
+
+      // 8. Phase 7: Dispatch MVP_SELECTED notification to author and workspace team
+      inAppNotificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.MVP_SELECTED,
+        {
+          workspaceId: orgId,
+          ideaId: winningIdeaId,
+          ideaTitle: winningIdea.title || 'Workspace Proposal',
+          authorId: winningIdea.authorId,
+          orgName: org?.name || 'Workspace',
+        },
+        { uid: leaderUid }
+      ).catch((notifErr) => {
+        console.warn('⚠️ [MVP Selected Notification Warning]', notifErr?.message || notifErr);
+      });
 
       return blueprintData;
     } catch (error) {

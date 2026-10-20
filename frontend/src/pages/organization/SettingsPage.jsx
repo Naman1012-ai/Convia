@@ -912,15 +912,17 @@ export default function SettingsPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 text-xs">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 text-xs">
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Workspace ID</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-slate-800 font-bold">{org.orgId}</span>
+            <div className="flex items-center gap-2 max-w-full">
+              <span className="font-mono text-slate-800 font-bold truncate select-all" title={org.orgId}>
+                {org.orgId}
+              </span>
               <button
                 type="button"
                 onClick={handleCopyOrgId}
-                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors shrink-0"
                 title="Copy Workspace ID"
               >
                 {copiedId ? (
@@ -932,28 +934,28 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Created By</span>
-            <span className="font-bold text-slate-900 truncate block max-w-[200px]">
+            <span className="font-bold text-slate-900 truncate block max-w-full" title={ownerDisplayName}>
               {ownerDisplayName}
             </span>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Created On</span>
             <span className="text-slate-700 font-medium">
               {org.createdAt ? formatTimestamp(org.createdAt) : 'Unknown'}
             </span>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Last Updated</span>
             <span className="text-slate-700 font-medium">
               {org.updatedAt ? formatTimestamp(org.updatedAt) : 'Never'}
             </span>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Current Stage</span>
             <span
               className={`inline-flex px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
@@ -966,10 +968,10 @@ export default function SettingsPage() {
             </span>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <span className="text-slate-400 block font-semibold mb-1">Active MVP</span>
             <span
-              className="font-bold text-slate-900 truncate block max-w-[200px]"
+              className="font-bold text-slate-900 truncate block max-w-full"
               title={workspaceStats.activeMvpTitle}
             >
               {workspaceStats.activeMvpTitle}
@@ -1100,7 +1102,7 @@ export default function SettingsPage() {
                           { value: 'member', label: 'Member' },
                           { value: 'team_captain', label: '⚡ Team Captain' },
                         ]}
-                        className="text-xs py-1 px-2.5 font-medium rounded-lg h-8 border-slate-200"
+                        className="w-36 text-xs py-1 px-2.5 font-medium rounded-lg h-8 border-slate-200"
                       />
                     </div>
                   ) : isCaptain ? (

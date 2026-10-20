@@ -171,14 +171,15 @@ function OrgLayoutContent() {
 
   const workspaceRootPath = `/workspaces/${org.orgId}`;
   const isIdeaActive = Boolean(ideaId);
+  const isChat = location.pathname.endsWith('/chat');
 
   return (
-    <div className="flex min-h-screen flex-col bg-lavender-surface text-slate-900">
+    <div className={`flex flex-col bg-lavender-surface text-slate-900 ${isChat ? 'h-screen overflow-hidden' : 'min-h-screen'}`}>
       <Navbar
         isSidebarOpen={isMobileOpen}
         onMobileMenuToggle={() => setIsMobileOpen((prev) => !prev)}
       />
-      <div className="flex flex-1">
+      <div className={`flex flex-1 ${isChat ? 'min-h-0 overflow-hidden' : ''}`}>
         <Sidebar
           status={org.status}
           isMobileOpen={isMobileOpen}
@@ -186,84 +187,113 @@ function OrgLayoutContent() {
         />
         <main
           className={
-            location.pathname.endsWith('/chat')
-              ? 'flex-1 min-w-0 px-3 py-4 sm:px-6 w-full space-y-4 transition-all duration-200'
+            isChat
+              ? 'flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-3 w-full transition-all duration-200 flex flex-col h-full overflow-hidden'
               : 'flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6 transition-all duration-200'
           }
         >
           {/* Centralized Workspace Top Navigation Header */}
-          <div className="border-b border-lavender-border pb-5 space-y-3.5">
-            {/* Single Breadcrumb System */}
-            <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
-              <Link to="/workspaces" className="hover:text-primary-600 transition-colors">
-                Workspaces
-              </Link>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-              <Link to={workspaceRootPath} className="hover:text-primary-600 transition-colors font-semibold text-slate-700">
-                {org.name}
-              </Link>
-              {isIdeaActive && (
-                <>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                  <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-primary-600 transition-colors truncate max-w-[160px]">
-                    {activeIdea ? activeIdea.title : 'Selected Idea'}
-                  </Link>
-                </>
-              )}
-              {isSubpage && (
-                <>
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                  <span className="text-slate-900 font-bold">{segmentLabel}</span>
-                </>
-              )}
-            </nav>
+          {!isChat ? (
+            <div className="border-b border-lavender-border pb-5 space-y-3.5 shrink-0">
+              {/* Single Breadcrumb System */}
+              <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
+                <Link to="/workspaces" className="hover:text-primary-600 transition-colors">
+                  Workspaces
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                <Link to={workspaceRootPath} className="hover:text-primary-600 transition-colors font-semibold text-slate-700">
+                  {org.name}
+                </Link>
+                {isIdeaActive && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                    <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-primary-600 transition-colors truncate max-w-[160px]">
+                      {activeIdea ? activeIdea.title : 'Selected Idea'}
+                    </Link>
+                  </>
+                )}
+                {isSubpage && (
+                  <>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                    <span className="text-slate-900 font-bold">{segmentLabel}</span>
+                  </>
+                )}
+              </nav>
 
-            {/* Single Main Title Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start sm:items-center gap-3.5">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 border border-primary-200/70 text-primary-700 shadow-xs">
-                  <SegmentIcon className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
-                      {segmentLabel}
-                    </h1>
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                      org.status === 'project'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200/80'
-                    }`}>
-                      <span className={`h-1.5 w-1.5 rounded-full ${
-                        org.status === 'project' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
-                      }`} />
-                      {org.status === 'project' ? 'Sprint Phase' : 'Ideation Phase'}
-                    </span>
+              {/* Single Main Title Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 border border-primary-200/70 text-primary-700 shadow-xs">
+                    <SegmentIcon className="h-5 w-5" />
                   </div>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-normal leading-relaxed">{segmentSubtitle}</p>
+                  <div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h1 className="text-2xl font-black text-slate-900 tracking-tight sm:text-3xl">
+                        {segmentLabel}
+                      </h1>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                        org.status === 'project'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                          : 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                      }`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${
+                          org.status === 'project' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                        }`} />
+                        {org.status === 'project' ? 'Sprint Phase' : 'Ideation Phase'}
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-normal leading-relaxed">{segmentSubtitle}</p>
+                  </div>
                 </div>
-              </div>
 
-              {/* Workspace Search Trigger Button */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsSearchOpen(true)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-lavender-border dark:border-slate-700 hover:border-primary-400 hover:text-primary-700 shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  aria-label="Search workspace resources"
-                >
-                  <Search className="h-4 w-4 text-slate-400" />
-                  <span className="hidden sm:inline">Search workspace...</span>
-                  <span className="sm:hidden">Search</span>
-                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
-                    ⌘K
-                  </kbd>
-                </button>
+                {/* Workspace Search Trigger Button */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-lavender-border dark:border-slate-700 hover:border-primary-400 hover:text-primary-700 shadow-sm hover:shadow transition-all focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    aria-label="Search workspace resources"
+                  >
+                    <Search className="h-4 w-4 text-slate-400" />
+                    <span className="hidden sm:inline">Search workspace...</span>
+                    <span className="sm:hidden">Search</span>
+                    <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-bold text-slate-400 bg-slate-100 dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">
+                      ⌘K
+                    </kbd>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="border-b border-lavender-border pb-2 shrink-0 flex items-center justify-between gap-2">
+              <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium truncate">
+                <Link to="/workspaces" className="hover:text-primary-600 transition-colors">
+                  Workspaces
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                <Link to={workspaceRootPath} className="hover:text-primary-600 transition-colors font-semibold text-slate-700 truncate max-w-[140px] sm:max-w-xs">
+                  {org.name}
+                </Link>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                <span className="text-slate-900 font-bold truncate">Team Chat</span>
+              </nav>
 
-          <div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                  org.status === 'project'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                }`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${
+                    org.status === 'project' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                  }`} />
+                  {org.status === 'project' ? 'Sprint Phase' : 'Ideation Phase'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className={isChat ? 'flex-1 min-h-0 overflow-hidden flex flex-col pt-1 sm:pt-2' : ''}>
             <Outlet />
           </div>
         </main>

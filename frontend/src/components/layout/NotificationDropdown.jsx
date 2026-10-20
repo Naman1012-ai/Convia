@@ -199,11 +199,19 @@ export function NotificationDropdown() {
           icon: <Sparkles className="h-2.5 w-2.5" />,
           color: 'bg-emerald-500',
         };
+      case NOTIFICATION_TYPES.MVP_SELECTED:
+      case NOTIFICATION_TYPES.PROJECT_SELECTED_AS_MVP:
+        return {
+          icon: <Sparkles className="h-2.5 w-2.5" />,
+          color: 'bg-amber-600',
+        };
       case NOTIFICATION_TYPES.BLUEPRINT_FAILED:
         return {
           icon: <AlertTriangle className="h-2.5 w-2.5" />,
           color: 'bg-rose-500',
         };
+      case NOTIFICATION_TYPES.PUBLIC_IDEA_CREATED:
+      case NOTIFICATION_TYPES.PUBLIC_IDEA_POSTED:
       case NOTIFICATION_TYPES.IDEA_POSTED:
       case NOTIFICATION_TYPES.IDEA_CREATED:
       case NOTIFICATION_TYPES.IDEA_ACTIVITY:
@@ -279,10 +287,10 @@ export function NotificationDropdown() {
         )}
       </button>
 
-      {/* Popover Dropdown Panel (Responsive: clamped width for mobile screens) */}
+      {/* Popover Dropdown Panel (Responsive: viewport-safe on mobile, anchored on desktop) */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-sm rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+          className="fixed left-3 right-3 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-full mt-2 sm:w-96 max-w-sm mx-auto sm:mx-0 rounded-2xl bg-white border border-slate-200 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
           role="menu"
           aria-orientation="vertical"
         >
@@ -388,10 +396,12 @@ export function NotificationDropdown() {
                 const itemTitle = item.title || (
                   item.type === 'CHAT_MENTION'
                     ? `${senderName} mentioned you`
-                    : item.type === 'CHAT_REPLY' || item.type === 'MESSAGE_REPLY'
+                    : item.type === 'CHAT_REPLY' || item.type === 'MESSAGE_REPLY' || item.type === 'COMMUNITY_REPLY'
                     ? `${senderName} replied to your message`
                     : item.type === 'CHAT_REACTION' || item.type === 'MESSAGE_REACTION'
                     ? `${senderName} reacted to your message`
+                    : item.type === 'COMMUNITY_POST'
+                    ? `${senderName} posted in Community Hub`
                     : senderName
                 );
 

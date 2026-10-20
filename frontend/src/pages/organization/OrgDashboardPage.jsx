@@ -181,15 +181,16 @@ function WorkspaceDashboardContent() {
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
             <Button
               variant="secondary"
               size="sm"
               icon={<Search className="h-4 w-4 text-slate-500" />}
               onClick={() => setIsSearchModalOpen(true)}
-              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
+              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs whitespace-nowrap"
             >
-              Search (Ctrl+K)
+              <span>Search</span>
+              <span className="hidden sm:inline">&nbsp;(Ctrl+K)</span>
             </Button>
 
             <Button
@@ -198,7 +199,7 @@ function WorkspaceDashboardContent() {
               icon={<RefreshCw className={cn('h-3.5 w-3.5 text-slate-500', loading && 'animate-spin')} />}
               onClick={handleRefresh}
               disabled={loading}
-              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
+              className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs whitespace-nowrap"
             >
               Refresh
             </Button>
@@ -209,7 +210,7 @@ function WorkspaceDashboardContent() {
                 size="sm"
                 icon={<Plus className="h-4 w-4" />}
                 onClick={handleOpenCreateModal}
-                className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-md shadow-primary-500/20 text-xs"
+                className="bg-primary-600 hover:bg-primary-700 text-white font-bold shadow-md shadow-primary-500/20 text-xs whitespace-nowrap"
               >
                 Propose Idea
               </Button>
@@ -220,7 +221,7 @@ function WorkspaceDashboardContent() {
                 variant="secondary"
                 size="sm"
                 icon={<MessageSquare className="h-4 w-4 text-slate-500" />}
-                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs"
+                className="bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-xs font-semibold text-xs whitespace-nowrap"
               >
                 Team Chat
               </Button>
@@ -280,10 +281,10 @@ function WorkspaceDashboardContent() {
                       size="sm"
                       variant={btnVariant}
                       onClick={() => handleAttentionAction(item)}
-                      className="shrink-0 text-xs font-bold font-mono self-start sm:self-center"
+                      className="shrink-0 text-xs font-bold font-mono self-start sm:self-center whitespace-nowrap inline-flex items-center gap-1.5"
                     >
-                      {item.actionLabel || 'Take Action'}
-                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                      <span>{item.actionLabel || 'Take Action'}</span>
+                      <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                     </Button>
                   )}
                 </div>
@@ -463,13 +464,13 @@ function WorkspaceDashboardContent() {
 
       {/* 4. BLUEPRINT / SPRINT STATE HIGHLIGHT CARD */}
       <Card className="p-6 bg-gradient-to-br from-white via-slate-50 to-primary-50/20 border border-slate-200 rounded-3xl shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/70 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md shadow-primary-500/25">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200/70 pb-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-600 text-white shadow-md shadow-primary-500/25 shrink-0">
               <Sparkles className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base font-bold text-slate-900">
                   AI Build Specification & Sprint Delivery
                 </h2>
@@ -483,7 +484,7 @@ function WorkspaceDashboardContent() {
                       ? 'danger'
                       : 'default'
                   }
-                  className="font-mono text-[10px] uppercase"
+                  className="font-mono text-[10px] uppercase whitespace-nowrap shrink-0"
                 >
                   {bp?.status === 'completed'
                     ? bp.approvalStatus === 'approved'
@@ -492,7 +493,7 @@ function WorkspaceDashboardContent() {
                     : bp?.status || 'Ideation Stage'}
                 </Badge>
               </div>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
                 {selectedMvp
                   ? `Active MVP Target: "${selectedMvp.title}"`
                   : 'Vote on proposals and select a winning MVP to unlock synthesis'}
@@ -500,37 +501,38 @@ function WorkspaceDashboardContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
             {selectedMvp ? (
-              <Link to={`/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`}>
+              <Link to={`/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`} className="flex-1 sm:flex-none">
                 <Button
                   variant="primary"
                   size="sm"
                   icon={<Sparkles className="h-4 w-4" />}
-                  className="text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white shadow-sm shadow-primary-500/20"
+                  className="w-full sm:w-auto text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white shadow-sm shadow-primary-500/20 whitespace-nowrap"
                 >
-                  {bp?.status === 'completed' ? 'Open Blueprint Specification' : 'Synthesize Blueprint'}
+                  <span>{bp?.status === 'completed' ? 'Open Blueprint' : 'Synthesize Blueprint'}</span>
+                  <span className="hidden sm:inline">&nbsp;Specification</span>
                 </Button>
               </Link>
             ) : (
-              <Link to={`/workspaces/${orgId}/ideas`}>
+              <Link to={`/workspaces/${orgId}/ideas`} className="flex-1 sm:flex-none">
                 <Button
                   variant="secondary"
                   size="sm"
                   icon={<Trophy className="h-4 w-4 text-amber-500" />}
-                  className="text-xs font-bold border-slate-300"
+                  className="w-full sm:w-auto text-xs font-bold border-slate-300 whitespace-nowrap"
                 >
                   Select MVP Candidate
                 </Button>
               </Link>
             )}
 
-            <Link to={`/workspaces/${orgId}/tasks`}>
+            <Link to={`/workspaces/${orgId}/tasks`} className="flex-1 sm:flex-none">
               <Button
                 variant="secondary"
                 size="sm"
                 icon={<CheckSquare className="h-4 w-4 text-primary-600" />}
-                className="text-xs font-bold border-slate-300"
+                className="w-full sm:w-auto text-xs font-bold border-slate-300 whitespace-nowrap"
               >
                 Sprint Tasks
               </Button>

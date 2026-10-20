@@ -7,6 +7,7 @@ import { importRequestService } from '../../services/importRequestService';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
+import { Select } from '../../components/ui/Select';
 import {
   FolderPlus,
   Send,
@@ -261,17 +262,15 @@ export function ImportToWorkspaceModal({
                   <Badge variant="success">Active Workspace</Badge>
                 </div>
               ) : (
-                <select
+                <Select
                   value={selectedWorkspaceId || ''}
                   onChange={(e) => setSelectedWorkspaceId(e.target.value)}
-                  className="w-full text-sm bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-slate-800 font-medium focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                >
-                  {workspaces.map((ws) => (
-                    <option key={ws.orgId} value={ws.orgId}>
-                      {ws.name} ({ws.memberCount || 1} members)
-                    </option>
-                  ))}
-                </select>
+                  options={workspaces.map((ws) => ({
+                    value: ws.orgId,
+                    label: `${ws.name} (${ws.memberCount || 1} members)`,
+                  }))}
+                  className="w-full text-sm font-medium"
+                />
               )}
             </div>
 

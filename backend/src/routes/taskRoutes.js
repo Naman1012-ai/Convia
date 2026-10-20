@@ -1,6 +1,8 @@
 import express from 'express';
 import { rtdbService } from '../services/rtdbService.js';
 import { requireWorkspaceMember } from '../utils/workspaceAuthHelper.js';
+import { notificationService } from '../services/notificationService.js';
+import { NOTIFICATION_TYPES } from '../constants/notificationConstants.js';
 
 export const taskRouter = express.Router({ mergeParams: true });
 
@@ -68,6 +70,21 @@ taskRouter.post('/', async (req, res) => {
     };
 
     await rtdbService.setData(`tasks/${workspaceId}/${taskId}`, newTask);
+
+    // Phase 7: Dispatch TASK_ASSIGNED notification if assigned to another team member
+    if (newTask.assignedTo && newTask.assignedTo !== userUid) {
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.TASK_ASSIGNED,
+        {
+          workspaceId,
+          taskId,
+          taskTitle: newTask.title,
+          assignedToUid: newTask.assignedTo,
+          priority: newTask.priority,
+        },
+        req.user
+      ).catch((e) => console.warn('[taskRoutes] Task assignment notification warning:', e?.message || e));
+    }
 
     res.status(201).json({ success: true, data: newTask });
   } catch (err) {
@@ -212,6 +229,50 @@ taskRouter.patch('/:taskId', async (req, res) => {
 
     await rtdbService.updateData(`tasks/${workspaceId}/${taskId}`, patch);
     const updatedTask = { ...existingTask, ...patch };
+
+    // Phase 7: Dispatch Task Notifications on Status or Assignee Change
+    if (patch.status === 'Completed' && existingTask.status !== 'Completed') {
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.TASK_COMPLETED,
+        {
+          workspaceId,
+          taskId,
+          taskTitle: updatedTask.title || 'Task',
+          createdByUid: existingTask.createdBy || null,
+        },
+        req.user
+      ).catch((e) => console.warn('[taskRoutes] Task completion notification warning:', e?.message || e));
+    } else if (patch.status && patch.status !== existingTask.status) {
+      const targetUser = existingTask.assignedTo || existingTask.createdBy;
+      if (targetUser && targetUser !== userUid) {
+        notificationService.dispatchNotificationEvent(
+          NOTIFICATION_TYPES.TASK_STATUS_CHANGED,
+          {
+            workspaceId,
+            taskId,
+            taskTitle: updatedTask.title || 'Task',
+            oldStatus: existingTask.status || 'Todo',
+            newStatus: patch.status,
+            targetUid: targetUser,
+          },
+          req.user
+        ).catch((e) => console.warn('[taskRoutes] Task status changed notification warning:', e?.message || e));
+      }
+    }
+
+    if (patch.assignedTo && patch.assignedTo !== existingTask.assignedTo && patch.assignedTo !== userUid) {
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.TASK_ASSIGNED,
+        {
+          workspaceId,
+          taskId,
+          taskTitle: updatedTask.title || 'Task',
+          assignedToUid: patch.assignedTo,
+          priority: updatedTask.priority || 'Medium',
+        },
+        req.user
+      ).catch((e) => console.warn('[taskRoutes] Reassignment notification warning:', e?.message || e));
+    }
 
     res.json({ success: true, data: updatedTask });
   } catch (err) {

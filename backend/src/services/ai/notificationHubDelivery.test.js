@@ -378,4 +378,96 @@ describe('🔔 CONVIA NOTIFICATION HUB — END-TO-END DELIVERY TEST SUITE', () =
       'Should overwrite idempotently with same notificationId'
     );
   });
+  // ---------------------------------------------------------------------------
+  // 8. COMMUNITY CHANNEL NOTIFICATIONS: POST, REPLY, REACTION
+  // ---------------------------------------------------------------------------
+  it('8. Community post delivers COMMUNITY_POST to other community users and excludes author', async () => {
+    mockDb.fcm_tokens = {
+      user_owner: { token_1: { token: 't1' } },
+      user_member1: { token_2: { token: 't2' } },
+      user_member2: { token_3: { token: 't3' } },
+    };
+
+    const notifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.COMMUNITY_POST,
+      {
+        workspaceId: 'community',
+        channelId: 'general',
+        messageId: 'comm_msg_1',
+        content: 'Check out this new architecture discussion!',
+        postType: 'discussion',
+      },
+      { uid: 'user_member1', displayName: 'Bob Builder' }
+    );
+
+    assert.ok(notifs.length >= 2, 'Delivers to user_owner and user_member2');
+    const recipientUids = notifs.map((n) => n.recipientId);
+    assert.ok(recipientUids.includes('user_owner'));
+    assert.ok(recipientUids.includes('user_member2'));
+    assert.strictEqual(recipientUids.includes('user_member1'), false, 'Author must be excluded');
+
+    const notif = notifs[0];
+    assert.strictEqual(notif.type, NOTIFICATION_TYPES.COMMUNITY_POST);
+    assert.ok(notif.title.includes('Community Discussion'));
+    assert.strictEqual(notif.actionUrl, '/community?threadId=comm_msg_1');
+  });
+
+  it('9. Community reply delivers COMMUNITY_REPLY to thread author and deep links properly', async () => {
+    const notifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.COMMUNITY_REPLY,
+      {
+        workspaceId: 'community',
+        channelId: 'general',
+        parentMessageId: 'comm_msg_1',
+        replyId: 'comm_rep_1',
+        content: 'I agree with this proposal approach!',
+        parentAuthorId: 'user_owner',
+      },
+      { uid: 'user_member2', displayName: 'Charlie Coder' }
+    );
+
+    assert.strictEqual(notifs.length, 1);
+    const notif = notifs[0];
+    assert.strictEqual(notif.recipientId, 'user_owner');
+    assert.strictEqual(notif.type, NOTIFICATION_TYPES.COMMUNITY_REPLY);
+    assert.ok(notif.title.includes('replied to your community discussion'));
+    assert.strictEqual(notif.actionUrl, '/community?threadId=comm_msg_1&replyId=comm_rep_1');
+
+    // Self-reply suppression
+    const selfNotifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.COMMUNITY_REPLY,
+      {
+        workspaceId: 'community',
+        channelId: 'general',
+        parentMessageId: 'comm_msg_1',
+        replyId: 'comm_rep_2',
+        content: 'Replying to myself',
+        parentAuthorId: 'user_owner',
+      },
+      { uid: 'user_owner', displayName: 'Alice Owner' }
+    );
+    assert.strictEqual(selfNotifs.length, 0, 'Self-reply in community must be suppressed');
+  });
+
+  it('10. Community reaction delivers CHAT_REACTION to discussion author with community deep link', async () => {
+    const notifs = await notificationService.dispatchNotificationEvent(
+      NOTIFICATION_TYPES.CHAT_REACTION,
+      {
+        workspaceId: 'community',
+        channelId: 'general',
+        messageId: 'comm_msg_1',
+        emoji: '🔥',
+        recipientId: 'user_owner',
+        content: 'Check out this new architecture discussion!',
+      },
+      { uid: 'user_member2', displayName: 'Charlie Coder' }
+    );
+
+    assert.strictEqual(notifs.length, 1);
+    const notif = notifs[0];
+    assert.strictEqual(notif.recipientId, 'user_owner');
+    assert.strictEqual(notif.type, NOTIFICATION_TYPES.CHAT_REACTION);
+    assert.ok(notif.title.includes('reacted 🔥 to your discussion'));
+    assert.strictEqual(notif.actionUrl, '/community?threadId=comm_msg_1');
+  });
 });

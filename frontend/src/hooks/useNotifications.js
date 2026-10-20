@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './useAuth';
 import { inAppNotificationService } from '../services/inAppNotificationService';
 import { setupForegroundMessageHandler, syncWebPushToken } from '../services/fcmService';
+import { NotificationService } from '../services/notificationService';
 
 /**
  * Convia Phase 7A: Authoritative Persistent Notification Hook.
@@ -70,9 +71,15 @@ export function useNotifications() {
       console.warn('[useNotifications] Token sync warning:', err?.message || err);
     });
 
-    const unsubFcm = setupForegroundMessageHandler((_payload) => {
-      // Foreground push handler: RTDB stream updates notification feed state.
-      // Intentionally quiet — no duplicate foreground toasts generated.
+    const unsubFcm = setupForegroundMessageHandler((payload) => {
+      // Show in-app foreground notification toast when push arrives in active tab
+      const data = payload?.data || {};
+      const notif = payload?.notification || {};
+      const title = data.title || notif.title;
+      const body = data.body || notif.body;
+      if (title || body) {
+        NotificationService.show(`${title ? `${title}: ` : ''}${body || ''}`, 'info', 5000);
+      }
     });
 
     return () => {

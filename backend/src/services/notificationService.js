@@ -327,6 +327,36 @@ export const notificationService = {
           });
         }
 
+        case NOTIFICATION_TYPES.MVP_SELECTED:
+        case NOTIFICATION_TYPES.PROJECT_SELECTED_AS_MVP: {
+          const { workspaceId, ideaId, ideaTitle, authorId, orgName } = eventData;
+          if (!workspaceId || !ideaId) return [];
+
+          const members = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          const allEligible = Array.from(new Set([
+            ...(authorId ? [authorId] : []),
+            ...members,
+          ])).filter((uid) => uid && uid !== actorUid);
+
+          if (allEligible.length === 0) return [];
+
+          return await notificationService.createNotificationsForRecipients(allEligible, {
+            type: NOTIFICATION_TYPES.MVP_SELECTED,
+            workspaceId,
+            orgId: workspaceId,
+            title: `🏆 MVP Selected: ${ideaTitle || 'Winning Proposal'}`,
+            body: `${actorName} selected "${ideaTitle || 'a proposal'}" as the winning MVP for ${orgName || 'the workspace'}!`,
+            actorId: actorUid,
+            actorName,
+            actorAvatar,
+            resourceType: 'idea',
+            resourceId: ideaId,
+            actionUrl: `/workspaces/${workspaceId}/blueprint`,
+            dedupeKey: `mvp_select_${workspaceId}_${ideaId}`,
+            metadata: { workspaceId, ideaId, ideaTitle },
+          });
+        }
+
         // -------------------------------------------------------------
         // 2. IDEA EVENTS
         // -------------------------------------------------------------
@@ -347,6 +377,34 @@ export const notificationService = {
             resourceId: ideaId,
             actionUrl: `/workspaces/${workspaceId}/ideas/${ideaId}`,
             metadata: { ideaId, workspaceId },
+          });
+        }
+
+        case NOTIFICATION_TYPES.PUBLIC_IDEA_CREATED:
+        case NOTIFICATION_TYPES.PUBLIC_IDEA_POSTED: {
+          const { ideaId, title, category } = eventData;
+          if (!ideaId) return [];
+
+          // Notify all active platform users with registered device tokens
+          const tokensMap = await rtdbService.getData('fcm_tokens').catch(() => null);
+          const candidateUids = tokensMap && typeof tokensMap === 'object'
+            ? Object.keys(tokensMap).filter((uid) => uid && uid !== actorUid)
+            : [];
+
+          if (candidateUids.length === 0) return [];
+
+          return await notificationService.createNotificationsForRecipients(candidateUids, {
+            type: NOTIFICATION_TYPES.PUBLIC_IDEA_CREATED,
+            title: `💡 New Public Idea: ${title || 'Untitled'}`,
+            body: `${actorName} posted a public proposal: "${(title || 'Untitled').substring(0, 80)}"`,
+            actorId: actorUid,
+            actorName,
+            actorAvatar,
+            resourceType: 'public_idea',
+            resourceId: ideaId,
+            actionUrl: `/explore?ideaId=${ideaId}`,
+            dedupeKey: `pub_idea_${ideaId}`,
+            metadata: { ideaId, title, category },
           });
         }
 
@@ -469,6 +527,55 @@ export const notificationService = {
           });
         }
 
+        case NOTIFICATION_TYPES.COMMUNITY_POST: {
+          const { messageId, content, postType = 'discussion', excludedUids = [], recipients: customRecipients } = eventData;
+          if (!messageId) return [];
+
+          let targetRecipients = customRecipients;
+          if (!Array.isArray(targetRecipients) || targetRecipients.length === 0) {
+            const tokensMap = await rtdbService.getData('fcm_tokens').catch(() => null);
+            let candidateUids = tokensMap && typeof tokensMap === 'object'
+              ? Object.keys(tokensMap).filter((uid) => uid && uid !== actorUid)
+              : [];
+            if (candidateUids.length === 0) {
+              const usersSnap = await rtdbService.getData('users').catch(() => null);
+              if (usersSnap && typeof usersSnap === 'object') {
+                candidateUids = Object.keys(usersSnap).filter((uid) => uid && uid !== actorUid);
+              }
+            }
+            targetRecipients = candidateUids;
+          }
+
+          const excludeSet = new Set([actorUid, ...(excludedUids || [])].filter(Boolean));
+          const finalRecipients = (targetRecipients || []).filter((uid) => !excludeSet.has(uid));
+          if (finalRecipients.length === 0) return [];
+
+          const typeLabel = postType === 'idea' ? 'Idea' : postType === 'question' ? 'Question' : postType === 'collaboration' ? 'Collaboration' : 'Discussion';
+          const preview = (content || '').substring(0, 100);
+          const deepLink = `/community?threadId=${messageId}`;
+
+          return await notificationService.createNotificationsForRecipients(finalRecipients, {
+            type: NOTIFICATION_TYPES.COMMUNITY_POST,
+            workspaceId: 'community',
+            orgId: 'community',
+            channelId: 'general',
+            title: `New Community ${typeLabel}`,
+            body: `${actorName}: "${preview}"`,
+            previewText: content,
+            actorId: actorUid,
+            senderId: actorUid,
+            actorName,
+            senderName: actorName,
+            actorAvatar,
+            senderAvatar: actorAvatar,
+            resourceType: 'community_post',
+            resourceId: messageId,
+            actionUrl: deepLink,
+            metadata: { messageId, postType, workspaceId: 'community' },
+            dedupeKey: `comm_post_${messageId}_${actorUid}`,
+          });
+        }
+
         case NOTIFICATION_TYPES.CHAT_MENTION:
         case NOTIFICATION_TYPES.MENTION: {
           const { workspaceId, channelId = 'general', messageId, content, mentionedUids = [], parentMessageId = null } = eventData;
@@ -537,13 +644,13 @@ export const notificationService = {
 
           const activeChannel = (channelId || 'general').trim();
           const preview = (content || '').substring(0, 100);
-          const isCommunityReply = workspaceId === 'community' || workspaceId === 'public';
+          const isCommunityReply = workspaceId === 'community' || workspaceId === 'public' || eventType === NOTIFICATION_TYPES.COMMUNITY_REPLY;
           const deepLink = isCommunityReply
             ? `/community?threadId=${parentMessageId}&replyId=${replyId}`
             : `/workspaces/${workspaceId}/chat?channel=${activeChannel}&threadId=${parentMessageId}&replyId=${replyId}`;
 
           return await notificationService.createNotificationsForRecipients(validRecipients, {
-            type: NOTIFICATION_TYPES.MESSAGE_REPLY,
+            type: isCommunityReply ? NOTIFICATION_TYPES.COMMUNITY_REPLY : NOTIFICATION_TYPES.MESSAGE_REPLY,
             workspaceId,
             orgId: workspaceId,
             channelId: activeChannel,
@@ -558,12 +665,14 @@ export const notificationService = {
             senderName: actorName,
             actorAvatar,
             senderAvatar: actorAvatar,
-            resourceType: 'chat_reply',
+            resourceType: isCommunityReply ? 'community_reply' : 'chat_reply',
             resourceId: replyId,
             secondaryEntityId: parentMessageId,
             actionUrl: deepLink,
             metadata: { channelId: activeChannel, parentMessageId, replyId, workspaceId },
-            dedupeKey: `chat_reply_${workspaceId}_${activeChannel}_${parentMessageId}_${replyId}_${actorUid}`,
+            dedupeKey: isCommunityReply
+              ? `comm_reply_${parentMessageId}_${replyId}_${actorUid}`
+              : `chat_reply_${workspaceId}_${activeChannel}_${parentMessageId}_${replyId}_${actorUid}`,
           });
         }
 
@@ -743,12 +852,11 @@ export const notificationService = {
 
         case NOTIFICATION_TYPES.TASK_COMPLETED: {
           const { workspaceId, taskId, taskTitle, createdByUid } = eventData;
-          let recipients = [];
-          if (createdByUid && createdByUid !== actorUid) {
-            recipients = [createdByUid];
-          } else {
-            recipients = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
-          }
+          const workspaceMembers = await notificationService.resolveWorkspaceRecipients(workspaceId, actorUid);
+          const recipients = Array.from(new Set([
+            ...(createdByUid ? [createdByUid] : []),
+            ...workspaceMembers,
+          ])).filter((uid) => uid && uid !== actorUid);
 
           if (recipients.length === 0) return [];
 

@@ -28,6 +28,24 @@ export function LandingFooter() {
             <p className="text-xs text-slate-300 font-medium leading-relaxed max-w-sm">
               Where Ideas Converge into Action. Convia brings together scattered ideas, team discussion, weighted voting, and instant AI technical blueprints into a single actionable direction.
             </p>
+
+            {/* Product Hunt Launch Badge */}
+            <div className="pt-2">
+              <a
+                href="https://www.producthunt.com/products/convia?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-convia"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block hover:opacity-90 transition-opacity"
+              >
+                <img
+                  src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1273405&theme=light&t=1792481485424"
+                  alt="Convia  - Where Ideas Converge into Action. | Product Hunt"
+                  width="250"
+                  height="54"
+                  className="w-[220px] sm:w-[250px] h-auto rounded-xl shadow-md"
+                />
+              </a>
+            </div>
           </div>
 
           {/* Navigation Links aligned with Landing Page sequence */}

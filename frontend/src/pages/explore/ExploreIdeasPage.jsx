@@ -213,13 +213,13 @@ export default function ExploreIdeasPage() {
         title="Explore Public Ideas"
         subtitle="Discover, vote, and suggest technical iterations on community proposal drafts"
         action={
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             {user && (
               <Button
                 variant="outline"
                 size="sm"
                 icon={<Inbox className="h-4 w-4 text-indigo-600" />}
-                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-xs font-semibold relative"
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-xs font-semibold relative whitespace-nowrap"
                 onClick={() => setIsImportRequestsOpen(true)}
               >
                 <span>Import Requests</span>
@@ -234,22 +234,23 @@ export default function ExploreIdeasPage() {
               variant="outline"
               size="sm"
               icon={<Globe className="h-4 w-4 text-emerald-600" />}
-              className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-xs font-semibold"
+              className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 shadow-xs font-semibold whitespace-nowrap"
               onClick={() => {
                 setCommunityChatContext(null);
                 setIsCommunityChatOpen(true);
               }}
             >
-              Community Channel
+              <span>Community</span>
+              <span className="hidden sm:inline">&nbsp;Channel</span>
             </Button>
             <Button
               variant="primary"
               size="sm"
               icon={<Plus className="h-4 w-4" />}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold whitespace-nowrap"
               onClick={handleOpenCreateModal}
             >
-              + Post Public Proposal
+              <span>Public Proposal</span>
             </Button>
           </div>
         }
@@ -308,7 +309,7 @@ export default function ExploreIdeasPage() {
                     : ''
                 }`}
               >
-                <Card hover className="flex flex-col justify-between h-full p-6 bg-white border border-slate-200">
+                <Card hover className="flex flex-col justify-between h-full p-4 sm:p-6 bg-white border border-slate-200">
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-3">
                       <div className="flex flex-wrap items-center gap-1.5">
@@ -408,12 +409,13 @@ export default function ExploreIdeasPage() {
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Avatar name={isAuthor ? user?.displayName || user?.email : resolveName(idea.authorId, idea.authorName)} size="sm" />
                       {isAuthor ? (
-                        <span className="text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200/60 px-2 py-0.5 rounded-md flex items-center gap-1">
-                          <UserCheck className="h-3 w-3 text-primary-600" /> Created by You
+                        <span className="text-xs font-bold text-primary-700 bg-primary-50 border border-primary-200/60 px-2 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap shrink-0">
+                          <UserCheck className="h-3 w-3 text-primary-600" />
+                          <span className="hidden sm:inline">Created by </span>You
                         </span>
                       ) : (
                         <span className="text-xs font-semibold text-slate-800 truncate max-w-[120px]">
@@ -422,11 +424,11 @@ export default function ExploreIdeasPage() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
-                      <span className="flex items-center gap-1 font-semibold text-primary-600">
+                    <div className="flex items-center gap-2.5 text-xs font-medium text-slate-500 shrink-0">
+                      <span className="flex items-center gap-1 font-semibold text-primary-600 whitespace-nowrap">
                         <ThumbsUp className="h-3.5 w-3.5" /> {idea.voteCount || 0}
                       </span>
-                      <span className="flex items-center gap-1 font-bold text-primary-600 hover:underline">
+                      <span className="flex items-center gap-1 font-bold text-primary-600 hover:underline whitespace-nowrap">
                         <MessageCircle className="h-3.5 w-3.5 text-primary-500" /> Suggest
                         <ArrowRight className="h-3 w-3 ml-0.5" />
                       </span>

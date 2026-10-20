@@ -574,6 +574,7 @@ export function validateReactionToggle({
     valid: true,
     cleanEmoji: emoji.trim(),
     userId: user.uid.trim(),
+    user,
   };
 }
 

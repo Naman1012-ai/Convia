@@ -207,11 +207,31 @@ chatRouter.get('/channels/:channelId/pins', async (req, res) => {
 
     const rootPath = `workspaceChats/${workspaceId}/channels/${channelId}/pinnedMessages`;
     const pinsMap = (await rtdbService.getData(rootPath)) || {};
+    const messagesPath = `workspaceChats/${workspaceId}/channels/${channelId}/messages`;
+    const messagesMap = (await rtdbService.getData(messagesPath)) || {};
 
+    const orphanIds = [];
     const pinsList = Object.entries(pinsMap)
       .map(([k, v]) => ({ ...(typeof v === 'object' ? v : {}), messageId: v?.messageId || k }))
-      .filter((p) => p && p.messageId)
+      .filter((p) => {
+        if (!p || !p.messageId) return false;
+        if (p.deleted === true || p.content === 'This message was deleted') {
+          orphanIds.push(p.messageId);
+          return false;
+        }
+        const msg = messagesMap[p.messageId];
+        if (msg && (msg.deleted === true || msg.content === 'This message was deleted')) {
+          orphanIds.push(p.messageId);
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+
+    // Self-healing: asynchronously purge orphan deleted pins from RTDB
+    if (orphanIds.length > 0) {
+      Promise.all(orphanIds.map((id) => rtdbService.removeData(`${rootPath}/${id}`))).catch(() => {});
+    }
 
     res.json({ success: true, data: pinsList });
   } catch (err) {
@@ -335,10 +355,30 @@ chatRouter.get('/community/pins', async (req, res) => {
       }
     }
 
+    const messagesMap = (await rtdbService.getData('publicChats/ideas/messages')) || {};
+    const orphanCommunityIds = [];
+
     const pinsList = Object.entries(pinsMap)
       .map(([k, v]) => ({ ...(typeof v === 'object' ? v : {}), messageId: v?.messageId || k }))
-      .filter((p) => p && p.messageId)
+      .filter((p) => {
+        if (!p || !p.messageId) return false;
+        if (p.deleted === true || p.content === 'This message was deleted') {
+          orphanCommunityIds.push(p.messageId);
+          return false;
+        }
+        const msg = messagesMap[p.messageId];
+        if (msg && (msg.deleted === true || msg.content === 'This message was deleted')) {
+          orphanCommunityIds.push(p.messageId);
+          return false;
+        }
+        return true;
+      })
       .sort((a, b) => (Number(b.pinnedAt) || 0) - (Number(a.pinnedAt) || 0));
+
+    // Self-healing: asynchronously purge orphan deleted community pins from RTDB
+    if (orphanCommunityIds.length > 0) {
+      Promise.all(orphanCommunityIds.map((id) => rtdbService.removeData(`${rootPath}/${id}`))).catch(() => {});
+    }
 
     res.json({ success: true, data: pinsList });
   } catch (err) {

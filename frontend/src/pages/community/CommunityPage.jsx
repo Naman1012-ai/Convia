@@ -11,6 +11,7 @@ import {
   Compass,
   Sparkles,
   ArrowRight,
+  ArrowDown,
   Filter,
   Loader2,
   RefreshCw,
@@ -106,11 +107,15 @@ export default function CommunityPage() {
 
   const pinnedDiscussionsList = useMemo(() => {
     const messageLookup = new Map(messages.map((m) => [m.messageId, m]));
-    return Object.values(pinnedDiscussionsMap)
-      .map((pin) => {
-        const fullMsg = messageLookup.get(pin.messageId);
-        return fullMsg ? { ...fullMsg, ...pin } : pin;
+    return Object.entries(pinnedDiscussionsMap)
+      .map(([k, pin]) => {
+        const obj = pin && typeof pin === 'object' ? pin : { messageId: k };
+        const id = obj.messageId || k;
+        const fullMsg = messageLookup.get(id);
+        const merged = fullMsg ? { ...fullMsg, ...obj } : obj;
+        return { ...merged, messageId: id };
       })
+      .filter((p) => p && p.messageId && !p.deleted && p.content !== 'This message was deleted')
       .sort((a, b) => Number(b.pinnedAt || 0) - Number(a.pinnedAt || 0));
   }, [pinnedDiscussionsMap, messages]);
 
@@ -165,6 +170,40 @@ export default function CommunityPage() {
 
   const composerRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const messageListContainerRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const isNearBottomRef = useRef(true);
+  const isInitialScrollDoneRef = useRef(false);
+  const prevMessagesCountRef = useRef(0);
+  const [hasUnreadBelow, setHasUnreadBelow] = useState(false);
+
+  // Auto-scroll helper: Scrolls message container and sentinel into view
+  const scrollToBottom = useCallback((behavior = 'smooth') => {
+    requestAnimationFrame(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior, block: 'end' });
+      }
+      if (messageListContainerRef.current) {
+        messageListContainerRef.current.scrollTo({
+          top: messageListContainerRef.current.scrollHeight,
+          behavior,
+        });
+      }
+      setHasUnreadBelow(false);
+    });
+  }, []);
+
+  // Track scroll proximity to bottom inside message container
+  const handleScroll = useCallback(() => {
+    const el = messageListContainerRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+    const isNear = distanceFromBottom < 180;
+    isNearBottomRef.current = isNear;
+    if (isNear) {
+      setHasUnreadBelow(false);
+    }
+  }, []);
 
   // 1. Subscribe to Live Community Messages
   useEffect(() => {
@@ -282,6 +321,40 @@ export default function CommunityPage() {
     }
   }, [loading, searchParams, messages]);
 
+  // 9. Auto-scroll: Keep user at bottom on initial load and when new messages arrive (like workspace chat)
+  useEffect(() => {
+    if (loading) return;
+
+    // Deep link navigation to a specific message should not be overridden by auto-bottom scroll
+    const targetMsgId = searchParams.get('messageId');
+    if (targetMsgId) return;
+
+    if (messages.length > 0) {
+      if (!isInitialScrollDoneRef.current) {
+        isInitialScrollDoneRef.current = true;
+        prevMessagesCountRef.current = messages.length;
+        // Initial auto-scroll to bottom like workspace chat
+        scrollToBottom('auto');
+        const t1 = setTimeout(() => scrollToBottom('auto'), 80);
+        const t2 = setTimeout(() => scrollToBottom('auto'), 250);
+        return () => {
+          clearTimeout(t1);
+          clearTimeout(t2);
+        };
+      } else if (messages.length > prevMessagesCountRef.current) {
+        const lastMsg = messages[messages.length - 1];
+        const isOwn = lastMsg && (lastMsg.senderId === effectiveUser?.uid || lastMsg.authorId === effectiveUser?.uid);
+
+        if (isNearBottomRef.current || isOwn) {
+          scrollToBottom('smooth');
+        } else {
+          setHasUnreadBelow(true);
+        }
+        prevMessagesCountRef.current = messages.length;
+      }
+    }
+  }, [loading, messages, searchParams, scrollToBottom, effectiveUser?.uid]);
+
   // Context-aware notification clearing: Clear notifications for open thread or general community view
   useEffect(() => {
     if (!user?.uid || loading) return;
@@ -311,6 +384,7 @@ export default function CommunityPage() {
       else next.set('type', filterId);
       return next;
     });
+    setTimeout(() => scrollToBottom('auto'), 60);
   };
 
   // Sort change handler
@@ -373,6 +447,11 @@ export default function CommunityPage() {
 
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       chatService.setPublicIdeaChatTypingState(effectiveUser, false).catch(() => {});
+
+      // Automatically keep user at bottom like workspace chat after sending
+      scrollToBottom('smooth');
+      setTimeout(() => scrollToBottom('smooth'), 80);
+      setTimeout(() => scrollToBottom('smooth'), 220);
 
       if (postType === COMMUNITY_POST_TYPES.IDEA) {
         toast.success('Idea posted to community!');
@@ -780,11 +859,11 @@ export default function CommunityPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4 space-y-4">
+    <div className="h-full flex flex-col min-h-0 w-full overflow-hidden space-y-3">
       {/* ============================================================ */}
       {/* TOP HEADER — Clean, focused, non-congested                    */}
       {/* ============================================================ */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-2xs">
             <Globe className="h-5 w-5" />
@@ -899,7 +978,7 @@ export default function CommunityPage() {
 
       {/* Expandable Scoped Search Bar */}
       {isSearchVisible && (
-        <div className="relative animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="relative animate-in fade-in slide-in-from-top-1 duration-150 shrink-0">
           <Input
             placeholder="Search discussions by keyword, idea, or author name..."
             value={searchQuery}
@@ -923,12 +1002,12 @@ export default function CommunityPage() {
       {/* ============================================================ */}
       {/* THREE-ZONE RESPONSIVE LAYOUT (Dominant Center Feed)           */}
       {/* ============================================================ */}
-      <div className="flex items-start gap-4 lg:gap-6 min-h-[600px]">
+      <div className="flex-1 min-h-0 flex items-stretch gap-4 lg:gap-6 overflow-hidden">
         {/* ======================================================== */}
         {/* ZONE 1 (LEFT): Community Navigation                      */}
         {/* ======================================================== */}
         <aside
-          className={`hidden lg:block shrink-0 sticky top-20 transition-all duration-200 ${
+          className={`hidden lg:flex flex-col shrink-0 h-full overflow-y-auto transition-all duration-200 ${
             isLeftNavCollapsed ? 'w-14' : 'w-56'
           }`}
         >
@@ -946,18 +1025,9 @@ export default function CommunityPage() {
         {/* ======================================================== */}
         {/* ZONE 2 (CENTER): Main Discussion Stream (DOMINANT)       */}
         {/* ======================================================== */}
-        <main className="flex-1 min-w-0 max-w-4xl space-y-3 mx-auto">
-          {/* Welcome / Intro Card */}
-          <CommunityWelcomeCard
-            onStartDiscussion={handleFocusComposer}
-            isDismissed={isWelcomeDismissed}
-            onDismiss={() => setIsWelcomeDismissed(true)}
-            hasExistingMessages={messages.length > 0}
-            totalDiscussions={discussionCounts.all || 0}
-          />
-
-          {/* Sticky Toolbar: Topic Segmented Control + Sort */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 pb-1">
+        <main className="flex-1 min-w-0 max-w-4xl flex flex-col h-full overflow-hidden bg-white/70 sm:rounded-2xl border border-slate-200/80 shadow-xs relative mx-auto">
+          {/* Pinned Toolbar inside Chat Box: Quick Topic Chips + Sort */}
+          <div className="shrink-0 px-3 sm:px-4 py-2 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-10">
             {/* Quick Topic Chips */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
               {topicTabs.map((tab) => {
@@ -1008,139 +1078,169 @@ export default function CommunityPage() {
             </div>
           </div>
 
-          {/* Discussion Feed */}
-          {loading || (activeFilter === 'saved' && savedLoading) || (activeFilter === 'my_replies' && repliesLoading) ? (
-            <div className="space-y-3 py-2">
-              <LoadingSkeleton variant="card" count={3} />
-            </div>
-          ) : error ? (
-            <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-3">
-              <AlertCircle className="h-8 w-8 text-rose-500 mx-auto" />
-              <div>
-                <h3 className="text-sm font-bold text-rose-900">Connection Error</h3>
-                <p className="text-xs text-rose-700 mt-1">{error}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.location.reload()}
-                className="border-rose-300 text-rose-800 hover:bg-rose-100 cursor-pointer"
-              >
-                Retry
-              </Button>
-            </div>
-          ) : filteredMessages.length === 0 ? (
-            <EmptyState
-              icon={<MessageCircle className="h-8 w-8 text-slate-400" />}
-              title={
-                searchQuery
-                  ? 'No matching discussions found'
-                  : activeFilter === 'saved'
-                  ? "You haven't saved any discussions yet"
-                  : activeFilter === 'my_discussions'
-                  ? "You haven't started a discussion yet"
-                  : activeFilter === 'my_replies'
-                  ? "You haven't replied to any discussions yet"
-                  : activeFilter === 'idea'
-                  ? 'No ideas shared yet'
-                  : activeFilter === 'question'
-                  ? 'No questions yet'
-                  : 'No discussions yet'
-              }
-              description={
-                searchQuery
-                  ? 'Try searching with different keywords or clearing your search filter.'
-                  : activeFilter === 'saved'
-                  ? 'Bookmark interesting community posts using the three-dot menu to access them quickly here.'
-                  : activeFilter === 'my_discussions'
-                  ? 'Share your first idea, question, or thought with the community below.'
-                  : activeFilter === 'my_replies'
-                  ? 'Join ongoing conversations from the community feed to see your threads here.'
-                  : 'Be the first creator to start the conversation in this channel.'
-              }
-              action={
-                searchQuery ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSearchChange('')}
-                  >
-                    Clear Search
-                  </Button>
-                ) : activeFilter === 'my_replies' || activeFilter === 'saved' ? (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleSelectFilter('all')}
-                  >
-                    Explore All Discussions
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleFocusComposer}
-                  >
-                    Start a Discussion
-                  </Button>
-                )
-              }
+          {/* Independently Scrollable Discussion Messages Stream Area */}
+          <div
+            ref={messageListContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-5 py-3 space-y-2 relative"
+          >
+            {/* Welcome / Intro Card */}
+            <CommunityWelcomeCard
+              onStartDiscussion={handleFocusComposer}
+              isDismissed={isWelcomeDismissed}
+              onDismiss={() => setIsWelcomeDismissed(true)}
+              hasExistingMessages={messages.length > 0}
+              totalDiscussions={discussionCounts.all || 0}
             />
-          ) : (
-            <div className="flex flex-col py-1">
-              {decoratedFeed.map((item) => {
-                if (item.type === 'date_divider' || item.isDivider) {
+
+            {/* Discussion Feed */}
+            {loading || (activeFilter === 'saved' && savedLoading) || (activeFilter === 'my_replies' && repliesLoading) ? (
+              <div className="space-y-3 py-2">
+                <LoadingSkeleton variant="card" count={3} />
+              </div>
+            ) : error ? (
+              <div className="p-6 rounded-2xl bg-rose-50 border border-rose-200 text-center space-y-3">
+                <AlertCircle className="h-8 w-8 text-rose-500 mx-auto" />
+                <div>
+                  <h3 className="text-sm font-bold text-rose-900">Connection Error</h3>
+                  <p className="text-xs text-rose-700 mt-1">{error}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.reload()}
+                  className="border-rose-300 text-rose-800 hover:bg-rose-100 cursor-pointer"
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : filteredMessages.length === 0 ? (
+              <EmptyState
+                icon={<MessageCircle className="h-8 w-8 text-slate-400" />}
+                title={
+                  searchQuery
+                    ? 'No matching discussions found'
+                    : activeFilter === 'saved'
+                    ? "You haven't saved any discussions yet"
+                    : activeFilter === 'my_discussions'
+                    ? "You haven't started a discussion yet"
+                    : activeFilter === 'my_replies'
+                    ? "You haven't replied to any discussions yet"
+                    : activeFilter === 'idea'
+                    ? 'No ideas shared yet'
+                    : activeFilter === 'question'
+                    ? 'No questions yet'
+                    : 'No discussions yet'
+                }
+                description={
+                  searchQuery
+                    ? 'Try searching with different keywords or clearing your search filter.'
+                    : activeFilter === 'saved'
+                    ? 'Bookmark interesting community posts using the three-dot menu to access them quickly here.'
+                    : activeFilter === 'my_discussions'
+                    ? 'Share your first idea, question, or thought with the community below.'
+                    : activeFilter === 'my_replies'
+                    ? 'Join ongoing conversations from the community feed to see your threads here.'
+                    : 'Be the first creator to start the conversation in this channel.'
+                }
+                action={
+                  searchQuery ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSearchChange('')}
+                    >
+                      Clear Search
+                    </Button>
+                  ) : activeFilter === 'my_replies' || activeFilter === 'saved' ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleSelectFilter('all')}
+                    >
+                      Explore All Discussions
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleFocusComposer}
+                    >
+                      Start a Discussion
+                    </Button>
+                  )
+                }
+              />
+            ) : (
+              <div className="flex flex-col py-1">
+                {decoratedFeed.map((item) => {
+                  if (item.type === 'date_divider' || item.isDivider) {
+                    return (
+                      <ChatDateDivider
+                        key={item.id}
+                        label={item.label || item.dateLabel}
+                      />
+                    );
+                  }
+
+                  if (!item || !item.message) return null;
+
                   return (
-                    <ChatDateDivider
-                      key={item.id}
-                      label={item.label || item.dateLabel}
+                    <CommunityDiscussionCard
+                      key={item.message.messageId || item.id}
+                      message={item.message}
+                      currentUserId={effectiveUser?.uid}
+                      isAdmin={userProfile?.isAdmin || userProfile?.role === 'admin' || userProfile?.role === 'superadmin'}
+                      reactions={channelReactions[item.message.messageId] || {}}
+                      replyCount={channelReplyCounts[item.message.messageId] || 0}
+                      isGrouped={item.isGrouped}
+                      isFirstInGroup={item.isFirstInGroup}
+                      isLastInGroup={item.isLastInGroup}
+                      timeLabel={item.timeLabel}
+                      fullDateLabel={item.fullDateLabel}
+                      onOpenThread={handleOpenThread}
+                      onToggleReaction={handleToggleReaction}
+                      onEditMessage={handleEditMessage}
+                      onDeleteMessage={(m) => setMessageToDelete(m)}
+                      onTurnIntoIdea={handleTurnIntoIdea}
+                      isHighlighted={highlightedMessageId === item.message.messageId}
+                      isSaved={Boolean(savedDiscussionsMap[item.message.messageId])}
+                      onToggleSave={handleToggleSave}
+                      isPinned={Boolean(pinnedDiscussionsMap[item.message.messageId])}
+                      onTogglePin={handleTogglePin}
+                      onOpenProfile={setProfilePopoverMember}
+                      activeMenuMessageId={activeMenuState?.messageId || null}
+                      menuAnchorRect={activeMenuState?.messageId === item.message.messageId ? activeMenuState.anchorRect : null}
+                      onOpenMenu={handleOpenMenu}
+                      onCloseMenu={handleCloseMenu}
                     />
                   );
-                }
+                })}
+                {/* Messages End Sentinel for Auto-Scrolling to bottom */}
+                <div ref={messagesEndRef} className="h-2 shrink-0" aria-hidden="true" />
+              </div>
+            )}
+          </div>
 
-                if (!item || !item.message) return null;
-
-                return (
-                  <CommunityDiscussionCard
-                    key={item.message.messageId || item.id}
-                    message={item.message}
-                    currentUserId={effectiveUser?.uid}
-                    isAdmin={userProfile?.isAdmin || userProfile?.role === 'admin' || userProfile?.role === 'superadmin'}
-                    reactions={channelReactions[item.message.messageId] || {}}
-                    replyCount={channelReplyCounts[item.message.messageId] || 0}
-                    isGrouped={item.isGrouped}
-                    isFirstInGroup={item.isFirstInGroup}
-                    isLastInGroup={item.isLastInGroup}
-                    timeLabel={item.timeLabel}
-                    fullDateLabel={item.fullDateLabel}
-                    onOpenThread={handleOpenThread}
-                    onToggleReaction={handleToggleReaction}
-                    onEditMessage={handleEditMessage}
-                    onDeleteMessage={(m) => setMessageToDelete(m)}
-                    onTurnIntoIdea={handleTurnIntoIdea}
-                    isHighlighted={highlightedMessageId === item.message.messageId}
-                    isSaved={Boolean(savedDiscussionsMap[item.message.messageId])}
-                    onToggleSave={handleToggleSave}
-                    isPinned={Boolean(pinnedDiscussionsMap[item.message.messageId])}
-                    onTogglePin={handleTogglePin}
-                    onOpenProfile={setProfilePopoverMember}
-                    activeMenuMessageId={activeMenuState?.messageId || null}
-                    menuAnchorRect={activeMenuState?.messageId === item.message.messageId ? activeMenuState.anchorRect : null}
-                    onOpenMenu={handleOpenMenu}
-                    onCloseMenu={handleCloseMenu}
-                  />
-                );
-              })}
+          {/* Floating Scroll-To-Bottom Pill when user scrolls up or new messages arrive */}
+          {hasUnreadBelow && (
+            <div className="absolute bottom-20 right-4 sm:right-6 z-20 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <button
+                type="button"
+                onClick={() => scrollToBottom('smooth')}
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xl transition-all transform hover:scale-105 cursor-pointer ring-2 ring-white/50"
+                aria-label="Scroll to latest messages"
+              >
+                <ArrowDown className="h-3.5 w-3.5 animate-bounce" />
+                <span>New messages below</span>
+              </button>
             </div>
           )}
 
-          {/* Spacer to guarantee the last discussion message is completely visible above the sticky composer */}
-          <div className="h-6 sm:h-8 shrink-0" aria-hidden="true" />
-
-          {/* Sticky Bottom Discussion Composer */}
+          {/* Pinned Bottom Discussion Composer */}
           <div
             ref={composerRef}
-            className="sticky bottom-0 z-20 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-gradient-to-t from-slate-50 via-slate-50/95 to-slate-50/0 backdrop-blur-xs"
+            className="shrink-0 border-t border-slate-200/80 bg-white/95 backdrop-blur-xs p-2.5 sm:p-3.5 z-10"
           >
             {/* Real-time typing indicators */}
             {activeTypersText && (
@@ -1161,7 +1261,7 @@ export default function CommunityPage() {
         {/* ZONE 3 (RIGHT): Community Discovery Panel (Collapsible)   */}
         {/* ======================================================== */}
         {isRightPanelOpen && (
-          <aside className="hidden xl:block shrink-0 w-72 sticky top-20 space-y-4">
+          <aside className="hidden xl:flex flex-col shrink-0 w-72 h-full overflow-y-auto space-y-4">
             <CommunityDiscoveryPanel
               messages={messages}
               replyCounts={channelReplyCounts}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Pin, PinOff, X, CornerDownRight, Trash2, ExternalLink, Loader2, Mic } from 'lucide-react';
 import { chatService } from '../../services/chatService';
@@ -61,6 +61,43 @@ export function ChatPinnedMessagesDrawer({
     };
   }, [isOpen, workspaceId, channelId]);
 
+  // Derive valid, non-deleted pinned messages
+  const validPinnedList = useMemo(() => {
+    return pinnedList.filter((item) => {
+      if (!item || !item.messageId) return false;
+      if (item.deleted || item.content === 'This message was deleted') return false;
+      const matched = messages.find(
+        (m) => m && (m.messageId === item.messageId || m.id === item.messageId)
+      );
+      if (matched && (matched.deleted || matched.content === 'This message was deleted')) {
+        return false;
+      }
+      return true;
+    });
+  }, [pinnedList, messages]);
+
+  // Self-healing: Automatically clean up orphan pins in database if target message was deleted
+  useEffect(() => {
+    if (!isOpen || !workspaceId || !channelId || pinnedList.length === 0) return;
+
+    pinnedList.forEach((item) => {
+      if (!item?.messageId) return;
+      const matched = messages.find(
+        (m) => m && (m.messageId === item.messageId || m.id === item.messageId)
+      );
+      const isDeleted =
+        Boolean(item.deleted) ||
+        item.content === 'This message was deleted' ||
+        Boolean(matched?.deleted) ||
+        matched?.content === 'This message was deleted';
+
+      if (isDeleted) {
+        console.info('[ChatPinnedMessagesDrawer] Auto-purging deleted pinned message:', item.messageId);
+        chatService.unpinMessage(workspaceId, channelId, item.messageId).catch(() => {});
+      }
+    });
+  }, [isOpen, workspaceId, channelId, pinnedList, messages]);
+
   if (!isOpen) return null;
 
   const handleUnpin = async (messageId) => {
@@ -98,7 +135,7 @@ export function ChatPinnedMessagesDrawer({
           <Pin className="h-4 w-4 text-amber-500 fill-amber-500" />
           <h2 className="text-sm font-bold text-slate-800">Pinned Messages</h2>
           <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-600">
-            {pinnedList.length}/3
+            {validPinnedList.length}/3
           </span>
         </div>
         <button
@@ -125,7 +162,7 @@ export function ChatPinnedMessagesDrawer({
             <Loader2 className="h-6 w-6 animate-spin text-primary-500" />
             <span className="text-xs">Loading pinned messages...</span>
           </div>
-        ) : pinnedList.length === 0 ? (
+        ) : validPinnedList.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center px-4 text-slate-400">
             <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
               <Pin className="h-6 w-6 text-slate-400 rotate-45" />
@@ -136,7 +173,7 @@ export function ChatPinnedMessagesDrawer({
             </p>
           </div>
         ) : (
-          pinnedList.map((item) => (
+          validPinnedList.map((item) => (
             <ChatPinnedMessageItem
               key={item.messageId}
               item={item}
@@ -172,8 +209,10 @@ function ChatPinnedMessageItem({
   const matchedMsg = messages.find(
     (m) => m && (m.messageId === item.messageId || m.id === item.messageId)
   );
-  const attachment = item.attachment || matchedMsg?.attachment || null;
-  const content = item.content || matchedMsg?.content || '';
+
+  const isDeleted = Boolean(item.deleted) || item.content === 'This message was deleted' || Boolean(matchedMsg?.deleted) || matchedMsg?.content === 'This message was deleted';
+  const attachment = !isDeleted ? (item.attachment || matchedMsg?.attachment || null) : null;
+  const content = isDeleted ? 'This message was deleted' : (item.content || matchedMsg?.content || '');
 
   const senderMember = members.find((m) => m && m.uid === item.senderId);
   const { displayName: liveDisplayName, avatar: liveAvatar } = useUserProfile(item.senderId, {
@@ -214,30 +253,36 @@ function ChatPinnedMessageItem({
         </div>
 
         {/* Jump Action */}
-        <button
-          type="button"
-          onClick={() => onJump(item.messageId)}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
-          title="Jump to message in chat"
-        >
-          <span>Jump</span>
-          <ExternalLink className="h-3 w-3" />
-        </button>
+        {!isDeleted && (
+          <button
+            type="button"
+            onClick={() => onJump(item.messageId)}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-600 hover:text-primary-800 bg-primary-50 hover:bg-primary-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+            title="Jump to message in chat"
+          >
+            <span>Jump</span>
+            <ExternalLink className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       {/* Message Content */}
       {content && (
-        <div className="text-xs text-slate-800 leading-relaxed max-h-36 overflow-y-auto mb-2 select-text">
-          {renderDiscordMarkdown(content, {
-            members,
-            currentUserId,
-            onSelectChannel,
-          })}
+        <div className={`text-xs leading-relaxed max-h-36 overflow-y-auto mb-2 select-text ${isDeleted ? 'italic text-slate-400' : 'text-slate-800'}`}>
+          {isDeleted ? (
+            <span>{content}</span>
+          ) : (
+            renderDiscordMarkdown(content, {
+              members,
+              currentUserId,
+              onSelectChannel,
+            })
+          )}
         </div>
       )}
 
-      {/* Attachment / Voice Note */}
-      {attachment ? (
+      {/* Attachment / Voice Note (Guarded against deleted messages) */}
+      {!isDeleted && attachment ? (
         <div className="mb-2 w-full overflow-hidden">
           {attachment.isVoiceNote ||
           attachment.category === 'audio' ||
@@ -252,7 +297,7 @@ function ChatPinnedMessageItem({
             <ChatFileCard attachment={attachment} onOpenPreview={onOpenPreview} />
           )}
         </div>
-      ) : !content ? (
+      ) : !isDeleted && !content ? (
         <div className="mb-2 flex items-center gap-1.5 py-1.5 px-2 rounded-lg bg-slate-50 border border-slate-200/60 text-xs text-slate-500 italic">
           <Mic className="h-3.5 w-3.5 text-primary-600 shrink-0" />
           <span>Voice note</span>
