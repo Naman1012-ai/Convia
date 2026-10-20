@@ -14,6 +14,7 @@ export function Select({
   className = '',
   disabled = false,
   placeholder = 'Select an option',
+  align = 'left',
   children,
   name,
   ...props
@@ -21,6 +22,7 @@ export function Select({
   const generatedId = useId();
   const inputId = id || generatedId;
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef(null);
   const listboxRef = useRef(null);
@@ -78,6 +80,19 @@ export function Select({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
+  }, [isOpen]);
+
+  // Adjust placement upward if space below is limited
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      if (spaceBelow < 220 && rect.top > spaceBelow) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+    }
   }, [isOpen]);
 
   // Handle option selection
@@ -196,7 +211,11 @@ export function Select({
           ref={listboxRef}
           role="listbox"
           tabIndex={-1}
-          className="absolute left-0 top-full mt-1.5 w-full min-w-[160px] max-w-sm rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 max-h-60 overflow-y-auto focus:outline-none"
+          className={cn(
+            'absolute w-full min-w-[150px] max-w-sm rounded-xl border border-slate-200 bg-white p-1 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 max-h-60 overflow-y-auto focus:outline-none',
+            openUpward ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
+            align === 'right' ? 'right-0' : 'left-0'
+          )}
         >
           {normalizedOptions.length === 0 ? (
             <div className="py-2.5 px-3 text-xs text-slate-400 italic text-center">
@@ -262,5 +281,6 @@ Select.propTypes = {
   onChange: PropTypes.func,
   className: PropTypes.string,
   placeholder: PropTypes.string,
+  align: PropTypes.oneOf(['left', 'right']),
   name: PropTypes.string,
 };

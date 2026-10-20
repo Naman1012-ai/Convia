@@ -3,8 +3,7 @@ import PropTypes from 'prop-types';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Avatar } from '../../components/ui/Avatar';
-import { Select } from '../../components/ui/Select';
-import { Pencil, Trash2, Calendar, User, ArrowRightLeft } from 'lucide-react';
+import { Pencil, Trash2, Calendar, User, ArrowRightLeft, ChevronDown } from 'lucide-react';
 
 export function TaskCard({ task, onEdit = null, onDelete = null, onStatusChange = null }) {
   const priorityVariants = {
@@ -74,16 +73,24 @@ export function TaskCard({ task, onEdit = null, onDelete = null, onStatusChange 
 
       {/* Quick Move Status Selector */}
       {onStatusChange && (
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5 min-w-0">
           <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1 shrink-0">
             <ArrowRightLeft className="h-3 w-3" /> Move:
           </span>
-          <Select
-            value={task.status}
-            onChange={(e) => onStatusChange(task.taskId, e.target.value)}
-            options={statusOptions.map((opt) => ({ value: opt, label: opt }))}
-            className="w-32 py-0.5 px-2 text-xs font-semibold rounded-md border-slate-200 bg-slate-50"
-          />
+          <div className="relative flex-1 min-w-0 max-w-[130px]">
+            <select
+              value={task.status}
+              onChange={(e) => onStatusChange(task.taskId, e.target.value)}
+              className="w-full appearance-none rounded-lg border border-slate-200 bg-slate-50 py-1 pl-2.5 pr-6 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:border-slate-300 transition-colors focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer truncate"
+            >
+              {statusOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          </div>
         </div>
       )}
     </Card>

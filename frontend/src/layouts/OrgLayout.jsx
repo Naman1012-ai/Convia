@@ -11,6 +11,7 @@ import { Button } from '../components/ui/Button';
 import { ideaService } from '../services/ideaService';
 import {
   ChevronRight,
+  Building2,
   Lock,
   Search,
   Command,
@@ -189,36 +190,23 @@ function OrgLayoutContent() {
           className={
             isChat
               ? 'flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-3 w-full transition-all duration-200 flex flex-col h-full overflow-hidden'
-              : 'flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-5xl mx-auto w-full space-y-6 transition-all duration-200'
+              : 'flex-1 min-w-0 px-4 py-6 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6 transition-all duration-200'
           }
         >
           {/* Centralized Workspace Top Navigation Header */}
           {!isChat ? (
             <div className="border-b border-lavender-border pb-5 space-y-3.5 shrink-0">
-              {/* Single Breadcrumb System */}
-              <nav className="flex items-center gap-1.5 text-xs text-slate-500 font-medium flex-wrap">
-                <Link to="/workspaces" className="hover:text-primary-600 transition-colors">
-                  Workspaces
+              {/* Workspace Indicator Link */}
+              <div className="flex items-center gap-1.5 text-xs">
+                <Link
+                  to={workspaceRootPath}
+                  className="inline-flex items-center gap-1.5 font-bold text-slate-500 hover:text-primary-600 transition-colors group"
+                  title={`Go to ${org.name} Dashboard`}
+                >
+                  <Building2 className="h-3.5 w-3.5 text-slate-400 group-hover:text-primary-600 transition-colors shrink-0" />
+                  <span className="group-hover:underline underline-offset-2">{org.name}</span>
                 </Link>
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                <Link to={workspaceRootPath} className="hover:text-primary-600 transition-colors font-semibold text-slate-700">
-                  {org.name}
-                </Link>
-                {isIdeaActive && (
-                  <>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                    <Link to={`${workspaceRootPath}/ideas/${ideaId}`} className="hover:text-primary-600 transition-colors truncate max-w-[160px]">
-                      {activeIdea ? activeIdea.title : 'Selected Idea'}
-                    </Link>
-                  </>
-                )}
-                {isSubpage && (
-                  <>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
-                    <span className="text-slate-900 font-bold">{segmentLabel}</span>
-                  </>
-                )}
-              </nav>
+              </div>
 
               {/* Single Main Title Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

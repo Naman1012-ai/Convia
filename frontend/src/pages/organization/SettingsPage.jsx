@@ -179,9 +179,10 @@ export default function SettingsPage() {
         const ideasObj = ideas || {};
         const tasksObj = tasks || {};
         const activeTasks = Object.values(tasksObj).filter((t) => t && !t.isDeleted);
-        const completedTasks = activeTasks.filter(
-          (t) => t.status === 'done' || t.status === 'completed'
-        );
+        const completedTasks = activeTasks.filter((t) => {
+          const s = String(t?.status || '').trim().toLowerCase();
+          return s === 'completed' || s === 'done';
+        });
 
         let mvpTitle = 'None';
         if (org.activeProjectId && ideasObj[org.activeProjectId]) {

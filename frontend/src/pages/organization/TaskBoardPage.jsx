@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useOrg } from '../../hooks/useOrg';
@@ -18,10 +18,11 @@ import { CreateTaskModal } from '../../features/tasks/CreateTaskModal';
 import { EditTaskModal } from '../../features/tasks/EditTaskModal';
 import { Plus, Search, CheckSquare, ListTodo, Sparkles } from 'lucide-react';
 import { aiBlueprintService } from '../../services/aiBlueprintService';
+import { cn } from '../../utils/cn';
 
 function TaskBoardContent() {
   const { user } = useAuth();
-  const { org } = useOrg();
+  const { org, isLeader } = useOrg();
   const { toast } = useToast();
   const taskContext = React.useContext(TaskContext);
 
@@ -46,6 +47,8 @@ function TaskBoardContent() {
   const [editingTask, setEditingTask] = useState(null);
   const [deletingTask, setDeletingTask] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [mobileTab, setMobileTab] = useState('Todo');
+  const hasInitializedTabRef = useRef(false);
 
   const handleSyncBlueprintTasks = async () => {
     if (!org?.orgId || !user?.uid) return;
@@ -119,6 +122,61 @@ function TaskBoardContent() {
   const reviewTasks = activeFilteredTasks.filter((t) => t && t.status === 'Review');
   const completedList = activeFilteredTasks.filter((t) => t && t.status === 'Completed');
 
+  // Auto-switch mobile tab to the first non-empty column on initial load
+  useEffect(() => {
+    if (!hasInitializedTabRef.current && activeFilteredTasks.length > 0) {
+      if (todoTasks.length > 0) {
+        setMobileTab('Todo');
+      } else if (inProgressTasks.length > 0) {
+        setMobileTab('In Progress');
+      } else if (reviewTasks.length > 0) {
+        setMobileTab('Review');
+      } else if (completedList.length > 0) {
+        setMobileTab('Completed');
+      }
+      hasInitializedTabRef.current = true;
+    }
+  }, [activeFilteredTasks.length, todoTasks.length, inProgressTasks.length, reviewTasks.length, completedList.length]);
+
+  const COLUMNS = [
+    {
+      id: 'Todo',
+      label: 'Todo',
+      tasks: todoTasks,
+      dotColor: 'bg-slate-400',
+      badgeBg: 'bg-slate-200 text-slate-700',
+      columnBg: 'bg-slate-100/60 border-slate-200/80',
+      activeTabBg: 'bg-slate-800 text-white',
+    },
+    {
+      id: 'In Progress',
+      label: 'In Progress',
+      tasks: inProgressTasks,
+      dotColor: 'bg-primary-500 animate-pulse',
+      badgeBg: 'bg-primary-100 text-primary-800',
+      columnBg: 'bg-primary-50/50 border-primary-200/60',
+      activeTabBg: 'bg-primary-600 text-white',
+    },
+    {
+      id: 'Review',
+      label: 'Review',
+      tasks: reviewTasks,
+      dotColor: 'bg-amber-500',
+      badgeBg: 'bg-amber-200 text-amber-900',
+      columnBg: 'bg-amber-50/50 border-amber-200/60',
+      activeTabBg: 'bg-amber-600 text-white',
+    },
+    {
+      id: 'Completed',
+      label: 'Completed',
+      tasks: completedList,
+      dotColor: 'bg-emerald-500',
+      badgeBg: 'bg-emerald-200 text-emerald-900',
+      columnBg: 'bg-emerald-50/50 border-emerald-200/60',
+      activeTabBg: 'bg-emerald-600 text-white',
+    },
+  ];
+
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
       {/* Real-time Sprint Progress Metric Header */}
@@ -131,29 +189,31 @@ function TaskBoardContent() {
             <span className="text-xs font-bold text-slate-500 w-full sm:w-auto text-left sm:text-right">
               {completedTasks} of {totalTasks} Tasks Done ({progressPercentage}%)
             </span>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                icon={<Sparkles className="h-4 w-4 text-primary-600" />}
-                onClick={handleSyncBlueprintTasks}
-                isLoading={isSyncing}
-                className="shrink-0 border-primary-200 hover:bg-primary-50 text-primary-700 font-bold text-xs"
-              >
-                <span className="hidden sm:inline">Sync Blueprint Tasks</span>
-                <span className="sm:hidden">Sync Tasks</span>
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                icon={<Plus className="h-4 w-4" />}
-                onClick={() => setIsCreateModalOpen(true)}
-                className="shrink-0 font-bold text-xs"
-              >
-                <span>New Task</span>
-                <span className="hidden sm:inline">&nbsp;Sprint</span>
-              </Button>
-            </div>
+            {isLeader && (
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<Sparkles className="h-4 w-4 text-primary-600" />}
+                  onClick={handleSyncBlueprintTasks}
+                  isLoading={isSyncing}
+                  className="shrink-0 border-primary-200 hover:bg-primary-50 text-primary-700 font-bold text-xs"
+                >
+                  <span className="hidden sm:inline">Sync Blueprint Tasks</span>
+                  <span className="sm:hidden">Sync Tasks</span>
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Plus className="h-4 w-4" />}
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="shrink-0 font-bold text-xs"
+                >
+                  <span>New Task</span>
+                  <span className="hidden sm:inline">&nbsp;Sprint</span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
         <ProgressBar percentage={progressPercentage} size="md" />
@@ -234,89 +294,83 @@ function TaskBoardContent() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-start">
-          {/* Column 1: Todo */}
-          <div className="space-y-3 bg-slate-100/60 p-4 rounded-2xl border border-slate-200/60 min-h-[400px]">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-slate-400" /> Todo
-              </h3>
-              <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                {todoTasks.length}
-              </span>
-            </div>
-            {todoTasks.map((task) => (
-              <TaskCard
-                key={task.taskId}
-                task={task}
-                onEdit={(t) => setEditingTask(t)}
-                onDelete={(t) => setDeletingTask(t)}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
+        <div className="space-y-4">
+          {/* Mobile Segmented Column Tabs (shown on < lg screens) */}
+          <div className="lg:hidden flex items-center p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 gap-2 overflow-x-auto scrollbar-none">
+            {COLUMNS.map((col) => {
+              const isActive = mobileTab === col.id;
+              return (
+                <button
+                  key={col.id}
+                  type="button"
+                  onClick={() => setMobileTab(col.id)}
+                  className={cn(
+                    'py-2 px-3.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 whitespace-nowrap',
+                    isActive
+                      ? `${col.activeTabBg} shadow-sm ring-1 ring-black/5`
+                      : 'text-slate-600 hover:text-slate-900 bg-white/70 hover:bg-white border border-slate-200/60'
+                  )}
+                >
+                  <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', col.dotColor)} />
+                  <span className="font-extrabold tracking-tight">{col.label}</span>
+                  <span
+                    className={cn(
+                      'text-[10px] px-2 py-0.5 rounded-full font-black shrink-0',
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-800'
+                    )}
+                  >
+                    {col.tasks.length}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Column 2: In Progress */}
-          <div className="space-y-3 bg-primary-50/50 p-4 rounded-2xl border border-primary-200/60 min-h-[400px]">
-            <div className="flex items-center justify-between pb-2 border-b border-primary-200">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-primary-900 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-primary-500 animate-pulse" /> In Progress
-              </h3>
-              <span className="rounded-full bg-primary-100 px-2 py-0.5 text-[11px] font-bold text-primary-800">
-                {inProgressTasks.length}
-              </span>
-            </div>
-            {inProgressTasks.map((task) => (
-              <TaskCard
-                key={task.taskId}
-                task={task}
-                onEdit={(t) => setEditingTask(t)}
-                onDelete={(t) => setDeletingTask(t)}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-          </div>
+          {/* Kanban Columns Grid (Single column on mobile, 4 columns on lg) */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+            {COLUMNS.map((col) => {
+              const isVisibleOnMobile = mobileTab === col.id;
+              return (
+                <div
+                  key={col.id}
+                  className={cn(
+                    'flex flex-col rounded-2xl border p-4 transition-all min-h-[300px]',
+                    col.columnBg,
+                    isVisibleOnMobile ? 'flex' : 'hidden lg:flex'
+                  )}
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-inherit">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                      <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', col.dotColor)} />
+                      {col.label}
+                    </h3>
+                    <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', col.badgeBg)}>
+                      {col.tasks.length} {col.tasks.length === 1 ? 'Task' : 'Tasks'}
+                    </span>
+                  </div>
 
-          {/* Column 3: Review */}
-          <div className="space-y-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 min-h-[400px]">
-            <div className="flex items-center justify-between pb-2 border-b border-amber-200">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Review
-              </h3>
-              <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-900">
-                {reviewTasks.length}
-              </span>
-            </div>
-            {reviewTasks.map((task) => (
-              <TaskCard
-                key={task.taskId}
-                task={task}
-                onEdit={(t) => setEditingTask(t)}
-                onDelete={(t) => setDeletingTask(t)}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
-          </div>
-
-          {/* Column 4: Completed */}
-          <div className="space-y-3 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/60 min-h-[400px]">
-            <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-emerald-900 flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> Completed
-              </h3>
-              <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[11px] font-bold text-emerald-900">
-                {completedList.length}
-              </span>
-            </div>
-            {completedList.map((task) => (
-              <TaskCard
-                key={task.taskId}
-                task={task}
-                onEdit={(t) => setEditingTask(t)}
-                onDelete={(t) => setDeletingTask(t)}
-                onStatusChange={handleStatusChange}
-              />
-            ))}
+                  {/* Scrollable Tasks List with internal scrollbar */}
+                  <div className="flex-1 overflow-y-auto max-h-[520px] lg:max-h-[640px] space-y-3 pr-1">
+                    {col.tasks.length === 0 ? (
+                      <div className="h-32 flex flex-col items-center justify-center text-center p-4 rounded-xl border border-dashed border-slate-300/60 bg-white/40 text-slate-400">
+                        <p className="text-xs font-semibold">No tasks in this stage</p>
+                      </div>
+                    ) : (
+                      col.tasks.map((task) => (
+                        <TaskCard
+                          key={task.taskId}
+                          task={task}
+                          onEdit={isLeader ? (t) => setEditingTask(t) : null}
+                          onDelete={isLeader ? (t) => setDeletingTask(t) : null}
+                          onStatusChange={isLeader ? handleStatusChange : null}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
