@@ -176,7 +176,7 @@ export const aiBlueprintService = {
   /**
    * Phase 11: Client-facing method to formally approve and activate a Blueprint version.
    */
-  approveBlueprintVersion: async (workspaceId, userUid, targetVersionKey) => {
+  approveBlueprintVersion: async (workspaceId, userUid, targetVersionKey, metadata = {}) => {
     if (!workspaceId || !userUid || !targetVersionKey) {
       throw new Error('Workspace ID, User UID, and Target Version Key are required.');
     }
@@ -188,6 +188,7 @@ export const aiBlueprintService = {
       workspaceId,
       userUid,
       targetVersion: versionStr,
+      ...metadata,
     });
   },
 
@@ -313,6 +314,14 @@ export const aiBlueprintService = {
         version: String(localBlueprint.version || '1.0'),
         schemaVersion: canonicalContent?.schemaVersion || 2,
         status: 'completed',
+        approvalStatus: localBlueprint.approvalStatus || 'pending_approval',
+        approvedBy: localBlueprint.approvedBy || null,
+        approvedByName: localBlueprint.approvedByName || null,
+        approvedByRole: localBlueprint.approvedByRole || null,
+        approvedAt: localBlueprint.approvedAt || null,
+        reviewNotes: localBlueprint.reviewNotes || null,
+        readinessScore: localBlueprint.readinessScore || null,
+        lifecycleState: localBlueprint.lifecycleState || 'ready_for_review',
         lastModifiedSource: localBlueprint.lastModifiedSource || 'ai_generation',
         generatedAt: localBlueprint.generatedAt || localBlueprint.createdAt || Date.now(),
         updatedAt: localBlueprint.updatedAt || Date.now(),

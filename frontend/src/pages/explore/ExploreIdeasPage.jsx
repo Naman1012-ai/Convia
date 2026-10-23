@@ -98,13 +98,20 @@ export default function ExploreIdeasPage() {
     loadRequestsData();
   }, [user]);
 
-  // Check URL tab query param (e.g. /explore?tab=requests from notification link)
+  // Check URL query params (e.g. /explore?tab=requests or /explore?ideaId=xxx from notification link)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('tab') === 'requests') {
       setIsImportRequestsOpen(true);
     }
-  }, [location.search]);
+    const targetIdeaId = params.get('ideaId');
+    if (targetIdeaId && publicIdeas.length > 0) {
+      const matched = publicIdeas.find((i) => i && (i.ideaId === targetIdeaId || i.id === targetIdeaId));
+      if (matched) {
+        setSelectedPublicIdea(matched);
+      }
+    }
+  }, [location.search, publicIdeas]);
 
   // Dismiss all transient modals & drawers on route transition
   useEffect(() => {

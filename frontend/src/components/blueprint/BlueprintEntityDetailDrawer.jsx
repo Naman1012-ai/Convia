@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   X,
@@ -17,6 +17,10 @@ import {
   Shield,
   Layers,
   ArrowRight,
+  Check,
+  Unlock,
+  Save,
+  Zap,
 } from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
@@ -34,7 +38,23 @@ export function BlueprintEntityDetailDrawer({
   orgId,
   ideaId,
   onSelectEntityById,
+  isLeader = false,
+  onUpdateQualityGate,
+  onUpdateRisk,
 }) {
+  const [evidenceNotes, setEvidenceNotes] = useState('');
+  const [riskMitigation, setRiskMitigation] = useState('');
+  const [riskContingency, setRiskContingency] = useState('');
+  const [isSavingEntity, setIsSavingEntity] = useState(false);
+
+  useEffect(() => {
+    if (entity?.raw) {
+      setEvidenceNotes(entity.raw.evidenceNotes || '');
+      setRiskMitigation(entity.raw.mitigation || entity.raw.mitigationStrategy || '');
+      setRiskContingency(entity.raw.contingency || '');
+    }
+  }, [entity]);
+
   if (!isOpen || !entity) return null;
 
   const { type, id, title, description, priority, status, raw } = entity;
@@ -427,6 +447,128 @@ export function BlueprintEntityDetailDrawer({
             </div>
           )}
 
+          {/* SPECIFIC VIEW: QUALITY GATE */}
+          {type === 'quality_gate' && raw && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Gate Number</span>
+                  <span className="text-white font-bold font-mono">Gate {safeText(raw.gateNumber || safeId)}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Current Status</span>
+                  <span className={`font-bold font-mono capitalize ${
+                    safeStatus === 'passed' ? 'text-emerald-400' : safeStatus === 'blocked' ? 'text-rose-400' : safeStatus === 'in_progress' ? 'text-amber-400' : 'text-slate-300'
+                  }`}>
+                    {safeStatus}
+                  </span>
+                </div>
+              </div>
+
+              {raw.criteria && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">Verification Criteria</span>
+                  <p className="text-xs text-slate-200 leading-relaxed font-medium">{safeText(raw.criteria)}</p>
+                </div>
+              )}
+
+              {raw.evidenceRequirements && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase text-blue-400">Required Evidence Artifacts</span>
+                  <p className="text-xs text-slate-200 leading-relaxed font-medium">{safeText(raw.evidenceRequirements)}</p>
+                </div>
+              )}
+
+              {raw.blockingReason && (
+                <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-900/60 text-xs text-rose-300 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold font-mono uppercase text-rose-400">
+                    <AlertTriangle className="h-4 w-4" /> Blocker Detected
+                  </div>
+                  <p className="leading-relaxed">{safeText(raw.blockingReason)}</p>
+                </div>
+              )}
+
+              {raw.verifiedBy && (
+                <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-900/60 text-xs font-mono text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <span>Verified by {safeText(raw.verifiedBy)} {raw.verifiedAt ? `on ${formatTimestamp(raw.verifiedAt)}` : ''}</span>
+                </div>
+              )}
+
+              {/* Verification Evidence Notes */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <span className="text-[10px] font-mono font-bold uppercase text-slate-400">Evidence Log & Verification Notes</span>
+                <textarea
+                  rows="3"
+                  placeholder="Record verification notes, PR links, test suite results, or audit rationale..."
+                  value={evidenceNotes}
+                  onChange={(e) => setEvidenceNotes(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-primary-500"
+                />
+                {onUpdateQualityGate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Save className="h-3.5 w-3.5 text-primary-400" />}
+                    onClick={() => onUpdateQualityGate(safeId, { evidenceNotes })}
+                    className="border-slate-800 text-xs text-slate-300 hover:text-white whitespace-nowrap"
+                  >
+                    Save Notes
+                  </Button>
+                )}
+              </div>
+
+              {/* Quick Gate Action Buttons */}
+              {onUpdateQualityGate && (
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+                  <span className="text-[10px] font-mono font-bold uppercase text-slate-400">Gate State Actions</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {safeStatus === 'blocked' && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<Unlock className="h-3.5 w-3.5" />}
+                        onClick={() => onUpdateQualityGate(safeId, { status: 'in_progress', evidenceNotes, unblockedAt: Date.now() })}
+                        className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs whitespace-nowrap"
+                      >
+                        Clear Blocker & Resume
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<Check className="h-3.5 w-3.5" />}
+                      onClick={() => onUpdateQualityGate(safeId, { status: 'passed', evidenceNotes })}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs whitespace-nowrap"
+                    >
+                      Mark Passed
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<Zap className="h-3.5 w-3.5 text-amber-400" />}
+                      onClick={() => onUpdateQualityGate(safeId, { status: 'in_progress', evidenceNotes })}
+                      className="border-slate-800 bg-slate-950 text-xs text-amber-300 hover:text-amber-100 hover:bg-slate-800 whitespace-nowrap"
+                    >
+                      In Progress
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onUpdateQualityGate(safeId, { status: 'waived', evidenceNotes })}
+                      className="border-slate-800 bg-slate-950 text-xs text-purple-300 hover:text-purple-100 hover:bg-slate-800 whitespace-nowrap"
+                    >
+                      Waive Gate
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* SPECIFIC VIEW: RISK */}
           {type === 'risk' && raw && (
             <div className="space-y-4">
@@ -445,18 +587,74 @@ export function BlueprintEntityDetailDrawer({
                 </div>
               </div>
 
-              {raw.mitigation && (
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">Mitigation Strategy</span>
-                  <p className="text-xs text-slate-200 leading-relaxed font-medium">{safeText(raw.mitigation)}</p>
+              {/* Status & Quick Mitigation Action */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-mono font-bold uppercase text-slate-400">Risk Lifecycle Status</span>
+                  <div className="text-xs font-mono font-bold capitalize text-white">{safeStatus}</div>
                 </div>
-              )}
 
-              {raw.contingency && (
-                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase text-amber-400">Contingency Plan</span>
-                  <p className="text-xs text-slate-200 leading-relaxed font-medium">{safeText(raw.contingency)}</p>
-                </div>
+                {onUpdateRisk && (
+                  <div>
+                    {safeStatus !== 'mitigated' ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                        onClick={() => onUpdateRisk(safeId, { status: 'mitigated', mitigatedAt: Date.now() })}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs whitespace-nowrap"
+                      >
+                        Mark Mitigated
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={<RotateCcw className="h-3.5 w-3.5" />}
+                        onClick={() => onUpdateRisk(safeId, { status: 'mitigating' })}
+                        className="border-slate-800 text-xs text-slate-400 hover:text-white whitespace-nowrap"
+                      >
+                        Reopen Risk
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Editable Mitigation Strategy */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">Mitigation Strategy</span>
+                <textarea
+                  rows="3"
+                  value={riskMitigation}
+                  onChange={(e) => setRiskMitigation(e.target.value)}
+                  placeholder="Describe proactive mitigation steps..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-primary-500"
+                />
+              </div>
+
+              {/* Editable Contingency Plan */}
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+                <span className="text-[10px] font-mono font-bold uppercase text-amber-400">Contingency Plan</span>
+                <textarea
+                  rows="3"
+                  value={riskContingency}
+                  onChange={(e) => setRiskContingency(e.target.value)}
+                  placeholder="Describe emergency fallback plan if risk materializes..."
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-primary-500"
+                />
+              </div>
+
+              {onUpdateRisk && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Save className="h-3.5 w-3.5" />}
+                  onClick={() => onUpdateRisk(safeId, { mitigation: riskMitigation, contingency: riskContingency })}
+                  className="bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs whitespace-nowrap"
+                >
+                  Save Mitigation Updates
+                </Button>
               )}
             </div>
           )}
@@ -493,7 +691,7 @@ export function BlueprintEntityDetailDrawer({
           <span className="text-[11px] font-mono text-slate-500">
             Convia Canonical Entity Inspector
           </span>
-          <Button variant="outline" size="sm" onClick={onClose} className="border-slate-800 text-xs">
+          <Button variant="outline" size="sm" onClick={onClose} className="border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs">
             Close Panel
           </Button>
         </div>

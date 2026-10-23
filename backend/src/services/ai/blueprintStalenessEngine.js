@@ -27,12 +27,11 @@ export const blueprintStalenessEngine = {
         }))
         .sort((a, b) => a.text.localeCompare(b.text)),
 
-      // Normalized Team Composition (sorted by ID)
+      // Normalized Team Composition (sorted by ID: identity and workspace role)
       team: (context.teamMembers || [])
         .map((m) => ({
           id: String(m.id || m.uid || '').trim(),
           role: String(m.workspaceRole || m.role || 'Contributor').trim().toLowerCase(),
-          skills: (m.declaredSkills || []).map((s) => String(s).trim().toLowerCase()).sort(),
         }))
         .sort((a, b) => a.id.localeCompare(b.id)),
     };
@@ -125,19 +124,64 @@ export const blueprintStalenessEngine = {
       }
     }
 
-    // Check 4: Team Composition
-    const currentTeam = currentContext.teamMembers || [];
-    const bpTeam = existingBlueprint.content?.team?.capabilityRequirements || [];
-    if (Math.abs(currentTeam.length - bpTeam.length) >= 2) {
+    // Check 4: Team Composition (Structural: member added/removed or workspace role modified)
+    const currentTeam = (currentContext.teamMembers || [])
+      .map((m) => ({
+        id: String(m.id || m.uid || '').trim(),
+        role: String(m.workspaceRole || m.role || 'Contributor').trim().toLowerCase(),
+      }))
+      .filter((m) => m.id);
+
+    const bpTeamSnapshot = Array.isArray(existingBlueprint.teamSnapshot)
+      ? existingBlueprint.teamSnapshot
+      : Array.isArray(existingBlueprint.teamMembers)
+      ? existingBlueprint.teamMembers
+      : null;
+
+    let teamHasChanged = false;
+
+    if (bpTeamSnapshot && bpTeamSnapshot.length > 0) {
+      if (currentTeam.length !== bpTeamSnapshot.length) {
+        teamHasChanged = true;
+      } else {
+        const bpTeamMap = new Map(
+          bpTeamSnapshot.map((m) => [
+            String(m.id || m.uid || '').trim(),
+            String(m.role || m.workspaceRole || 'contributor').trim().toLowerCase(),
+          ])
+        );
+        for (const member of currentTeam) {
+          const bpRole = bpTeamMap.get(member.id);
+          if (bpRole === undefined || bpRole !== member.role) {
+            teamHasChanged = true;
+            break;
+          }
+        }
+      }
+    } else {
+      // Legacy blueprint without teamSnapshot: team is considered unchanged.
+      // Do NOT guess against capabilityRequirements (which are abstract AI requirements).
+      teamHasChanged = false;
+    }
+
+    if (teamHasChanged) {
       changedSources.push('team_composition');
       if (highestImpact === STALENESS_IMPACT_LEVELS.LOW_IMPACT) {
         highestImpact = STALENESS_IMPACT_LEVELS.MEDIUM_IMPACT;
       }
     }
 
+    // If no meaningful project state dimensions shifted (e.g. minor whitespace or volatile attribute shift)
     if (changedSources.length === 0) {
-      changedSources.push('project_context');
-      highestImpact = STALENESS_IMPACT_LEVELS.MEDIUM_IMPACT;
+      return {
+        isStale: false,
+        impactLevel: STALENESS_IMPACT_LEVELS.NO_IMPACT,
+        changedSources: [],
+        staleReason: null,
+        recommendation: 'NONE',
+        sourceContextHash: originalHash,
+        currentContextHash: currentHash,
+      };
     }
 
     // Generate human-readable reason

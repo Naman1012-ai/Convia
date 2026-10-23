@@ -353,7 +353,7 @@ export function WorkspaceActivityFeed({ workspaceId, maxItems = 50, showFilters 
             variant="outline"
             size="sm"
             onClick={handleLoadMore}
-            className="w-full sm:w-auto text-xs font-mono font-bold border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 py-2 px-6 rounded-xl"
+            className="w-full sm:w-auto text-xs font-mono font-bold border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white py-2 px-6 rounded-xl"
           >
             <ChevronDown className="h-3.5 w-3.5 mr-1 text-slate-400" />
             Load More Activity ({filteredActivities.length - displayCount} remaining)

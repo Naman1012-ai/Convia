@@ -107,7 +107,7 @@ export function BlueprintHeader({
             variant="outline"
             size="sm"
             onClick={onReturnToCurrentVersion}
-            className="border-amber-700 bg-amber-900/60 hover:bg-amber-800 text-white text-xs font-bold font-sans py-1 px-3 h-7"
+            className="border-amber-700 bg-amber-900/60 hover:bg-amber-800 text-white hover:text-white text-xs font-bold font-sans py-1 px-3 h-7 shadow-sm"
           >
             Return to Current Version
           </Button>
@@ -243,11 +243,11 @@ export function BlueprintHeader({
 
             {/* Search Button */}
             <Button
-              variant="outline"
+              variant="outlineDark"
               size="sm"
               icon={<Search className="h-4 w-4 text-primary-400" />}
               onClick={onOpenSearch}
-              className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm"
+              className="border-slate-800 bg-slate-950 hover:bg-slate-800 hover:text-white active:bg-slate-800 active:text-white focus:bg-slate-900 focus:text-white focus:ring-offset-slate-900 text-slate-300 text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm"
               title="Search Blueprint (⌘K)"
             >
               <span className="hidden sm:inline">Search</span>
@@ -259,14 +259,18 @@ export function BlueprintHeader({
             {/* Export Dropdown */}
             <div className="relative">
               <Button
-                variant="outline"
+                variant="outlineDark"
                 size="sm"
-                icon={<Download className="h-4 w-4" />}
+                icon={<Download className={`h-4 w-4 ${showExportMenu ? 'text-white' : 'text-slate-300 group-hover:text-white'}`} />}
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm"
+                className={`text-xs font-bold py-2 px-2.5 sm:px-3 shadow-sm whitespace-nowrap group focus:ring-offset-slate-900 active:bg-slate-800 active:text-white ${
+                  showExportMenu
+                    ? 'border-slate-700 bg-slate-800 text-white ring-1 ring-primary-500/40'
+                    : 'border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white'
+                }`}
               >
                 <span>Export</span>
-                <ChevronDown className="h-3 w-3 ml-1 text-slate-400" />
+                <ChevronDown className={`h-3 w-3 shrink-0 transition-transform ${showExportMenu ? 'rotate-180 text-white' : 'text-slate-400 group-hover:text-white'}`} />
               </Button>
 
               {showExportMenu && (
@@ -303,12 +307,12 @@ export function BlueprintHeader({
                 {isEditing ? (
                   <div className="flex items-center gap-2">
                     <Button
-                      variant="outline"
+                      variant="outlineDark"
                       size="sm"
                       icon={<X className="h-4 w-4" />}
                       onClick={onCancelEdit}
                       disabled={isSaving}
-                      className="border-slate-800 text-slate-400 text-xs font-bold py-2 px-3"
+                      className="border-slate-800 bg-slate-950 hover:bg-slate-800 hover:text-white active:bg-slate-800 active:text-white focus:ring-offset-slate-900 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm"
                     >
                       Cancel
                     </Button>
@@ -325,12 +329,12 @@ export function BlueprintHeader({
                   </div>
                 ) : (
                   <Button
-                    variant="outline"
+                    variant="outlineDark"
                     size="sm"
-                    icon={<Edit3 className="h-4 w-4 text-slate-400" />}
+                    icon={<Edit3 className="h-4 w-4 text-slate-300 group-hover:text-white" />}
                     onClick={onStartEdit}
                     disabled={isGenerating}
-                    className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm"
+                    className="border-slate-800 bg-slate-950 hover:bg-slate-800 hover:text-white active:bg-slate-800 active:text-white focus:ring-offset-slate-900 text-slate-300 text-xs font-bold py-2 px-3 shadow-sm group"
                   >
                     Edit
                   </Button>

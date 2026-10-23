@@ -14,6 +14,7 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { formatTimestamp } from '../../utils/formatting';
+import { formatUserFriendlyAiError } from '../../utils/aiErrorSanitizer';
 import { cn } from '../../utils/cn';
 import {
   LayoutDashboard,
@@ -578,7 +579,7 @@ function WorkspaceDashboardContent() {
                 AI Synthesis in progress ({bp.generationStage || 'Synthesizing'})
               </p>
               <p className="text-[11px] opacity-80">
-                Gemini is generating the canonical architecture, dependencies, execution waves, and sprint tasks.
+                Generating the canonical architecture, dependencies, execution waves, and sprint tasks.
               </p>
             </div>
           </div>
@@ -588,7 +589,7 @@ function WorkspaceDashboardContent() {
               <XCircle className="h-5 w-5 text-rose-600 shrink-0" />
               <div>
                 <p className="text-xs font-bold">Blueprint Generation Interrupted</p>
-                <p className="text-[11px] opacity-80">{bp.lastError || 'An error occurred during synthesis.'}</p>
+                <p className="text-[11px] opacity-80">{formatUserFriendlyAiError(bp.lastError) || 'An error occurred during synthesis.'}</p>
               </div>
             </div>
             {selectedMvp && (

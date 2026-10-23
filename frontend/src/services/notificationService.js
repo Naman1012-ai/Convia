@@ -1,4 +1,5 @@
 import { getErrorMessage } from '../utils/errorMessages';
+import { formatUserFriendlyAiError } from '../utils/aiErrorSanitizer';
 
 /**
  * Centralized Notification Service for BrainSync
@@ -36,35 +37,48 @@ class NotificationServiceManager {
   }
 
   /**
-   * Sanitize error message to prevent raw JS stacktraces/TypeError exposing to users
+   * Sanitize error message to prevent raw JS stacktraces/TypeError/JSON blobs from exposing to users
    */
   _formatErrorMessage(rawError) {
     if (!rawError) return 'Something went wrong. Please try again.';
 
-    if (typeof rawError === 'string') {
-      if (rawError.includes('auth/') || rawError.includes('permission-denied')) {
-        return getErrorMessage(rawError);
+    // Extract message from Axios error response if present
+    const apiErrorMsg =
+      rawError?.response?.data?.error?.message ||
+      rawError?.response?.data?.error ||
+      rawError?.response?.data?.message;
+
+    const candidate = apiErrorMsg || (typeof rawError === 'object' ? rawError.message : rawError);
+
+    if (typeof candidate === 'string') {
+      // Check for auth / firebase error codes
+      if (candidate.includes('auth/') || candidate.includes('permission-denied')) {
+        return getErrorMessage(candidate);
+      }
+      // Check if it's a raw AI provider JSON blob or Gemini failure
+      if (
+        candidate.includes('Gemini') ||
+        candidate.includes('"error"') ||
+        candidate.includes('503') ||
+        candidate.includes('429')
+      ) {
+        return formatUserFriendlyAiError(candidate);
       }
       // If it looks like a JS syntax or runtime error string, fallback
-      if (rawError.includes('TypeError') || rawError.includes('ReferenceError') || rawError.includes('Undefined')) {
+      if (
+        candidate.includes('TypeError') ||
+        candidate.includes('ReferenceError') ||
+        candidate.includes('Undefined') ||
+        candidate.includes('Cannot read property')
+      ) {
         return 'Something went wrong. Please try again.';
       }
-      return rawError;
+      return candidate;
     }
 
     if (typeof rawError === 'object') {
       if (rawError.code) {
         return getErrorMessage(rawError.code);
-      }
-      if (rawError.message) {
-        if (
-          rawError.message.includes('TypeError') ||
-          rawError.message.includes('ReferenceError') ||
-          rawError.message.includes('Cannot read properties')
-        ) {
-          return 'Something went wrong. Please try again.';
-        }
-        return rawError.message;
       }
     }
 

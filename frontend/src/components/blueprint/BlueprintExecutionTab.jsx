@@ -24,6 +24,7 @@ import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { safeText, safeArray } from '../../utils/safeRender';
+import { BlueprintScopeTradeoffSimulator } from './BlueprintScopeTradeoffSimulator';
 
 export function BlueprintExecutionTab({
   content,
@@ -32,6 +33,8 @@ export function BlueprintExecutionTab({
   onInspectEntity,
   onSyncTasks,
   isSyncingTasks = false,
+  onApplyScopeTradeoff,
+  isApplyingScopeTradeoff = false,
 }) {
   const [subView, setSubView] = useState('waves'); // 'waves' | 'graph' | 'tasks' | 'features' | 'workflow' | 'timeline'
   const [taskFilter, setTaskFilter] = useState('all');
@@ -85,6 +88,7 @@ export function BlueprintExecutionTab({
             { id: 'features', label: 'Feature Decomposition', icon: Workflow, count: features.length },
             { id: 'workflow', label: 'System Workflow', icon: Workflow },
             { id: 'timeline', label: 'Milestones & Timeline', icon: Calendar },
+            { id: 'tradeoff', label: 'Scope vs Time Simulator', icon: Zap },
           ].map((item) => {
             const Icon = item.icon;
             const active = subView === item.id;
@@ -357,7 +361,7 @@ export function BlueprintExecutionTab({
                   icon={<RefreshCw className={`h-3.5 w-3.5 text-primary-400 ${isSyncingTasks ? 'animate-spin' : ''}`} />}
                   onClick={onSyncTasks}
                   isLoading={isSyncingTasks}
-                  className="border-primary-800/80 bg-primary-950/40 hover:bg-primary-900 text-primary-200 text-xs font-bold py-1 px-3 h-8 shadow-sm"
+                  className="border-primary-800/80 bg-primary-950/40 hover:bg-primary-900 text-primary-200 hover:text-white text-xs font-bold py-1 px-3 h-8 shadow-sm"
                 >
                   Sync Blueprint Tasks
                 </Button>
@@ -571,6 +575,15 @@ export function BlueprintExecutionTab({
             ))}
           </div>
         </Card>
+      )}
+
+      {/* 7. DYNAMIC SCOPE VS TIME TRADEOFF SIMULATOR VIEW */}
+      {subView === 'tradeoff' && (
+        <BlueprintScopeTradeoffSimulator
+          content={content}
+          onApplyTradeoff={onApplyScopeTradeoff}
+          isApplying={isApplyingScopeTradeoff}
+        />
       )}
     </div>
   );

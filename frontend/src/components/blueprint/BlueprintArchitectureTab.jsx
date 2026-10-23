@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Cpu,
   Database,
@@ -15,6 +15,12 @@ import {
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { safeText, safeArray } from '../../utils/safeRender';
+import { MermaidDiagram } from './MermaidDiagram';
+import {
+  generateSystemTopologyChart,
+  generateDatabaseErdChart,
+  generateSequenceFlowChart,
+} from '../../utils/blueprintMermaidGenerator';
 
 export function BlueprintArchitectureTab({
   content,
@@ -23,12 +29,20 @@ export function BlueprintArchitectureTab({
   setEditForm,
   onInspectEntity,
 }) {
+  const [diagramView, setDiagramView] = useState('topology'); // 'topology' | 'erd' | 'flow'
+
   const v2 = content?.rawV2Content || content?.__v2Content || content || {};
   const arch = v2.architecture || {};
   const techStack = arch.technologyStack || content?.recommendedTechStack || {};
   const dataArch = arch.dataArchitecture || {};
   const entities = safeArray(dataArch.entities || content?.databaseDesign?.entities);
   const decisions = safeArray(arch.decisions);
+
+  const activeDiagramCode = useMemo(() => {
+    if (diagramView === 'erd') return generateDatabaseErdChart(content);
+    if (diagramView === 'flow') return generateSequenceFlowChart(content);
+    return generateSystemTopologyChart(content);
+  }, [content, diagramView]);
 
   const rawPattern =
     safeText(arch.architecturePattern) ||
@@ -44,6 +58,68 @@ export function BlueprintArchitectureTab({
 
   return (
     <div className="space-y-6">
+      {/* 0. INTERACTIVE ARCHITECTURAL DIAGRAMS (Mermaid.js Engine) */}
+      <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+              <GitBranch className="h-4 w-4 text-primary-400" /> Visual Architecture & System Topology
+            </h3>
+            <p className="text-xs text-slate-400">
+              Auto-generated interactive diagrams, microservices flow, and database models
+            </p>
+          </div>
+
+          {/* Sub-view switcher */}
+          <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono font-bold">
+            <button
+              type="button"
+              onClick={() => setDiagramView('topology')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                diagramView === 'topology'
+                  ? 'bg-primary-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Topology
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiagramView('erd')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                diagramView === 'erd'
+                  ? 'bg-primary-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Database ERD
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiagramView('flow')}
+              className={`px-3 py-1 rounded-lg transition-all ${
+                diagramView === 'flow'
+                  ? 'bg-primary-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Sequence Flow
+            </button>
+          </div>
+        </div>
+
+        <MermaidDiagram
+          chart={activeDiagramCode}
+          title={
+            diagramView === 'erd'
+              ? 'Entity-Relationship Data Model'
+              : diagramView === 'flow'
+              ? 'User Journey & Data Sequence'
+              : 'System Topology & Microservices Pipeline'
+          }
+        />
+      </Card>
+
       {/* 1. TECHNICAL ARCHITECTURE PATTERN & DATA FLOW */}
       <Card className="p-6 bg-slate-900 border border-slate-800 space-y-4 shadow-lg">
         <h3 className="text-sm font-extrabold text-white flex items-center justify-between border-b border-slate-800 pb-3">
@@ -138,11 +214,15 @@ export function BlueprintArchitectureTab({
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase text-primary-400">Frontend Layer</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {safeArray(techStack.frontend || ['React', 'Tailwind CSS', 'Vite']).map((t, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
-                  {safeText(t)}
-                </span>
-              ))}
+              {safeArray(techStack.frontend).length > 0 ? (
+                safeArray(techStack.frontend).map((t, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
+                    {safeText(t)}
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-500 font-mono text-xs">Not specified</span>
+              )}
             </div>
           </div>
 
@@ -150,11 +230,15 @@ export function BlueprintArchitectureTab({
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase text-emerald-400">Backend Layer</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {safeArray(techStack.backend || ['Node.js', 'Express']).map((t, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
-                  {safeText(t)}
-                </span>
-              ))}
+              {safeArray(techStack.backend).length > 0 ? (
+                safeArray(techStack.backend).map((t, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
+                    {safeText(t)}
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-500 font-mono text-xs">Not specified</span>
+              )}
             </div>
           </div>
 
@@ -162,11 +246,15 @@ export function BlueprintArchitectureTab({
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase text-blue-400">Database Layer</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {safeArray(techStack.database || ['Firebase Realtime Database']).map((t, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
-                  {safeText(t)}
-                </span>
-              ))}
+              {safeArray(techStack.database).length > 0 ? (
+                safeArray(techStack.database).map((t, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
+                    {safeText(t)}
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-500 font-mono text-xs">Not specified</span>
+              )}
             </div>
           </div>
 
@@ -174,23 +262,31 @@ export function BlueprintArchitectureTab({
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
             <span className="text-[10px] font-mono font-bold uppercase text-amber-400">Hosting & DevOps</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {safeArray(techStack.hosting || ['Vercel', 'Firebase Hosting']).map((t, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
-                  {safeText(t)}
-                </span>
-              ))}
+              {safeArray(techStack.hosting).length > 0 ? (
+                safeArray(techStack.hosting).map((t, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
+                    {safeText(t)}
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-500 font-mono text-xs">Not specified</span>
+              )}
             </div>
           </div>
 
           {/* Third Party APIs */}
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 sm:col-span-2">
-            <span className="text-[10px] font-mono font-bold uppercase text-rose-400">Third-Party APIs & AI</span>
+            <span className="text-[10px] font-mono font-bold uppercase text-rose-400">Third-Party APIs & Services</span>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {safeArray(techStack.thirdPartyApis || ['Google Gemini AI', 'Firebase Auth']).map((t, idx) => (
-                <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
-                  {safeText(t)}
-                </span>
-              ))}
+              {safeArray(techStack.thirdPartyApis).length > 0 ? (
+                safeArray(techStack.thirdPartyApis).map((t, idx) => (
+                  <span key={idx} className="px-2 py-0.5 rounded bg-slate-900 text-slate-200 font-mono text-xs border border-slate-800 font-bold">
+                    {safeText(t)}
+                  </span>
+                ))
+              ) : (
+                <span className="text-slate-500 font-mono text-xs">None specified</span>
+              )}
             </div>
           </div>
         </div>
@@ -210,7 +306,7 @@ export function BlueprintArchitectureTab({
             <Database className="h-4 w-4 text-blue-400" /> Data Architecture & Database Models ({entities.length})
           </span>
           <span className="text-[11px] font-mono text-slate-400 font-bold">
-            Primary DB: {safeText(dataArch.primaryDatabase) || safeText(content?.databaseDesign?.primaryDatabase) || 'Firebase RTDB'}
+            Primary DB: {safeText(dataArch.primaryDatabase) || safeText(content?.databaseDesign?.primaryDatabase) || 'Not specified'}
           </span>
         </h3>
 

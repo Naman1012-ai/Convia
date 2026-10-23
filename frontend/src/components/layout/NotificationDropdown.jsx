@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
-import { NOTIFICATION_TYPES } from '../../constants/notificationConstants';
+import { NOTIFICATION_TYPES, buildNotificationActionUrl } from '../../constants/notificationConstants';
 import { useUserProfiles } from '../../hooks/useUserProfile';
 import {
   isFcmSupported,
@@ -122,15 +122,62 @@ export function NotificationDropdown() {
     };
   }, [isOpen]);
 
+  const resolveNotificationRoute = (notif) => {
+    if (!notif) return null;
+
+    // 1. Check explicit URLs on notification payload
+    let target =
+      notif.actionUrl ||
+      notif.url ||
+      notif.link ||
+      notif.targetUrl ||
+      notif.metadata?.actionUrl ||
+      notif.metadata?.url ||
+      notif.metadata?.link;
+
+    // 2. Fall back to standard notification URL builder
+    if (!target) {
+      target = buildNotificationActionUrl({
+        type: notif.type,
+        workspaceId: notif.workspaceId || notif.orgId || notif.metadata?.workspaceId,
+        resourceId: notif.resourceId || notif.entityId,
+        metadata: notif.metadata || {},
+      });
+    }
+
+    if (!target || target === '#' || target === 'undefined') {
+      return '/dashboard';
+    }
+
+    // 3. Normalize legacy /org/:orgId paths to canonical /workspaces/:orgId
+    if (target.startsWith('/org/')) {
+      target = target.replace(/^\/org\//, '/workspaces/');
+    }
+
+    // 4. If notification targets a blueprint with known ideaId, deep link directly to idea blueprint
+    const wsBlueprintMatch = target.match(/^\/workspaces\/([^/]+)\/blueprint(\?.*)?$/);
+    if (wsBlueprintMatch) {
+      const wsId = wsBlueprintMatch[1];
+      const query = wsBlueprintMatch[2] || '';
+      const specificIdeaId = notif.metadata?.ideaId || notif.metadata?.mvpIdeaId;
+      if (specificIdeaId) {
+        return `/workspaces/${wsId}/ideas/${specificIdeaId}/blueprint${query}`;
+      }
+    }
+
+    return target;
+  };
+
   const handleNotificationClick = async (notif) => {
     if (!notif) return;
     setIsOpen(false);
 
     const notifId = notif.notificationId || notif.id;
+    const targetUrl = resolveNotificationRoute(notif);
 
-    if (notif.actionUrl) {
+    if (targetUrl) {
       try {
-        navigate(notif.actionUrl);
+        navigate(targetUrl);
         // Only mark notification as read after navigation has safely succeeded
         if (!notif.read && notifId) {
           await markAsRead(notifId);

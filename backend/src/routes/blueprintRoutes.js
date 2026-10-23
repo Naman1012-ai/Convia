@@ -8,6 +8,7 @@ import {
   standardRateLimiter,
 } from '../middleware/rateLimitMiddleware.js';
 import { securityAuditService, AUDIT_EVENT_TYPES } from '../services/securityAuditService.js';
+import { formatUserFriendlyAiError } from '../utils/aiErrorSanitizer.js';
 
 export const blueprintRouter = Router();
 
@@ -60,9 +61,10 @@ function asyncAuthenticatedRoute(fn) {
         }).catch(() => {});
       }
 
+      const clientMessage = isAuthzDenial ? err.message : formatUserFriendlyAiError(err);
       res.status(statusCode).json({
         success: false,
-        error: { message: err.message, code: err.code || 'BLUEPRINT_ERROR' },
+        error: { message: clientMessage, code: err.code || 'BLUEPRINT_ERROR' },
       });
     }
   };

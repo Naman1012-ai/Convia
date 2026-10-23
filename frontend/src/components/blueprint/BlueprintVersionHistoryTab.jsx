@@ -107,7 +107,7 @@ export function BlueprintVersionHistoryTab({
                         size="sm"
                         onClick={() => onSelectVersion && onSelectVersion(ver.key)}
                         className={`text-xs font-bold py-1 px-2.5 h-7 ${
-                          isSelected ? 'border-primary-600 bg-primary-900/60 text-white' : 'border-slate-800 text-slate-300'
+                          isSelected ? 'border-primary-600 bg-primary-900/60 text-white hover:text-white' : 'border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white'
                         }`}
                       >
                         {isSelected ? 'Viewing' : 'Preview Snapshot'}

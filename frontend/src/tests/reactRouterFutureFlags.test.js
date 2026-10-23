@@ -60,6 +60,9 @@ console.log('\n[TEST 2] Verifying canonical and legacy route structures...');
       id: 'workspace-root',
       children: [
         { index: true, id: 'workspace-dashboard' },
+        { path: 'blueprint', id: 'workspace-blueprint' },
+        { path: 'dashboard', id: 'workspace-dashboard-alias' },
+        { path: 'progress', id: 'workspace-progress' },
         { path: 'ideas', id: 'workspace-ideas' },
         {
           path: 'ideas/:ideaId',
@@ -119,6 +122,9 @@ console.log('\n[TEST 2] Verifying canonical and legacy route structures...');
 
   assert.strictEqual(resolve('/workspaces/ws_convia/activity')?.route.id, 'workspace-activity');
   assert.strictEqual(resolve('/workspaces/ws_convia/activity')?.params.orgId, 'ws_convia');
+
+  assert.strictEqual(resolve('/workspaces/ws_convia/blueprint')?.route.id, 'workspace-blueprint');
+  assert.strictEqual(resolve('/workspaces/ws_convia/blueprint')?.params.orgId, 'ws_convia');
 
   assert.strictEqual(resolve('/workspaces/ws_convia/settings')?.route.id, 'workspace-settings');
   assert.strictEqual(resolve('/workspaces/ws_convia/settings')?.params.orgId, 'ws_convia');

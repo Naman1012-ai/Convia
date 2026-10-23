@@ -17,7 +17,7 @@ export function Button({
   ...props
 }) {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-75 disabled:pointer-events-none active:scale-[0.98] transition-transform duration-75';
+    'inline-flex items-center justify-center font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-75 disabled:pointer-events-none active:scale-[0.98] transition-transform duration-75';
 
   const variants = {
     primary:
@@ -26,6 +26,8 @@ export function Button({
       'bg-white text-slate-700 border border-slate-300 hover:bg-primary-50 hover:text-primary-900 hover:border-primary-200 active:bg-primary-100 shadow-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:shadow-none',
     outline:
       'border border-slate-300 text-slate-700 bg-transparent hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 disabled:bg-transparent disabled:shadow-none',
+    outlineDark:
+      'border border-slate-800 text-slate-300 bg-slate-950 hover:bg-slate-800 hover:text-white active:bg-slate-700 shadow-sm disabled:border-slate-800/60 disabled:text-slate-600 disabled:bg-transparent disabled:shadow-none',
     ghost:
       'text-slate-600 hover:bg-primary-50 hover:text-primary-900 active:bg-primary-100 disabled:text-slate-400 disabled:bg-transparent disabled:shadow-none',
     danger:
@@ -54,6 +56,28 @@ export function Button({
 
   const renderedIcon = renderIcon();
 
+  // Protect dark-themed surfaces from inherited hover/active light states (e.g., active:bg-slate-100 turning white on click)
+  const isDarkStyled =
+    variant === 'outlineDark' ||
+    (typeof className === 'string' &&
+      (className.includes('bg-slate-950') ||
+        className.includes('bg-slate-900') ||
+        className.includes('hover:bg-slate-800') ||
+        className.includes('border-slate-800') ||
+        className.includes('border-slate-700') ||
+        className.includes('text-slate-300') ||
+        className.includes('text-slate-400') ||
+        className.includes('text-white')));
+
+  const autoDarkClasses = isDarkStyled
+    ? cn(
+        !className?.includes('hover:text-') && 'hover:text-white',
+        !className?.includes('active:bg-') && 'active:bg-slate-800',
+        !className?.includes('active:text-') && 'active:text-white',
+        !className?.includes('focus:ring-offset-') && 'focus:ring-offset-slate-900'
+      )
+    : '';
+
   return (
     <button
       type={type}
@@ -64,20 +88,21 @@ export function Button({
         variants[variant] || variants.primary,
         sizes[size],
         fullWidth && 'w-full',
+        autoDarkClasses,
         className
       )}
       {...props}
     >
       {isLoading ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin text-current" />
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          <Loader2 className="h-4 w-4 animate-spin text-current shrink-0" />
           <span>{children}</span>
-        </>
+        </span>
       ) : (
-        <>
-          {renderedIcon && <span className="shrink-0">{renderedIcon}</span>}
-          <span>{children}</span>
-        </>
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          {renderedIcon && <span className="shrink-0 inline-flex items-center">{renderedIcon}</span>}
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">{children}</span>
+        </span>
       )}
     </button>
   );

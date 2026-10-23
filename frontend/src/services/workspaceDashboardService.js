@@ -2,6 +2,7 @@ import { apiClient } from './apiClient';
 import { ideaService } from './ideaService';
 import { blueprintService } from './blueprintService';
 import { activityService } from './activityService';
+import { formatUserFriendlyAiError } from '../utils/aiErrorSanitizer';
 
 /**
  * Convia Phase 10: Authoritative Workspace Dashboard Service.
@@ -33,7 +34,7 @@ export const workspaceDashboardService = {
         id: 'bp_failed',
         severity: 'danger',
         title: 'Blueprint Generation Interrupted',
-        message: bp.lastError || 'AI Blueprint synthesis encountered an issue. Click to inspect error details and retry.',
+        message: formatUserFriendlyAiError(bp.lastError) || 'AI Blueprint synthesis encountered an issue. Click to inspect error details and retry.',
         actionLabel: 'Inspect Blueprint',
         actionUrl: selectedMvp?.ideaId
           ? `/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`
@@ -44,10 +45,10 @@ export const workspaceDashboardService = {
     // 2. High Priority: Blueprint Currently Generating
     if (bp && bp.status === 'generating') {
       const stageMap = {
-        context_preparing: 'Preparing project context',
-        ai_synthesis: 'Synthesizing specification with Gemini',
-        validating_schema: 'Validating dependency graph',
-        persisting: 'Saving version history',
+        context_preparing: 'Analyzing project context',
+        ai_synthesis: 'Synthesizing build specification',
+        validating_schema: 'Structuring tasks & dependencies',
+        persisting: 'Finalizing blueprint',
       };
       const stageDesc = stageMap[bp.generationStage] || 'Synthesizing build specification';
 

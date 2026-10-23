@@ -13,12 +13,13 @@ import {
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
+import { formatUserFriendlyAiError } from '../../utils/aiErrorSanitizer';
 
 export const BLUEPRINT_GENERATION_STAGES = [
-  { id: 'context_preparing', label: 'Analyzing Project & Context Assembly', shortLabel: '1. Context', icon: Wand2 },
-  { id: 'ai_synthesis', label: 'AI Synthesis (Google Gemini 2.0)', shortLabel: '2. Synthesis', icon: Cpu },
-  { id: 'validating_schema', label: 'Validating Schema 2 & Dependency Graph', shortLabel: '3. Validation', icon: ShieldCheck },
-  { id: 'persisting', label: 'Persisting Version & Archiving History', shortLabel: '4. Persistence', icon: CheckCircle2 },
+  { id: 'context_preparing', label: 'Analyzing Project Context', shortLabel: '1. Context', icon: Wand2 },
+  { id: 'ai_synthesis', label: 'Synthesizing Blueprint', shortLabel: '2. Synthesis', icon: Cpu },
+  { id: 'validating_schema', label: 'Structuring Tasks & Dependencies', shortLabel: '3. Structure', icon: ShieldCheck },
+  { id: 'persisting', label: 'Finalizing Blueprint', shortLabel: '4. Finalizing', icon: CheckCircle2 },
 ];
 
 export function BlueprintGenerationProgress({
@@ -43,16 +44,7 @@ export function BlueprintGenerationProgress({
   }, [generationStage, generationStageIndex]);
 
   const userFriendlyError = React.useMemo(() => {
-    if (!errorMessage) return 'The AI generation request was interrupted or timed out. You can safely retry.';
-    if (
-      errorMessage.includes('set failed') ||
-      errorMessage.includes('undefined in property') ||
-      errorMessage.includes('blueprints.') ||
-      errorMessage.includes('databaseURL')
-    ) {
-      return 'Blueprint generation could not be saved to workspace database. Your previous Blueprint is safe. Click Retry Generation to try again.';
-    }
-    return errorMessage;
+    return formatUserFriendlyAiError(errorMessage);
   }, [errorMessage]);
 
   const failedStageLabel = React.useMemo(() => {
@@ -71,7 +63,7 @@ export function BlueprintGenerationProgress({
             </div>
             <div className="space-y-0.5">
               <h4 className="text-sm font-extrabold text-white">
-                {failedStageLabel ? `Generation Failed at: ${failedStageLabel}` : 'Blueprint Generation Did Not Complete'}
+                Blueprint Generation Interrupted
               </h4>
               <p className="text-xs text-rose-300 leading-relaxed font-medium">
                 {userFriendlyError}

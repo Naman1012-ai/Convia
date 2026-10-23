@@ -309,7 +309,7 @@ export function BlueprintTeamTab({
                           icon={<UserCheck className="h-3.5 w-3.5 text-emerald-400" />}
                           onClick={() => onAssignTask(taskId, topCandidate.userId, safeText(topCandidate.displayName || topCandidate.email))}
                           isLoading={assigningTaskId === taskId}
-                          className="border-emerald-800/80 bg-emerald-950/40 hover:bg-emerald-900 text-emerald-200 text-xs font-bold py-1 px-3 h-7 shrink-0"
+                          className="border-emerald-800/80 bg-emerald-950/40 hover:bg-emerald-900 text-emerald-200 hover:text-white text-xs font-bold py-1 px-3 h-7 shrink-0"
                         >
                           Confirm Assignment
                         </Button>

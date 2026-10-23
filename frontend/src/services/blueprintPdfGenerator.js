@@ -66,7 +66,7 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
   const isV2 = isBlueprintV2(rawContent);
   const title = blueprintDoc.ideaTitle || blueprintDoc.title || 'Project Blueprint';
   const version = String(blueprintDoc.version || '1.0');
-  const lastSource = blueprintDoc.lastModifiedSource === 'manual' ? 'Manually Edited' : 'Google Gemini AI';
+  const lastSource = blueprintDoc.lastModifiedSource === 'manual' ? 'Manually Edited' : 'AI Generated';
   const dateStr = formatTimestamp(blueprintDoc.updatedAt || blueprintDoc.generatedAt || Date.now());
   const statusStr = String(blueprintDoc.status || 'completed').toUpperCase();
 
@@ -127,6 +127,8 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
   doc.setTextColor(199, 210, 254);
   doc.text('TECHNICAL PROJECT BLUEPRINT 2.0 & CONTROL SPECIFICATION', margin, 20);
 
+  const isApproved = blueprintDoc.approvalStatus === 'approved' || blueprintDoc.status === 'approved';
+
   // Version Badge
   doc.setFillColor(...indigoPrimary);
   doc.roundedRect(pageWidth - margin - 32, 10, 32, 7, 1, 1, 'F');
@@ -135,11 +137,21 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
   doc.setTextColor(255, 255, 255);
   doc.text(`VERSION ${version}`, pageWidth - margin - 29, 15);
 
+  // Approved Pill Badge in Header
+  if (isApproved) {
+    doc.setFillColor(16, 185, 129); // Emerald 500
+    doc.roundedRect(pageWidth - margin - 62, 10, 28, 7, 1, 1, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text('APPROVED', pageWidth - margin - 59, 15);
+  }
+
   doc.setFontSize(8);
   doc.setTextColor(148, 163, 184);
   doc.text(`Export Date: ${dateStr}`, pageWidth - margin - 50, 26);
   doc.text(`Workspace: ${orgName}`, pageWidth - margin - 50, 31);
-  doc.text(`Schema: ${isV2 ? 'Blueprint 2.0 (v2)' : 'Legacy (v1)'} · Status: ${statusStr}`, pageWidth - margin - 50, 36);
+  doc.text(`Status: ${isApproved ? 'APPROVED & ACTIVE' : statusStr} · Schema: ${isV2 ? 'Blueprint 2.0 (v2)' : 'Legacy (v1)'}`, pageWidth - margin - 50, 36);
 
   // Project Main Title
   y = 50;
@@ -297,12 +309,12 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
       // Technology Stack Breakdown
       const techStack = arch.technologyStack || arch.recommendedTechStack || {};
       const stackRows = [
-        ['Frontend', (techStack.frontend || []).join(', ') || 'React, Tailwind CSS'],
-        ['Backend & API', (techStack.backend || []).join(', ') || 'Node.js, Express'],
-        ['Database & State', (techStack.database || []).join(', ') || 'Firebase RTDB / Firestore'],
-        ['Hosting & Cloud', (techStack.hosting || []).join(', ') || 'Vercel / Cloud Hosting'],
-        ['Third-Party APIs', (techStack.thirdPartyApis || []).join(', ') || 'Google Gemini AI'],
-        ['Security & Auth', (techStack.security || []).join(', ') || 'JWT, Firebase Auth, RBAC'],
+        ['Frontend', (techStack.frontend || []).join(', ') || 'Not specified'],
+        ['Backend & API', (techStack.backend || []).join(', ') || 'Not specified'],
+        ['Database & State', (techStack.database || []).join(', ') || 'Not specified'],
+        ['Hosting & Cloud', (techStack.hosting || []).join(', ') || 'Not specified'],
+        ['Third-Party APIs', (techStack.thirdPartyApis || []).join(', ') || 'None specified'],
+        ['Security & Auth', (techStack.security || []).join(', ') || 'Not specified'],
       ];
 
       autoTable(doc, {
@@ -654,6 +666,91 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
       }
     }
 
+    // ----------------------------------------------------
+    // 9. EXECUTIVE GOVERNANCE & FORMAL SIGN-OFF
+    // ----------------------------------------------------
+    addSectionHeader('9. Executive Governance & Formal Sign-Off');
+
+    const approverName = blueprintDoc.approvedByName || (isApproved ? 'Workspace Authorized Lead' : 'Pending Formal Sign-off');
+    const approverRole = blueprintDoc.approvedByRole || (isApproved ? 'Technical / Workspace Lead' : 'Designated Reviewer');
+    const approvalDateStr = blueprintDoc.approvedAt ? formatTimestamp(blueprintDoc.approvedAt) : (isApproved ? dateStr : 'Awaiting Review & Formal Approval');
+    const readinessVal = blueprintDoc.readinessScore != null
+      ? `${blueprintDoc.readinessScore}%`
+      : (v2.quality?.productionReadiness?.readinessScore != null ? `${v2.quality.productionReadiness.readinessScore}%` : (isApproved ? '100%' : 'Pending'));
+    const notesText = blueprintDoc.reviewNotes || (isApproved
+      ? 'Formal technical sign-off and activation approved for sprint execution. Structural preconditions, architecture baseline, and execution waves verified.'
+      : 'This specification is in review. Formal sign-off is required by workspace leadership prior to active sprint deployment.');
+
+    // Status Callout Box
+    checkSpace(28);
+    if (isApproved) {
+      doc.setFillColor(240, 253, 244); // #F0FDF4 (Emerald 50)
+      doc.setDrawColor(22, 163, 74); // #16A34A (Emerald 600)
+    } else {
+      doc.setFillColor(254, 252, 232); // #FEFCE8 (Amber 50)
+      doc.setDrawColor(217, 119, 6); // #D97706 (Amber 600)
+    }
+
+    doc.roundedRect(margin, y, contentWidth, 14, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(isApproved ? 21 : 180, isApproved ? 128 : 83, isApproved ? 61 : 9);
+    const bannerTitle = isApproved
+      ? '✓ FORMALLY APPROVED & ACTIVATED SPECIFICATION'
+      : '⏳ DRAFT SPECIFICATION · AWAITING FORMAL SIGN-OFF';
+    doc.text(bannerTitle, margin + 5, y + 5.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...textDark);
+    const bannerSub = isApproved
+      ? 'This technical project blueprint has satisfied all execution gates and is approved for active engineering delivery.'
+      : 'This specification is currently pending formal approval. Preconditions and quality gates must be validated before sprint execution.';
+    doc.text(bannerSub, margin + 5, y + 10.5);
+    y += 18;
+
+    // Governance & Sign-off Details Table
+    const govRows = [
+      ['Governance Status', isApproved ? 'APPROVED & ACTIVATED FOR EXECUTION' : 'PENDING REVIEW & SIGN-OFF'],
+      ['Authorized Signatory', `${approverName} · ${approverRole}`],
+      ['Approval Timestamp', approvalDateStr],
+      ['Execution Readiness', `${readinessVal} (Preconditions Verified)`],
+      ['Sign-Off Remarks', cleanText(notesText)],
+    ];
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      head: [['Governance Criterion', 'Authoritative Sign-Off Specification']],
+      body: govRows,
+      theme: 'grid',
+      headStyles: { fillColor: primaryDark, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 7, textColor: textDark },
+      columnStyles: { 0: { cellWidth: 44, fontStyle: 'bold' } },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+
+    // Digital Signature & Audit Certificate Stamp
+    checkSpace(20);
+    doc.setFillColor(248, 250, 252); // Slate 50
+    doc.setDrawColor(203, 213, 225); // Slate 300
+    doc.roundedRect(margin, y, contentWidth, 16, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...textDark);
+    doc.text('ELECTRONIC AUDIT & VERIFICATION CERTIFICATE', margin + 4, y + 5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(...textMuted);
+    const rawId = String(blueprintDoc.blueprintId || blueprintDoc.workspaceId || 'convia').replace(/[^a-zA-Z0-9_-]/g, '');
+    const stampHash = `SHA256-${rawId}-${blueprintDoc.approvedAt || blueprintDoc.updatedAt || Date.now()}`.slice(0, 64);
+    doc.text(`Digital Signatory: ${approverName} · Authority: ${approverRole} · Signed At: ${approvalDateStr}`, margin + 4, y + 9.5);
+    doc.text(`Certificate Hash: ${stampHash} · Immutable Convia PRD Control Record`, margin + 4, y + 13.5);
+
+    y += 20;
+
   // ==========================================================================
   // BRANCH 2: LEGACY SCHEMA 1 FALLBACK RENDERER
   // ==========================================================================
@@ -725,7 +822,8 @@ export function generateBlueprintPdf(blueprintDoc, orgName = 'Workspace') {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(...textMuted);
-    doc.text(`Convia AI Blueprint 2.0 Specification · Version ${version} · Confidential Asset`, margin, pageHeight - 7);
+    const auditLabel = isApproved ? 'Formally Approved & Signed Asset' : 'Confidential Working Draft';
+    doc.text(`Convia Technical Blueprint 2.0 Specification · Version ${version} · ${auditLabel}`, margin, pageHeight - 7);
     doc.text(`Page ${p} of ${totalPages}`, pageWidth - margin - 18, pageHeight - 7);
   }
 

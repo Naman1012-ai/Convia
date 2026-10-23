@@ -26,6 +26,8 @@ export function BlueprintApprovalModal({
   onApprove,
   isApproving = false,
 }) {
+  const [reviewNotes, setReviewNotes] = React.useState('');
+
   if (!isOpen) return null;
 
   const canApprove = Boolean(readinessData?.canApprove);
@@ -158,6 +160,26 @@ export function BlueprintApprovalModal({
               ))}
             </div>
           </div>
+
+          {/* EXECUTIVE REVIEW & SIGN-OFF NOTES */}
+          {canApprove && (
+            <div className="space-y-2 p-4 rounded-2xl bg-slate-950 border border-slate-800 animate-fadeIn">
+              <label className="block text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                <FileCheck className="h-4 w-4 text-emerald-400" />
+                Executive Review Notes & Formal Sign-Off Remarks
+              </label>
+              <p className="text-[11px] text-slate-400">
+                These notes will be stamped into the canonical version history and permanently recorded in exported PRD specifications.
+              </p>
+              <textarea
+                value={reviewNotes}
+                onChange={(e) => setReviewNotes(e.target.value)}
+                placeholder="e.g., Reviewed technical architecture, database schemas, quality gates, and critical path sprint wave assignments. Formally approved for sprint execution."
+                rows={3}
+                className="w-full rounded-xl bg-slate-900 border border-slate-800 p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-sans leading-relaxed"
+              />
+            </div>
+          )}
         </div>
 
         {/* MODAL ACTIONS FOOTER */}
@@ -178,7 +200,7 @@ export function BlueprintApprovalModal({
             icon={<CheckCircle2 className="h-4 w-4" />}
             isLoading={isApproving}
             disabled={!canApprove || isApproving}
-            onClick={onApprove}
+            onClick={() => onApprove(reviewNotes)}
             className={`text-xs font-extrabold py-2 px-5 shadow-lg ${
               canApprove ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-slate-800 text-slate-500 cursor-not-allowed'
             }`}

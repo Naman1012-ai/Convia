@@ -202,7 +202,7 @@ export function BlueprintDecisionsTab({
                           icon={<X className="h-3.5 w-3.5 text-rose-400" />}
                           onClick={() => onRejectDecision && onRejectDecision(decId)}
                           isLoading={processingDecisionId === decId}
-                          className="border-slate-800 text-slate-400 hover:text-rose-300 text-xs font-bold py-1 px-2.5 h-7"
+                          className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-rose-300 text-xs font-bold py-1 px-2.5 h-7"
                         >
                           Reject
                         </Button>
@@ -336,7 +336,7 @@ export function BlueprintDecisionsTab({
                           size="sm"
                           onClick={() => onRejectRecommendation && onRejectRecommendation(crId)}
                           isLoading={processingRecommendationId === crId}
-                          className="border-slate-800 text-slate-400 text-xs py-1 px-2 h-6"
+                          className="border-slate-800 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-rose-300 text-xs py-1 px-2 h-6"
                         >
                           Reject
                         </Button>

@@ -150,6 +150,9 @@ export function App() {
 
                 <Route path="/workspaces/:orgId" element={<ErrorBoundary><OrgLayout /></ErrorBoundary>}>
                   <Route index element={<OrgDashboardPage />} />
+                  <Route path="blueprint" element={<BlueprintPage />} />
+                  <Route path="dashboard" element={<Navigate to="" replace />} />
+                  <Route path="progress" element={<ProgressDashboardPage />} />
                   <Route path="ideas" element={<IdeaBoardPage />} />
                   <Route path="ideas/:ideaId">
                     <Route index element={<IdeaDetailPage />} />

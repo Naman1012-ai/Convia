@@ -135,4 +135,35 @@ describe('🔔 CONVIA NOTIFICATION PIPELINE DELIVERY CONTRACT SUITE', () => {
     assert.strictEqual(getNotificationCategory(postCanonical.type), NOTIFICATION_CATEGORIES.CHAT);
     assert.strictEqual(postCanonical.actionUrl, '/community?threadId=comm_20');
   });
+
+  it('8. Action URL builders generate valid workspace-level and idea-level blueprint routes without 404', () => {
+    // Workspace-level blueprint URL without specific ideaId
+    const wsBpUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
+      workspaceId: 'ws_alpha',
+    });
+    assert.strictEqual(wsBpUrl, '/workspaces/ws_alpha/blueprint');
+
+    // Idea-specific blueprint URL
+    const ideaBpUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.BLUEPRINT_COMPLETED,
+      workspaceId: 'ws_alpha',
+      metadata: { ideaId: 'idea_mvp_1' },
+    });
+    assert.ok(ideaBpUrl.includes('/workspaces/ws_alpha/'));
+
+    // Member and Task Action URLs
+    const memberUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.WORKSPACE_MEMBER_JOINED,
+      workspaceId: 'ws_alpha',
+    });
+    assert.strictEqual(memberUrl, '/workspaces/ws_alpha/members');
+
+    const taskUrl = buildNotificationActionUrl({
+      type: NOTIFICATION_TYPES.TASK_ASSIGNED,
+      workspaceId: 'ws_alpha',
+      metadata: { taskId: 'task_100' },
+    });
+    assert.strictEqual(taskUrl, '/workspaces/ws_alpha/tasks?taskId=task_100');
+  });
 });

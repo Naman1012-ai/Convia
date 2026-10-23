@@ -17,6 +17,7 @@ import { notificationService } from '../services/notificationService.js';
 import { NOTIFICATION_TYPES } from '../constants/notificationConstants.js';
 import { activityService } from '../services/activityService.js';
 import { ACTIVITY_EVENT_TYPES } from '../constants/activityConstants.js';
+import { formatUserFriendlyAiError } from '../utils/aiErrorSanitizer.js';
 
 /**
  * Helper function to sanitize project title for safe filesystem download naming.
@@ -327,7 +328,7 @@ export const blueprintController = {
     console.log(`🚀 [Blueprint Generation Started] Workspace: ${workspaceId} | Triggered By User: ${userUid}`);
 
     // 1. Verify User Membership in Workspace (with 3-attempt polling retry)
-    const { org, role } = await blueprintController.verifyWorkspaceMembership(
+    const { org, role, memberRecord, userName } = await blueprintController.verifyWorkspaceMembership(
       workspaceId,
       userUid,
       'Unauthorized. You must be a member of this workspace to generate a Blueprint.',
@@ -537,6 +538,10 @@ export const blueprintController = {
         parentVersion,
         generationId: attemptId,
         sourceContextHash,
+        teamSnapshot: (aiInputPayload.teamMembers || []).map((m) => ({
+          id: String(m.id || m.uid || '').trim(),
+          role: String(m.workspaceRole || m.role || 'Contributor').trim().toLowerCase(),
+        })),
         lineage: {
           parentVersion,
           generationId: attemptId,
@@ -681,9 +686,7 @@ export const blueprintController = {
       console.error(`💥 [Blueprint Generation Failed] Workspace: ${workspaceId} | Reason:`, error.message);
 
       const errTimestamp = Date.now();
-      const friendlyError = error.message?.includes('set failed') || error.message?.includes('undefined in property')
-        ? 'Blueprint generation could not be saved to workspace database. Previous version preserved.'
-        : (error.message || 'Blueprint generation failed. Previous version preserved.');
+      const friendlyError = formatUserFriendlyAiError(error);
 
       const existingBp = (await rtdbService.getData(`blueprints/${workspaceId}/${activeMvpId}`).catch(() => null)) || 
                          (await rtdbService.getData(`blueprints/${workspaceId}`).catch(() => null));
@@ -1220,6 +1223,9 @@ export const blueprintController = {
       updatedAt: timestamp,
       approvedAt: timestamp,
       approvedBy: userUid,
+      approvedByName: payload.approvedByName || memberRecord?.displayName || memberRecord?.name || memberRecord?.email || 'Workspace Lead',
+      approvedByRole: role === 'owner' ? 'Workspace Owner' : role === 'admin' ? 'Workspace Admin' : 'Technical Lead',
+      reviewNotes: payload.reviewNotes || payload.notes || 'Formal technical sign-off and activation approved for sprint execution.',
       activatedAt: timestamp,
       activatedBy: userUid,
       readinessScore: readiness.readinessScore,
@@ -1434,6 +1440,14 @@ export const blueprintController = {
       mvpIdeaId: targetDoc.mvpIdeaId || activeMvpId,
       version: targetDoc.version || '1.0',
       status: 'completed',
+      approvalStatus: targetDoc.approvalStatus || 'pending_approval',
+      approvedBy: targetDoc.approvedBy || null,
+      approvedByName: targetDoc.approvedByName || null,
+      approvedByRole: targetDoc.approvedByRole || null,
+      approvedAt: targetDoc.approvedAt || null,
+      reviewNotes: targetDoc.reviewNotes || null,
+      readinessScore: targetDoc.readinessScore || null,
+      lifecycleState: targetDoc.lifecycleState || 'ready_for_review',
       lastModifiedSource: targetDoc.lastModifiedSource || 'ai_generation',
       aiProvider: targetDoc.aiProvider || 'google_gemini',
       aiModel: targetDoc.aiModel || 'gemini-2.0-flash',

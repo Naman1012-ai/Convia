@@ -82,7 +82,20 @@ export default function BlueprintPage() {
   const [liveExecutionTasks, setLiveExecutionTasks] = useState([]);
   const [isActivatingVersion, setIsActivatingVersion] = useState(false);
   const [stalenessInfo, setStalenessInfo] = useState(null);
-  const [dismissedStale, setDismissedStale] = useState(false);
+  const [dismissedStale, setDismissedStale] = useState(() => {
+    try {
+      return sessionStorage.getItem(`dismissed_staleness_${orgId}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismissStaleness = () => {
+    setDismissedStale(true);
+    try {
+      sessionStorage.setItem(`dismissed_staleness_${orgId}`, 'true');
+    } catch {}
+  };
 
   // Phase 11: Approval Gate States
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
@@ -563,12 +576,15 @@ export default function BlueprintPage() {
     }
   };
 
-  const handleApproveBlueprint = async () => {
+  const handleApproveBlueprint = async (reviewNotes = '') => {
     if (!orgId || !user?.uid) return;
     const targetVer = selectedVersionKey || activeVersion;
     setIsApproving(true);
     try {
-      await aiBlueprintService.approveBlueprintVersion(orgId, user.uid, targetVer);
+      await aiBlueprintService.approveBlueprintVersion(orgId, user.uid, targetVer, {
+        reviewNotes: reviewNotes || 'Formal technical sign-off and activation approved for sprint execution.',
+        approvedByName: user.displayName || user.name || user.email || 'Workspace Lead',
+      });
       NotificationService.success(`Blueprint Version ${targetVer} approved & activated for execution.`);
       setIsApprovalModalOpen(false);
       setSelectedVersionKey(null);
@@ -648,6 +664,182 @@ export default function BlueprintPage() {
       NotificationService.error(err.message || 'Failed to reject change recommendation.');
     } finally {
       setProcessingRecommendationId(null);
+    }
+  };
+
+  // Interactive Quality Gate Updates
+  const handleUpdateQualityGate = async (gateId, updates) => {
+    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    const currentBp = displayedBlueprint;
+    const currentContent = JSON.parse(JSON.stringify(currentBp.content));
+    const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
+    if (!rawV2.quality) rawV2.quality = {};
+    if (!Array.isArray(rawV2.quality.qualityGates)) rawV2.quality.qualityGates = [];
+    const gates = rawV2.quality.qualityGates;
+
+    const gateIndex = gates.findIndex(
+      (g) => g.id === gateId || String(g.gateNumber) === String(gateId).replace('GATE-0', '')
+    );
+
+    const updatedGate = {
+      ...(gateIndex >= 0 ? gates[gateIndex] : { id: gateId, name: gateId }),
+      ...updates,
+      verifiedBy: user?.displayName || user?.email || 'Workspace Member',
+      verifiedAt: Date.now(),
+    };
+
+    if (gateIndex >= 0) {
+      gates[gateIndex] = updatedGate;
+    } else {
+      gates.push(updatedGate);
+    }
+
+    try {
+      await aiBlueprintService.updateBlueprint(orgId, user.uid, {
+        content: currentContent,
+        expectedUpdatedAt: blueprint?.updatedAt,
+        expectedVersion: blueprint?.version,
+      });
+      NotificationService.success(`Quality Gate ${gateId} updated successfully.`);
+      setSelectedEntityForDrawer((prev) =>
+        prev && prev.id === gateId
+          ? { ...prev, status: updates.status || prev.status, raw: { ...prev.raw, ...updatedGate } }
+          : prev
+      );
+    } catch (err) {
+      console.error('[BlueprintPage] handleUpdateQualityGate error:', err);
+      NotificationService.error(err.message || 'Failed to update Quality Gate.');
+    }
+  };
+
+  // Interactive Risk Updates
+  const handleUpdateRisk = async (riskId, updates) => {
+    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    const currentBp = displayedBlueprint;
+    const currentContent = JSON.parse(JSON.stringify(currentBp.content));
+    const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
+    if (!rawV2.quality) rawV2.quality = {};
+    if (!Array.isArray(rawV2.quality.risks)) {
+      rawV2.quality.risks = safeArray(currentContent.challengesAndDifficulties);
+    }
+    const risks = rawV2.quality.risks;
+
+    const riskIndex = risks.findIndex((r) => r.id === riskId);
+    const updatedRisk = {
+      ...(riskIndex >= 0 ? risks[riskIndex] : { id: riskId }),
+      ...updates,
+      updatedAt: Date.now(),
+      updatedBy: user?.displayName || user?.email || 'Workspace Member',
+    };
+
+    if (riskIndex >= 0) {
+      risks[riskIndex] = updatedRisk;
+    } else {
+      risks.push(updatedRisk);
+    }
+
+    try {
+      await aiBlueprintService.updateBlueprint(orgId, user.uid, {
+        content: currentContent,
+        expectedUpdatedAt: blueprint?.updatedAt,
+        expectedVersion: blueprint?.version,
+      });
+      NotificationService.success(`Risk ${riskId} updated successfully.`);
+      setSelectedEntityForDrawer((prev) =>
+        prev && prev.id === riskId
+          ? {
+              ...prev,
+              status: updates.status || prev.status,
+              priority: updates.severity || prev.priority,
+              raw: { ...prev.raw, ...updatedRisk },
+            }
+          : prev
+      );
+    } catch (err) {
+      console.error('[BlueprintPage] handleUpdateRisk error:', err);
+      NotificationService.error(err.message || 'Failed to update Risk.');
+    }
+  };
+
+  // Add Custom Risk
+  const handleAddRisk = async (newRisk) => {
+    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    const currentBp = displayedBlueprint;
+    const currentContent = JSON.parse(JSON.stringify(currentBp.content));
+    const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
+    if (!rawV2.quality) rawV2.quality = {};
+    if (!Array.isArray(rawV2.quality.risks)) {
+      rawV2.quality.risks = safeArray(currentContent.challengesAndDifficulties);
+    }
+    const risks = rawV2.quality.risks;
+
+    const newId = `RISK-0${risks.length + 1}`;
+    const riskRecord = {
+      id: newId,
+      title: newRisk.title,
+      description: newRisk.description || '',
+      severity: newRisk.severity || 'Medium',
+      likelihood: newRisk.likelihood || 'Medium',
+      impact: newRisk.impact || 'Medium',
+      status: 'identified',
+      mitigation: newRisk.mitigation || '',
+      contingency: newRisk.contingency || '',
+      createdBy: user?.displayName || user?.email || 'Workspace Member',
+      createdAt: Date.now(),
+    };
+    risks.push(riskRecord);
+
+    try {
+      await aiBlueprintService.updateBlueprint(orgId, user.uid, {
+        content: currentContent,
+        expectedUpdatedAt: blueprint?.updatedAt,
+        expectedVersion: blueprint?.version,
+      });
+      NotificationService.success(`Custom Risk ${newId} created successfully.`);
+    } catch (err) {
+      console.error('[BlueprintPage] handleAddRisk error:', err);
+      NotificationService.error(err.message || 'Failed to add custom risk.');
+    }
+  };
+
+  // Dynamic Scope Tradeoff Application
+  const handleApplyScopeTradeoff = async ({ deferredTaskIds = [] }) => {
+    if (!orgId || !user?.uid || !displayedBlueprint?.content || !deferredTaskIds.length) return;
+    const currentBp = displayedBlueprint;
+    const currentContent = JSON.parse(JSON.stringify(currentBp.content));
+    const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
+    const execution = rawV2.execution || (currentContent.execution = {});
+    const tasks = execution.tasks || [];
+
+    const deferredTitles = [];
+    tasks.forEach((t) => {
+      if (deferredTaskIds.includes(t.id)) {
+        t.status = 'Deferred';
+        t.isDeferred = true;
+        t.phase = 'Phase 2 (Post-MVP Deferred)';
+        deferredTitles.push(`${t.id}: ${t.title || t.name}`);
+      }
+    });
+
+    // Also reflect into projectDirection outOfScope
+    const overview = rawV2.overview || currentContent.projectOverview || {};
+    if (!overview.outOfScope) overview.outOfScope = [];
+    deferredTitles.forEach((dt) => {
+      if (!overview.outOfScope.includes(dt)) {
+        overview.outOfScope.push(dt);
+      }
+    });
+
+    try {
+      await aiBlueprintService.updateBlueprint(orgId, user.uid, {
+        content: currentContent,
+        expectedUpdatedAt: blueprint?.updatedAt,
+        expectedVersion: blueprint?.version,
+      });
+      NotificationService.success(`Scope tradeoff applied: ${deferredTaskIds.length} tasks deferred to Post-MVP.`);
+    } catch (err) {
+      console.error('[BlueprintPage] handleApplyScopeTradeoff error:', err);
+      NotificationService.error(err.message || 'Failed to apply scope tradeoff.');
     }
   };
 
@@ -912,7 +1104,7 @@ export default function BlueprintPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setDismissedStale(true)}
+              onClick={handleDismissStaleness}
               className="text-xs border-amber-800 text-amber-300 hover:text-white h-7 py-0.5 px-2.5"
             >
               Dismiss
@@ -990,7 +1182,7 @@ export default function BlueprintPage() {
           <div className="space-y-2 max-w-lg mx-auto">
             <h3 className="text-xl font-black text-white">AI Blueprint Not Generated Yet</h3>
             <p className="text-xs text-slate-400 leading-relaxed font-medium">
-              This proposal has been selected as the Workspace MVP. Click below to trigger Google Gemini AI analysis and compile a complete technical project control center.
+              This proposal has been selected as the Workspace MVP. Click below to generate an AI blueprint and compile a complete technical project control center.
             </p>
           </div>
 
@@ -1053,6 +1245,7 @@ export default function BlueprintPage() {
               onInspectEntity={handleInspectEntity}
               onSyncTasks={handleSyncBlueprintTasks}
               isSyncingTasks={isSyncingTasks}
+              onApplyScopeTradeoff={handleApplyScopeTradeoff}
             />
           )}
 
@@ -1072,6 +1265,10 @@ export default function BlueprintPage() {
             <BlueprintRisksAndQualityTab
               content={content}
               onInspectEntity={handleInspectEntity}
+              isLeader={isLeader}
+              onUpdateQualityGate={handleUpdateQualityGate}
+              onUpdateRisk={handleUpdateRisk}
+              onAddRisk={handleAddRisk}
             />
           )}
 
@@ -1121,17 +1318,24 @@ export default function BlueprintPage() {
         orgId={orgId}
         ideaId={targetMvpId}
         onSelectEntityById={handleSelectEntityById}
+        isLeader={isLeader}
+        onUpdateQualityGate={handleUpdateQualityGate}
+        onUpdateRisk={handleUpdateRisk}
       />
 
       {/* 7. REGENERATION WARNING CONFIRM MODAL */}
       <ConfirmDialog
         isOpen={showRegenWarningModal}
         onClose={() => setShowRegenWarningModal(false)}
-        onConfirm={handleGenerateBlueprint}
-        title="Regenerate AI Blueprint?"
-        message="This Blueprint has been manually edited or customized. Regenerating will generate a fresh AI specification based on the current MVP context and approved decisions. A new version will be created."
-        confirmText="Regenerate"
-        cancelText="Cancel"
+        onCancel={() => setShowRegenWarningModal(false)}
+        onConfirm={() => {
+          setShowRegenWarningModal(false);
+          handleGenerateBlueprint();
+        }}
+        title="Regenerate Blueprint?"
+        description="This Blueprint has been customized. Regenerating will generate a fresh AI specification based on the current MVP context and approved decisions. A new version will be created."
+        confirmLabel="Regenerate"
+        cancelLabel="Cancel"
         variant="warning"
       />
 
