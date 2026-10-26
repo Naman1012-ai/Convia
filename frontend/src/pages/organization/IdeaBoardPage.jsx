@@ -190,7 +190,7 @@ function IdeaBoardContent() {
                   variant="secondary"
                   size="sm"
                   icon={<CheckSquare className="h-4 w-4 text-primary-300" />}
-                  className="bg-primary-950/80 hover:bg-primary-900 text-primary-200 border-primary-800 font-bold text-xs w-full justify-center"
+                  className="bg-primary-950/80 hover:bg-primary-900 text-primary-200 hover:text-white border-primary-800 font-bold text-xs w-full justify-center"
                 >
                   Sprint Task Board
                 </Button>
@@ -200,7 +200,7 @@ function IdeaBoardContent() {
                   variant="secondary"
                   size="sm"
                   icon={<BarChart2 className="h-4 w-4 text-slate-300" />}
-                  className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-slate-700 font-bold text-xs w-full justify-center"
+                  className="bg-slate-800/80 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700 font-bold text-xs w-full justify-center"
                 >
                   Progress Metrics
                 </Button>

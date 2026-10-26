@@ -25,25 +25,31 @@ function it(desc, fn) {
 function extractValidBlueprint(raw, targetMvpId = null) {
   if (!raw || typeof raw !== 'object') return null;
 
-  // Case 1: Direct single Blueprint document with content/schema
-  if (raw.content || raw.projectOverview || raw.schemaVersion || raw.status === 'completed' || raw.status === 'generating') {
-    return raw;
-  }
-
-  // Case 2: Target MVP child inside dictionary
+  // Case 1: Target MVP child inside dictionary
   if (targetMvpId && raw[targetMvpId] && typeof raw[targetMvpId] === 'object') {
     const targetChild = raw[targetMvpId];
+    if (targetChild.active && typeof targetChild.active === 'object' && (targetChild.active.content || targetChild.active.projectOverview || targetChild.active.status)) {
+      return targetChild.active;
+    }
+    if (targetChild.current && typeof targetChild.current === 'object' && (targetChild.current.content || targetChild.current.projectOverview || targetChild.current.status)) {
+      return targetChild.current;
+    }
     if (targetChild.content || targetChild.projectOverview || targetChild.schemaVersion || targetChild.status) {
       return targetChild;
     }
   }
 
-  // Case 3: Container object with `current` or `active` pointer
+  // Case 2: Container object with `active` or `current` pointer (authoritative approved/current versions)
+  if (raw.active && typeof raw.active === 'object' && (raw.active.content || raw.active.projectOverview || raw.active.status)) {
+    return raw.active;
+  }
   if (raw.current && typeof raw.current === 'object' && (raw.current.content || raw.current.projectOverview || raw.current.status)) {
     return raw.current;
   }
-  if (raw.active && typeof raw.active === 'object' && (raw.active.content || raw.active.projectOverview || raw.active.status)) {
-    return raw.active;
+
+  // Case 3: Direct single Blueprint document with content/schema (and not a parent container)
+  if (raw.content || raw.projectOverview || raw.schemaVersion || raw.status === 'completed' || raw.status === 'generating') {
+    return raw;
   }
 
   // Case 4: Search child values for best candidate
@@ -51,7 +57,12 @@ function extractValidBlueprint(raw, targetMvpId = null) {
     (v) => v && typeof v === 'object' && (v.content || v.projectOverview || v.schemaVersion || v.status === 'completed')
   );
   if (childDocs.length > 0) {
-    childDocs.sort((a, b) => (b.updatedAt || b.generatedAt || 0) - (a.updatedAt || a.generatedAt || 0));
+    childDocs.sort((a, b) => {
+      const aApproved = a.approvalStatus === 'approved' || a.lifecycleState === 'active' ? 1 : 0;
+      const bApproved = b.approvalStatus === 'approved' || b.lifecycleState === 'active' ? 1 : 0;
+      if (bApproved !== aApproved) return bApproved - aApproved;
+      return (b.updatedAt || b.generatedAt || 0) - (a.updatedAt || a.generatedAt || 0);
+    });
     return childDocs[0];
   }
 
@@ -175,6 +186,25 @@ it('extractValidBlueprint extracts current or active pointer from container obje
   const result = extractValidBlueprint(container);
   assert.strictEqual(result.blueprintId, 'bp_current');
   assert.strictEqual(result.version, '2.0');
+});
+
+it('extractValidBlueprint prioritizes active approved pointer over legacy root content', () => {
+  const container = {
+    content: createDefaultBlueprint2Content(),
+    version: '1.0',
+    approvalStatus: 'pending_approval',
+    active: {
+      blueprintId: 'bp_approved_v7',
+      version: '7.0',
+      status: 'completed',
+      approvalStatus: 'approved',
+      content: createDefaultBlueprint2Content(),
+    },
+  };
+  const result = extractValidBlueprint(container);
+  assert.strictEqual(result.blueprintId, 'bp_approved_v7');
+  assert.strictEqual(result.version, '7.0');
+  assert.strictEqual(result.approvalStatus, 'approved');
 });
 
 it('extractValidBlueprint returns null for non-blueprint objects without throwing', () => {

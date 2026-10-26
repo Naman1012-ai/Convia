@@ -142,3 +142,8 @@ OrgProvider.propTypes = {
   orgId: PropTypes.string.isRequired,
   children: PropTypes.node.isRequired,
 };
+
+export function useOrg() {
+  return React.useContext(OrgContext);
+}
+

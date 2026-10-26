@@ -159,33 +159,44 @@ export const blueprintService = {
   extractValidBlueprint: (raw, targetMvpId = null) => {
     if (!raw || typeof raw !== 'object') return null;
 
-    // Case 1: Direct single Blueprint document with content/schema
-    if (raw.content || raw.projectOverview || raw.schemaVersion || raw.status === 'completed' || raw.status === 'generating') {
-      return raw;
-    }
-
-    // Case 2: Target MVP child inside dictionary
+    // Case 1: Target MVP child inside dictionary
     if (targetMvpId && raw[targetMvpId] && typeof raw[targetMvpId] === 'object') {
       const targetChild = raw[targetMvpId];
+      if (targetChild.active && typeof targetChild.active === 'object' && (targetChild.active.content || targetChild.active.projectOverview || targetChild.active.status)) {
+        return targetChild.active;
+      }
+      if (targetChild.current && typeof targetChild.current === 'object' && (targetChild.current.content || targetChild.current.projectOverview || targetChild.current.status)) {
+        return targetChild.current;
+      }
       if (targetChild.content || targetChild.projectOverview || targetChild.schemaVersion || targetChild.status) {
         return targetChild;
       }
     }
 
-    // Case 3: Container object with `current` or `active` pointer
-    if (raw.current && typeof raw.current === 'object' && (raw.current.content || raw.current.projectOverview || raw.current.status)) {
-      return raw.current;
-    }
+    // Case 2: Container object with `active` or `current` pointer (authoritative approved/current versions)
     if (raw.active && typeof raw.active === 'object' && (raw.active.content || raw.active.projectOverview || raw.active.status)) {
       return raw.active;
     }
+    if (raw.current && typeof raw.current === 'object' && (raw.current.content || raw.current.projectOverview || raw.current.status)) {
+      return raw.current;
+    }
 
-    // Case 4: Search child values for best candidate
+    // Case 3: Direct single Blueprint document with content/schema (and not a parent container)
+    if (raw.content || raw.projectOverview || raw.schemaVersion || raw.status === 'completed' || raw.status === 'generating') {
+      return raw;
+    }
+
+    // Case 4: Search child values for best candidate (prioritizing approved version over unapproved draft, then newest)
     const childDocs = Object.values(raw).filter(
       (v) => v && typeof v === 'object' && (v.content || v.projectOverview || v.schemaVersion || v.status === 'completed')
     );
     if (childDocs.length > 0) {
-      childDocs.sort((a, b) => (b.updatedAt || b.generatedAt || 0) - (a.updatedAt || a.generatedAt || 0));
+      childDocs.sort((a, b) => {
+        const aApproved = a.approvalStatus === 'approved' || a.lifecycleState === 'active' ? 1 : 0;
+        const bApproved = b.approvalStatus === 'approved' || b.lifecycleState === 'active' ? 1 : 0;
+        if (bApproved !== aApproved) return bApproved - aApproved;
+        return (b.updatedAt || b.generatedAt || 0) - (a.updatedAt || a.generatedAt || 0);
+      });
       return childDocs[0];
     }
 

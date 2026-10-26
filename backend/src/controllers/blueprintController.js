@@ -1283,6 +1283,14 @@ export const blueprintController = {
       activeMvpId ? rtdbService.setData(`blueprints/${workspaceId}/${activeMvpId}`, approvedDocument) : Promise.resolve(),
       rtdbService.setData(`blueprints/${workspaceId}/current`, approvedDocument),
       rtdbService.setData(`blueprints/${workspaceId}/active`, approvedDocument),
+      rtdbService.updateData(`blueprints/${workspaceId}`, {
+        approvalStatus: 'approved',
+        lifecycleState: 'active',
+        activeVersionId: verNumber,
+        version: verNumber,
+        status: 'completed',
+        updatedAt: timestamp,
+      }),
       rtdbService.updateData(`organizations/${workspaceId}`, {
         activeProjectId: activeMvpId,
         activeBlueprintId: approvedDocument.blueprintId,

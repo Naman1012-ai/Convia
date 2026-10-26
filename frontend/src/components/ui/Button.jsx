@@ -60,13 +60,28 @@ export function Button({
   const isDarkStyled =
     variant === 'outlineDark' ||
     (typeof className === 'string' &&
-      (className.includes('bg-slate-950') ||
-        className.includes('bg-slate-900') ||
+      (className.includes('slate-950') ||
+        className.includes('slate-900') ||
+        className.includes('slate-850') ||
+        className.includes('slate-800') ||
+        className.includes('primary-950') ||
+        className.includes('primary-900') ||
+        className.includes('primary-850') ||
+        className.includes('primary-800') ||
+        className.includes('purple-950') ||
+        className.includes('purple-900') ||
+        className.includes('indigo-950') ||
+        className.includes('indigo-900') ||
+        className.includes('emerald-950') ||
+        className.includes('emerald-900') ||
         className.includes('hover:bg-slate-800') ||
-        className.includes('border-slate-800') ||
-        className.includes('border-slate-700') ||
+        className.includes('hover:bg-slate-900') ||
+        className.includes('hover:bg-primary-900') ||
+        className.includes('hover:bg-primary-950') ||
         className.includes('text-slate-300') ||
         className.includes('text-slate-400') ||
+        className.includes('text-primary-200') ||
+        className.includes('text-primary-300') ||
         className.includes('text-white')));
 
   const autoDarkClasses = isDarkStyled

@@ -30,16 +30,19 @@ export const workspaceDashboardService = {
 
     // 1. Critical: Blueprint Generation Failure
     if (bp && bp.status === 'failed') {
-      items.push({
-        id: 'bp_failed',
-        severity: 'danger',
-        title: 'Blueprint Generation Interrupted',
-        message: formatUserFriendlyAiError(bp.lastError) || 'AI Blueprint synthesis encountered an issue. Click to inspect error details and retry.',
-        actionLabel: 'Inspect Blueprint',
-        actionUrl: selectedMvp?.ideaId
-          ? `/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`
-          : `/workspaces/${orgId}/ideas`,
-      });
+      const hasWorkingApproved = Boolean(bp.hasApprovedVersion || bp.approvalStatus === 'approved');
+      if (!hasWorkingApproved) {
+        items.push({
+          id: 'bp_failed',
+          severity: 'danger',
+          title: 'Blueprint Generation Interrupted',
+          message: formatUserFriendlyAiError(bp.lastError) || 'AI Blueprint synthesis encountered an issue. Click to inspect error details and retry.',
+          actionLabel: 'Inspect Blueprint',
+          actionUrl: selectedMvp?.ideaId
+            ? `/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`
+            : `/workspaces/${orgId}/ideas`,
+        });
+      }
     }
 
     // 2. High Priority: Blueprint Currently Generating
@@ -65,12 +68,18 @@ export const workspaceDashboardService = {
     }
 
     // 3. High Priority: Completed Blueprint Pending Formal Approval
+    // Never show a blocking pending approval banner if the workspace already has an approved active blueprint
     if (bp && bp.status === 'completed' && bp.approvalStatus === 'pending_approval') {
+      const isRevision = Boolean(bp.hasApprovedVersion && bp.approvedVersion && bp.version !== bp.approvedVersion);
       items.push({
         id: 'bp_approval',
         severity: 'warning',
-        title: `Blueprint v${bp.version || '1.0'} Pending Review`,
-        message: 'The canonical build specification is compiled and requires formal team approval to unlock sprint task execution.',
+        title: isRevision
+          ? `Blueprint v${bp.version || '1.0'} Revision Pending Review`
+          : `Blueprint v${bp.version || '1.0'} Pending Review`,
+        message: isRevision
+          ? `A new blueprint revision (v${bp.version}) was compiled. Active version (v${bp.approvedVersion}) remains active for sprint execution until you approve this update.`
+          : 'The canonical build specification is compiled and requires formal team approval to unlock sprint task execution.',
         actionLabel: 'Review & Approve',
         actionUrl: selectedMvp?.ideaId
           ? `/workspaces/${orgId}/ideas/${selectedMvp.ideaId}/blueprint`
@@ -78,8 +87,11 @@ export const workspaceDashboardService = {
       });
     }
 
+    const orgStatus = data.org?.status;
+    const isIdeationPhase = !selectedMvp && orgStatus !== 'project';
+
     // 4. Ideation: Empty Workspace (No Proposals)
-    if (totalIdeas === 0) {
+    if (totalIdeas === 0 && isIdeationPhase) {
       items.push({
         id: 'no_ideas',
         severity: 'primary',
@@ -91,7 +103,7 @@ export const workspaceDashboardService = {
     }
 
     // 5. Ideation: Proposals exist with zero votes
-    if (totalIdeas > 0 && totalVotes === 0 && !selectedMvp) {
+    if (totalIdeas > 0 && totalVotes === 0 && isIdeationPhase) {
       items.push({
         id: 'vote_ideas',
         severity: 'info',
@@ -103,7 +115,7 @@ export const workspaceDashboardService = {
     }
 
     // 6. Ideation: Leader action to select MVP when ideas have votes
-    if (totalIdeas > 0 && !selectedMvp && isLeader && totalVotes > 0) {
+    if (totalIdeas > 0 && !selectedMvp && isLeader && totalVotes > 0 && isIdeationPhase) {
       items.push({
         id: 'select_mvp_leader',
         severity: 'warning',

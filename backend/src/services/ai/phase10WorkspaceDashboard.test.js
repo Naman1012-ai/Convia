@@ -425,6 +425,42 @@ describe('🧪 CONVIA PHASE 10 — WORKSPACE DASHBOARD, UNIFIED ACTIVITY & COLLA
     assert.strictEqual(qItem.title, '4 Open Questions on Proposals');
   });
 
+  it('3.8: Suppresses Blueprint approval banner when approved active version exists', () => {
+    const attention = workspaceDashboardController.deriveAttentionItems(
+      {
+        totalIdeas: 2,
+        selectedMvp: { ideaId: 'idea_01' },
+        blueprint: {
+          status: 'completed',
+          approvalStatus: 'approved',
+          version: '7.0',
+          hasApprovedVersion: true,
+          approvedVersion: '7.0',
+        },
+      },
+      true,
+      'workspace_alpha'
+    );
+
+    const apprItem = attention.find((item) => item.id === 'bp_approval');
+    assert.strictEqual(apprItem, undefined, 'No pending approval banner must show when active version is approved');
+  });
+
+  it('3.9: Suppresses ideation attention items when workspace is already in project phase', () => {
+    const attention = workspaceDashboardController.deriveAttentionItems(
+      {
+        totalIdeas: 0,
+        org: { status: 'project' },
+        blueprint: { status: 'completed', approvalStatus: 'approved', version: '1.0' },
+      },
+      true,
+      'workspace_alpha'
+    );
+
+    const noIdeasItem = attention.find((item) => item.id === 'no_ideas');
+    assert.strictEqual(noIdeasItem, undefined, 'No empty ideas welcome prompt in project phase');
+  });
+
   // --------------------------------------------------------------------------
   // 4. METRIC ACCURACY & INTEGRITY VERIFICATION (ZERO FAKE DATA)
   // --------------------------------------------------------------------------
