@@ -327,7 +327,7 @@ export default function ProfilePage() {
   const resolvedDisplayName = resolveUserDisplayName(userProfile, user);
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto px-4 py-8">
+    <div className="space-y-8 w-full py-6">
       {/* 1. Identity Hero Card */}
       <Card className="bg-gradient-to-r from-slate-900 via-primary-950 to-slate-900 text-white p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 h-56 w-56 bg-primary-500/10 rounded-full blur-3xl pointer-events-none" />

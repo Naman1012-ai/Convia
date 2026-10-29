@@ -137,7 +137,7 @@ function WorkspaceDashboardContent() {
   const selectedMvp = dashboardData?.selectedMvp;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 overflow-x-hidden">
+    <div className="w-full space-y-8 overflow-x-hidden pb-12">
       {/* 1. DASHBOARD HEADER / HERO BANNER */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 via-primary-50/40 to-lavender-surface p-6 sm:p-8 border border-slate-200/80 shadow-sm">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-primary-500/10 blur-3xl pointer-events-none" />

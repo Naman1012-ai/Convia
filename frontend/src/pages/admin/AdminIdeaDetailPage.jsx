@@ -58,7 +58,7 @@ export default function AdminIdeaDetailPage() {
 
   if (loading || !data || !data.idea) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
@@ -97,7 +97,7 @@ export default function AdminIdeaDetailPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       {/* Top Bar Navigation */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <Button

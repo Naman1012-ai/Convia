@@ -532,13 +532,6 @@ export const orgService = {
   },
 
   /**
-   * Compatibility alias for removeMemberFromWorkspace.
-   */
-  removeMember: async (ownerUid, orgId, targetUid) => {
-    return orgService.removeMemberFromWorkspace(orgId || ownerUid, targetUid || orgId);
-  },
-
-  /**
    * Remove member from organization authoritatively.
    */
   removeMemberFromWorkspace: async (orgId, targetUid) => {

@@ -63,7 +63,7 @@ export default function AdminOperationsPage() {
 
   if (loading || !metrics) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
@@ -72,7 +72,7 @@ export default function AdminOperationsPage() {
   const { health } = metrics;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>

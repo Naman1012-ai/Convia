@@ -320,7 +320,7 @@ export function AdminLayout() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8 max-w-7xl mx-auto w-full space-y-6 transition-all duration-200">
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8 xl:p-10 w-full space-y-6 transition-all duration-200">
           {/* Admin Breadcrumb Bar */}
           <nav className="flex items-center gap-1.5 text-xs font-mono text-slate-500">
             <Link to="/admin/dashboard" className="hover:text-primary-400 transition-colors">Admin Portal</Link>

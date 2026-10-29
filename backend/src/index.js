@@ -16,6 +16,7 @@ import { publicIdeaRouter } from './routes/publicIdeaRoutes.js';
 import { importRequestRouter } from './routes/importRequestRoutes.js';
 import { chatRouter } from './routes/chatRoutes.js';
 import { taskRouter } from './routes/taskRoutes.js';
+import { sprintRouter } from './routes/sprintRoutes.js';
 import { globalStatsService } from './services/globalStatsService.js';
 import { workspaceDeletionService } from './services/workspaceDeletionService.js';
 
@@ -26,6 +27,7 @@ const __dirname = path.dirname(__filename);
 // Load environment configuration
 dotenv.config({ path: path.resolve(__dirname, '../../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
@@ -108,6 +110,8 @@ app.use('/api/workspace/:workspaceId/chat', chatRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/workspaces/:workspaceId/tasks', taskRouter);
 app.use('/api/workspace/:workspaceId/tasks', taskRouter);
+app.use('/api/workspaces/:workspaceId/sprints', sprintRouter);
+app.use('/api/workspace/:workspaceId/sprints', sprintRouter);
 
 // Safe Production Error Handler (Masks stack traces and internal secrets)
 app.use((err, req, res, next) => {
@@ -129,7 +133,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start Express Server (Only in traditional standalone node server environment)
-if (!process.env.VERCEL) {
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && !process.env.TEST) {
   app.listen(PORT, () => {
     console.log(`🚀 [Convia Backend] Express server running at http://localhost:${PORT}`);
     console.log(`⚡ [Convia Backend] Gemini AI Model: ${process.env.GEMINI_MODEL || 'gemini-2.0-flash'}`);

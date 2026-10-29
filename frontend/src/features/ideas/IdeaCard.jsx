@@ -34,7 +34,7 @@ export function IdeaCard({ idea, onEdit = null, onDelete = null, onSelectMvp = n
   const { displayName: authorDisplayName } = useUserProfile(idea.authorId, {
     fallbackName: idea.authorName || 'Team Member',
   });
-  const canDelete = (isAuthor || isLeader) && !isFrozen;
+  const canDelete = (isLeader || (isAuthor && !idea.isSelected)) && !isFrozen;
   const canSelectMvp = isLeader && !isFrozen && !idea.isSelected && Boolean(onSelectMvp);
 
   // High-Performance Optimistic Voting with Real-Time Synchronization

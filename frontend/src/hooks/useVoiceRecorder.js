@@ -63,7 +63,7 @@ export function useVoiceRecorder() {
       'audio/aac',
     ];
     for (const t of types) {
-      if (MediaRecorder.isTypeSupported(t)) return t;
+      if (window.MediaRecorder.isTypeSupported(t)) return t;
     }
     return '';
   };
@@ -135,7 +135,7 @@ export function useVoiceRecorder() {
       // 3. Set up MediaRecorder
       const selectedMime = getSupportedMimeType();
       setMimeType(selectedMime || 'audio/webm');
-      const recorder = new MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : undefined);
+      const recorder = new window.MediaRecorder(stream, selectedMime ? { mimeType: selectedMime } : undefined);
       mediaRecorderRef.current = recorder;
 
       recorder.ondataavailable = (e) => {

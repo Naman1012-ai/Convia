@@ -33,6 +33,7 @@ export function BlueprintDecisionsTab({
   onRejectRecommendation,
   processingRecommendationId,
   onInspectEntity,
+  isLeader = false,
 }) {
   const [decisionFilter, setDecisionFilter] = useState('all');
 
@@ -194,7 +195,7 @@ export function BlueprintDecisionsTab({
                     </div>
 
                     {/* Action Buttons for Lead Approval */}
-                    {isProposed && (
+                    {isLeader && isProposed && (
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
@@ -329,7 +330,7 @@ export function BlueprintDecisionsTab({
                       <span className="text-white font-bold uppercase">{safeText(cr.changeType)} {safeText(cr.targetType)} {safeText(cr.targetId)}</span>
                     </div>
 
-                    {cr.status === 'proposed' && !cr.isStale && (
+                    {isLeader && cr.status === 'proposed' && !cr.isStale && (
                       <div className="flex items-center gap-2">
                         <Button
                           variant="outline"

@@ -120,7 +120,7 @@ export default function WorkspacesPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8">
+    <div className="space-y-8 w-full py-6">
       {/* Header Toolbar */}
       <PageHeader
         title="Workspaces"

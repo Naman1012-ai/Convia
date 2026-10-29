@@ -69,7 +69,7 @@ export default function AdminAnalyticsPage() {
 
   if (loading || !analytics) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
@@ -78,7 +78,7 @@ export default function AdminAnalyticsPage() {
   const { kpis, funnel, topContributors, topWorkspaces } = analytics;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>

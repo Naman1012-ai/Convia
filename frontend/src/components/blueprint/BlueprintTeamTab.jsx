@@ -29,6 +29,7 @@ export function BlueprintTeamTab({
   onAssignTask,
   assigningTaskId,
   onInspectEntity,
+  isLeader = false,
 }) {
   const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState(null);
 
@@ -302,7 +303,7 @@ export function BlueprintTeamTab({
                         </div>
                       </div>
 
-                      {onAssignTask && (
+                      {isLeader && onAssignTask && (
                         <Button
                           variant="outline"
                           size="sm"

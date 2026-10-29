@@ -122,9 +122,9 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-lavender-border bg-white/95 backdrop-blur-md">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-8 max-w-7xl mx-auto">
+      <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8 xl:px-10 w-full">
         {/* Brand Logo & Mobile Toggle */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <button
             type="button"
             onClick={handleMobileMenuToggle}
@@ -176,9 +176,9 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
             )}
           </button>
 
-          <Link to="/dashboard" className="flex items-center gap-2.5">
-            <img src="/convia-logo.png" alt="Convia Logo" className="h-9 w-9 rounded-xl object-contain shadow-sm" />
-            <span className="text-xl font-extrabold tracking-tight text-slate-900">
+          <Link to="/dashboard" className="flex items-center gap-2.5 shrink-0 select-none">
+            <img src="/convia-logo.png" alt="Convia Logo" className="h-9 w-9 rounded-xl object-contain shadow-sm shrink-0" />
+            <span className="text-xl font-extrabold tracking-tight text-slate-900 whitespace-nowrap">
               Convia
             </span>
           </Link>
@@ -186,59 +186,59 @@ export function Navbar({ onMobileMenuToggle = NOOP_TOGGLE, isSidebarOpen = false
 
         {/* Desktop Central Navigation Links */}
         {user && (
-          <nav className="hidden md:flex items-center gap-1 font-medium text-sm">
+          <nav className="hidden lg:flex items-center gap-1 font-medium text-sm shrink-0">
             <Link
               to="/dashboard"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 isCurrentPath('/dashboard')
                   ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
                   : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
-              <LayoutDashboard className="h-4 w-4" />
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
               <span>Dashboard</span>
             </Link>
 
             <Link
               to="/explore"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 isCurrentPath('/explore')
                   ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
                   : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
-              <Globe className="h-4 w-4 text-primary-600" />
+              <Globe className="h-4 w-4 text-primary-600 shrink-0" />
               <span>Explore Ideas</span>
             </Link>
 
             <Link
               to="/community"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 isCurrentPath('/community')
                   ? 'bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200/60'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              <MessageSquare className="h-4 w-4 text-emerald-600" />
+              <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" />
               <span>Community</span>
             </Link>
 
             <Link
               to="/workspaces"
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors whitespace-nowrap ${
                 isCurrentPath('/workspaces')
                   ? 'bg-primary-50 text-primary-800 font-semibold border border-primary-200/60'
                   : 'text-slate-600 hover:bg-primary-50/50 hover:text-primary-900'
               }`}
             >
-              <Briefcase className="h-4 w-4 text-slate-500" />
+              <Briefcase className="h-4 w-4 text-slate-500 shrink-0" />
               <span>Workspaces</span>
             </Link>
           </nav>
         )}
 
         {/* User Profile & Action Menu */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           {user ? (
             <div className="flex items-center gap-2">
               {/* Admin Portal Toggle Button */}

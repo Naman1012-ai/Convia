@@ -57,6 +57,7 @@ export function BlueprintHeader({
   onOpenApprovalModal,
   approvalStatus = 'pending_approval',
   lifecycleState = 'ready_for_review',
+  isLeader = false,
 }) {
   const safeVersionStr = safeText(version, '1.0');
   const safeStatusStr = safeText(status, 'completed');
@@ -227,8 +228,8 @@ export function BlueprintHeader({
 
           {/* Action Toolbar */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-start lg:justify-end">
-            {/* Phase 11: Approval Gate Action - Displayed ONLY when approval is pending */}
-            {onOpenApprovalModal && approvalStatus !== 'approved' && !isGenerating && (
+            {/* Phase 11: Approval Gate Action - Displayed ONLY for Leaders when approval is pending */}
+            {isLeader && onOpenApprovalModal && approvalStatus !== 'approved' && !isGenerating && (
               <Button
                 variant="primary"
                 size="sm"
@@ -301,8 +302,8 @@ export function BlueprintHeader({
               )}
             </div>
 
-            {/* Manual Edit Controls */}
-            {!isReadOnlyVersion && (
+            {/* Manual Edit Controls - Leaders Only */}
+            {!isReadOnlyVersion && isLeader && (
               <>
                 {isEditing ? (
                   <div className="flex items-center gap-2">
@@ -342,8 +343,8 @@ export function BlueprintHeader({
               </>
             )}
 
-            {/* Regenerate AI Blueprint Button */}
-            {!isReadOnlyVersion && (
+            {/* Regenerate AI Blueprint Button - Leaders Only */}
+            {!isReadOnlyVersion && isLeader && (
               <Button
                 variant="primary"
                 size="sm"

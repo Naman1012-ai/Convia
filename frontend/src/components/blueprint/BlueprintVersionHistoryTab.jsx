@@ -28,6 +28,7 @@ export function BlueprintVersionHistoryTab({
   onActivateVersion,
   isActivatingVersion,
   currentBlueprint,
+  isLeader = false,
 }) {
   const [comparingVersionKey, setComparingVersionKey] = useState(null);
 
@@ -114,7 +115,7 @@ export function BlueprintVersionHistoryTab({
                       </Button>
                     )}
 
-                    {isSelected && !isCurrent && onActivateVersion && (
+                    {isLeader && isSelected && !isCurrent && onActivateVersion && (
                       <Button
                         variant="primary"
                         size="sm"
@@ -148,7 +149,7 @@ export function BlueprintVersionHistoryTab({
               <Layers className="h-4 w-4 text-emerald-400" /> Comparison: Version {safeText(selectedVersionDoc.version)} vs Active (v{activeVerStr})
             </h3>
 
-            {onActivateVersion && safeText(selectedVersionDoc.version) !== activeVerStr && (
+            {isLeader && onActivateVersion && safeText(selectedVersionDoc.version) !== activeVerStr && (
               <Button
                 variant="primary"
                 size="sm"

@@ -109,7 +109,7 @@ export default function IdeaDetailPage() {
 
   if (!idea) {
     return (
-      <div className="space-y-6 max-w-4xl mx-auto py-8">
+      <div className="space-y-6 w-full py-8">
         <Link
           to={`/workspaces/${orgId}/ideas`}
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
@@ -160,7 +160,7 @@ export default function IdeaDetailPage() {
   const statusOptions = ['Ideation', 'Voting', 'Selected MVP', 'Project', 'Completed', 'Archived'];
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 overflow-x-hidden pb-12">
+    <div className="w-full space-y-8 overflow-x-hidden pb-12">
       {/* Main Proposal Card */}
       <Card className="p-4 sm:p-6 lg:p-8">
         {/* Imported Attribution Section */}

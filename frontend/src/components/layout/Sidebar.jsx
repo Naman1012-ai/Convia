@@ -464,6 +464,7 @@ export function Sidebar({
         id="convia-sidebar"
         className={cn(
           'hidden shrink-0 border-r border-slate-800 sm:block transition-all duration-200 ease-in-out',
+          mode === 'global' && 'lg:hidden',
           isCollapsed ? 'w-16' : 'w-64'
         )}
       >

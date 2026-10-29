@@ -12,6 +12,8 @@ import {
   GripVertical,
   CheckSquare,
   Sparkles,
+  Layers,
+  Plus,
 } from 'lucide-react';
 
 export function TaskCard({
@@ -20,6 +22,9 @@ export function TaskCard({
   onEdit = null,
   onDelete = null,
   onStatusChange = null,
+  onMoveToBacklog = null,
+  onMoveToSprint = null,
+  isInActiveSprint = false,
   isDraggable = true,
   onDragStart = null,
   onDragEnd = null,
@@ -74,7 +79,7 @@ export function TaskCard({
       onDragEnd={handleDragEnd}
       onClick={() => onClick && onClick(task)}
       className={`group transition-all duration-150 ${
-        Boolean(isDraggable && onStatusChange) ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+        isDraggable && onStatusChange ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
       } ${isDragging ? 'opacity-40 scale-95 rotate-1 shadow-lg' : 'opacity-100'}`}
     >
       <Card
@@ -99,9 +104,43 @@ export function TaskCard({
                 <span>Blueprint</span>
               </span>
             )}
+            {Boolean(task.sprintId) && (
+              <span
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1"
+                title="Committed to Active Sprint"
+              >
+                <span>Sprint</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+            {onMoveToBacklog && isInActiveSprint && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveToBacklog(task.taskId || task.id);
+                }}
+                className="rounded p-1 text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition-colors"
+                title="Move to Backlog (Remove from Sprint)"
+              >
+                <Layers className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onMoveToSprint && !isInActiveSprint && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveToSprint(task.taskId || task.id);
+                }}
+                className="rounded p-1 text-slate-400 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                title="Add to Active Sprint"
+              >
+                <Plus className="h-3.5 w-3.5 text-primary-600" />
+              </button>
+            )}
             {onEdit && (
               <button
                 type="button"
@@ -236,6 +275,9 @@ TaskCard.propTypes = {
   onClick: PropTypes.func,
   onEdit: PropTypes.func,
   onDelete: PropTypes.func,
+  onMoveToBacklog: PropTypes.func,
+  onMoveToSprint: PropTypes.func,
+  isInActiveSprint: PropTypes.bool,
   onStatusChange: PropTypes.func,
   isDraggable: PropTypes.bool,
   onDragStart: PropTypes.func,

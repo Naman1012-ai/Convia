@@ -45,7 +45,7 @@ export function EmailVerificationBanner() {
 
   return (
     <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 text-white px-4 py-3 rounded-2xl shadow-lg border border-amber-400 mb-6 transition-all">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
         <div className="flex items-center gap-3 text-center sm:text-left">
           <AlertTriangle className="h-5 w-5 text-amber-100 shrink-0 animate-bounce" />
           <div>

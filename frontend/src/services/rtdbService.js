@@ -128,6 +128,24 @@ export const rtdbService = {
   },
 
   /**
+   * Multi-path atomic update in Firebase Realtime Database.
+   */
+  updateMultiple: async (updates) => {
+    try {
+      const dbRef = ref(rtdb);
+      const sanitizedUpdates = sanitizeForRtdb(updates);
+      await withRtdbTimeout(update(dbRef, sanitizedUpdates), 2000).catch((e) =>
+        console.warn('[RTDB updateMultiple Warning]', e)
+      );
+      return true;
+    } catch (error) {
+      console.error('[rtdbService] updateMultiple error:', error?.message || error);
+      const errMessage = error.code ? `[${error.code}] ${error.message}` : error.message;
+      throw new Error(errMessage);
+    }
+  },
+
+  /**
    * Subscribe to real-time changes in Firebase Realtime Database.
    */
   subscribe: (path, callback) => {
@@ -158,7 +176,9 @@ export const rtdbService = {
         } else {
           try {
             off(dbRef, 'value');
-          } catch (_) {}
+          } catch (_err) {
+            // Unsubscribe guard for already detached listeners
+          }
         }
       };
     } catch (error) {

@@ -129,7 +129,7 @@ export default function DashboardPage() {
   }, [stats.assignedTasks, stats.completedTasks]);
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto px-4 py-8">
+    <div className="space-y-8 w-full pb-12">
       {/* Email Verification Warning Banner */}
       <EmailVerificationBanner />
 

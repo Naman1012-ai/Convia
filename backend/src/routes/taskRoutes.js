@@ -41,6 +41,13 @@ taskRouter.post('/', async (req, res) => {
     }
 
     const membership = await requireWorkspaceMember(workspaceId, userUid);
+    const isPrivileged = checkPrivilegedRole(membership);
+    if (!isPrivileged) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Forbidden: Only Team Captains and Workspace Owners can create tasks.', code: 'UNAUTHORIZED_TASK_CREATION' },
+      });
+    }
     const { title, description, priority, dueDate, assignedTo, assignedToName, projectId } = req.body;
 
     if (!title || typeof title !== 'string' || !title.trim()) {
@@ -54,6 +61,8 @@ taskRouter.post('/', async (req, res) => {
       taskId,
       orgId: workspaceId,
       projectId: projectId || 'active_project',
+      sprintId: req.body.sprintId || null,
+      sprintName: req.body.sprintName || null,
       title: title.trim(),
       description: typeof description === 'string' ? description.trim() : '',
       priority: priority || 'Medium',
@@ -70,6 +79,33 @@ taskRouter.post('/', async (req, res) => {
     };
 
     await rtdbService.setData(`tasks/${workspaceId}/${taskId}`, newTask);
+
+    // If task was assigned to an active sprint, dynamically append taskId to active sprint roster
+    if (newTask.sprintId) {
+      try {
+        const activeSprint = (await rtdbService.getData(`sprints/${workspaceId}/current`)) || {};
+        if (activeSprint?.sprintId === newTask.sprintId && activeSprint?.status === 'active') {
+          const currentTaskIds = Array.isArray(activeSprint.taskIds) ? [...activeSprint.taskIds] : [];
+          if (!currentTaskIds.includes(taskId)) {
+            currentTaskIds.push(taskId);
+            const updatedSprint = {
+              ...activeSprint,
+              taskIds: currentTaskIds,
+              totalSprintTasks: currentTaskIds.length,
+              updatedAt: now,
+            };
+            await rtdbService.updateMultiple({
+              [`sprints/${workspaceId}/current`]: updatedSprint,
+              [`sprints/${workspaceId}/${newTask.sprintId}`]: updatedSprint,
+              [`organizations/${workspaceId}/activeSprint`]: updatedSprint,
+              [`workspaces/${workspaceId}/sprint`]: updatedSprint,
+            });
+          }
+        }
+      } catch (sprintSyncErr) {
+        console.warn('[taskRoutes] Error syncing task to active sprint:', sprintSyncErr?.message);
+      }
+    }
 
     // Phase 7: Dispatch TASK_ASSIGNED notification if assigned to another team member
     if (newTask.assignedTo && newTask.assignedTo !== userUid) {
@@ -183,33 +219,13 @@ taskRouter.patch('/:taskId', async (req, res) => {
     }
 
     const isPrivileged = checkPrivilegedRole(membership);
-    const isCreator = existingTask.createdBy === userUid;
-    const isAssignee = existingTask.assignedTo === userUid;
 
-    // 2. Authorization Matrix Verification
-    if (!isPrivileged && !isCreator && !isAssignee) {
+    // 2. Strict Governance Verification: Only Team Captains or Workspace Owners can modify tasks
+    if (!isPrivileged) {
       return res.status(403).json({
         success: false,
-        error: { message: 'Only task creators, assignees, team captains, or workspace owners can modify tasks.', code: 'UNAUTHORIZED_TASK_MUTATION' },
+        error: { message: 'Forbidden: Only Team Captains and Workspace Owners can modify tasks.', code: 'UNAUTHORIZED_TASK_MUTATION' },
       });
-    }
-
-    // 3. Assignee-Only Boundary Defense
-    // If actor is assignee but NOT creator and NOT privileged:
-    // Allowed ONLY to update status/completion.
-    if (isAssignee && !isCreator && !isPrivileged) {
-      const restrictedFields = ['title', 'description', 'priority', 'dueDate', 'assignedTo', 'assignedToName', 'isDeleted'];
-      for (const field of restrictedFields) {
-        if (req.body[field] !== undefined && req.body[field] !== existingTask[field]) {
-          return res.status(403).json({
-            success: false,
-            error: {
-              message: `Assignees cannot modify '${field}'. Assignees are only permitted to update task status and completion.`,
-              code: 'ASSIGNEE_CANNOT_EDIT_CONTENT',
-            },
-          });
-        }
-      }
     }
 
     const now = Date.now();
@@ -307,12 +323,12 @@ taskRouter.delete('/:taskId', async (req, res) => {
     }
 
     const isPrivileged = checkPrivilegedRole(membership);
-    const isCreator = existingTask.createdBy === userUid;
 
-    if (!isPrivileged && !isCreator) {
+    // Strict Governance Enforcement: Only Team Captains or Workspace Owners can delete tasks
+    if (!isPrivileged) {
       return res.status(403).json({
         success: false,
-        error: { message: 'Only task creators, team captains, or workspace owners can delete tasks.', code: 'UNAUTHORIZED_TASK_DELETION' },
+        error: { message: 'Forbidden: Only Team Captains and Workspace Owners can delete tasks.', code: 'UNAUTHORIZED_TASK_DELETION' },
       });
     }
 
@@ -326,9 +342,181 @@ taskRouter.delete('/:taskId', async (req, res) => {
       });
     }
 
+    // Clean up task from active sprint scope if it was associated with an active sprint
+    try {
+      const activeSprint = (await rtdbService.getData(`sprints/${workspaceId}/current`)) || {};
+      const currentTaskIds = Array.isArray(activeSprint.taskIds) ? [...activeSprint.taskIds] : [];
+      if (currentTaskIds.includes(taskId) || existingTask?.sprintId === activeSprint?.sprintId) {
+        const updatedTaskIds = currentTaskIds.filter((id) => id !== taskId);
+        const updatedSprint = {
+          ...activeSprint,
+          taskIds: updatedTaskIds,
+          totalSprintTasks: updatedTaskIds.length,
+          updatedAt: Date.now(),
+        };
+        await rtdbService.updateMultiple({
+          [`sprints/${workspaceId}/current`]: updatedSprint,
+          [`sprints/${workspaceId}/${activeSprint.sprintId}`]: updatedSprint,
+          [`organizations/${workspaceId}/activeSprint`]: updatedSprint,
+          [`workspaces/${workspaceId}/sprint`]: updatedSprint,
+        });
+      }
+    } catch (sprintDelErr) {
+      console.warn('[taskRoutes] Error removing deleted task from active sprint:', sprintDelErr?.message);
+    }
+
     res.json({ success: true, message: 'Task deleted successfully.' });
   } catch (err) {
     const status = err.statusCode || (err.message.includes('Unauthorized') ? 403 : 500);
     res.status(status).json({ success: false, error: { message: err.message || 'Failed to delete task.' } });
+  }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/tasks/:taskId/comments
+ * List comments on a task.
+ */
+taskRouter.get('/:taskId/comments', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const taskId = req.params.taskId;
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    await requireWorkspaceMember(workspaceId, userUid);
+
+    const commentsObj =
+      (await rtdbService.getData(`task_comments/${workspaceId}/${taskId}`)) ||
+      (await rtdbService.getData(`tasks/${workspaceId}/${taskId}/comments`)) ||
+      {};
+
+    const list = Object.values(commentsObj).filter((c) => c && !c.isDeleted);
+    list.sort((a, b) => (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+
+    res.json({ success: true, data: list });
+  } catch (err) {
+    const status = err.statusCode || (err.message.includes('Unauthorized') ? 403 : 500);
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to fetch comments.' } });
+  }
+});
+
+/**
+ * POST /api/workspaces/:workspaceId/tasks/:taskId/comments
+ * Add a comment to a task.
+ */
+taskRouter.post('/:taskId/comments', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const taskId = req.params.taskId;
+    const userUid = req.user?.uid;
+    const { content, authorName, authorPhotoURL } = req.body;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, error: { message: 'Comment content cannot be empty.' } });
+    }
+
+    await requireWorkspaceMember(workspaceId, userUid);
+
+    const commentId = `comment_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const timestamp = Date.now();
+
+    const newComment = {
+      commentId,
+      taskId,
+      orgId: workspaceId,
+      content: content.trim(),
+      authorId: userUid,
+      authorName: authorName || req.user.displayName || req.user.email?.split('@')[0] || 'Team Member',
+      authorPhotoURL: authorPhotoURL || req.user.photoURL || null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      isDeleted: false,
+    };
+
+    // Save to both paths via Admin SDK
+    await Promise.all([
+      rtdbService.setData(`task_comments/${workspaceId}/${taskId}/${commentId}`, newComment),
+      rtdbService.setData(`tasks/${workspaceId}/${taskId}/comments/${commentId}`, newComment),
+    ]);
+
+    // Dispatch mention notification if @mention exists
+    const mentionMatches = content.match(/@([a-zA-Z0-9_-]+)/g);
+    if (mentionMatches && mentionMatches.length > 0) {
+      const task = (await rtdbService.getData(`tasks/${workspaceId}/${taskId}`)) || {};
+      notificationService.dispatchNotificationEvent(
+        NOTIFICATION_TYPES.CHAT_MENTION,
+        {
+          workspaceId,
+          taskId,
+          taskTitle: task.title || 'Task',
+          commentId,
+          snippet: content.substring(0, 80),
+        },
+        req.user
+      ).catch((e) => console.warn('[taskRoutes] Mention notification warning:', e?.message || e));
+    }
+
+    res.status(201).json({ success: true, data: newComment });
+  } catch (err) {
+    const status = err.statusCode || (err.message.includes('Unauthorized') ? 403 : 500);
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to post comment.' } });
+  }
+});
+
+/**
+ * DELETE /api/workspaces/:workspaceId/tasks/:taskId/comments/:commentId
+ * Soft delete a comment.
+ */
+taskRouter.delete('/:taskId/comments/:commentId', async (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId || req.params.orgId;
+    const taskId = req.params.taskId;
+    const commentId = req.params.commentId;
+    const userUid = req.user?.uid;
+
+    if (!userUid) {
+      return res.status(401).json({ success: false, error: { message: 'Authentication required.' } });
+    }
+
+    const membership = await requireWorkspaceMember(workspaceId, userUid);
+    const existingComment =
+      (await rtdbService.getData(`task_comments/${workspaceId}/${taskId}/${commentId}`)) ||
+      (await rtdbService.getData(`tasks/${workspaceId}/${taskId}/comments/${commentId}`));
+
+    if (!existingComment) {
+      return res.status(404).json({ success: false, error: { message: 'Comment not found.' } });
+    }
+
+    const isPrivileged = checkPrivilegedRole(membership);
+    const isAuthor = existingComment.authorId === userUid;
+
+    if (!isPrivileged && !isAuthor) {
+      return res.status(403).json({
+        success: false,
+        error: { message: 'Only comment authors or workspace managers can delete comments.' },
+      });
+    }
+
+    const deleteUpdate = {
+      isDeleted: true,
+      deletedAt: Date.now(),
+    };
+
+    await Promise.all([
+      rtdbService.updateData(`task_comments/${workspaceId}/${taskId}/${commentId}`, deleteUpdate),
+      rtdbService.updateData(`tasks/${workspaceId}/${taskId}/comments/${commentId}`, deleteUpdate),
+    ]);
+
+    res.json({ success: true, message: 'Comment deleted successfully.' });
+  } catch (err) {
+    const status = err.statusCode || (err.message.includes('Unauthorized') ? 403 : 500);
+    res.status(status).json({ success: false, error: { message: err.message || 'Failed to delete comment.' } });
   }
 });

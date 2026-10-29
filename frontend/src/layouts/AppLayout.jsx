@@ -23,8 +23,8 @@ export function AppLayout() {
         <main
           className={
             isCommunity
-              ? 'flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-3 max-w-7xl mx-auto w-full transition-all duration-200 flex flex-col h-full overflow-hidden'
-              : 'flex-1 min-w-0 px-4 py-8 sm:px-8 max-w-7xl mx-auto w-full transition-all duration-200'
+              ? 'flex-1 min-w-0 px-2 sm:px-4 py-2 sm:py-3 w-full transition-all duration-200 flex flex-col h-full overflow-hidden'
+              : 'flex-1 min-w-0 px-4 py-6 sm:px-6 lg:px-8 xl:px-10 w-full transition-all duration-200'
           }
         >
           <Outlet />

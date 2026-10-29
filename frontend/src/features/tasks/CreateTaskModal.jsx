@@ -9,7 +9,7 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Plus, X, CheckSquare, Tag } from 'lucide-react';
 
-export function CreateTaskModal({ isOpen, onClose, onSubmit, initialStatus = 'Todo' }) {
+export function CreateTaskModal({ isOpen, onClose, onSubmit, initialStatus = 'Todo', targetSprint = null }) {
   const { orgId } = useParams();
   const [members, setMembers] = useState([]);
 
@@ -99,6 +99,8 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, initialStatus = 'To
         dueDate,
         tags: selectedTags,
         subtasks,
+        sprintId: targetSprint?.sprintId || null,
+        sprintName: targetSprint?.name || null,
       });
 
       setTitle('');
@@ -127,8 +129,35 @@ export function CreateTaskModal({ isOpen, onClose, onSubmit, initialStatus = 'To
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Actionable Sprint Task" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={targetSprint ? `Add Task to ${targetSprint.name || 'Sprint'}` : "Create Backlog Task"}
+      size="lg"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {targetSprint ? (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-primary-50/80 border border-primary-200/80 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-primary-600 animate-pulse"></span>
+              <span className="font-bold text-primary-900">Active Sprint Inclusion</span>
+            </div>
+            <span className="text-[11px] text-primary-700 font-semibold">
+              Added directly to {targetSprint.name || 'Active Sprint'}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span className="font-bold text-slate-700">Workspace Backlog</span>
+            </div>
+            <span className="text-[11px] text-slate-500 font-medium">
+              Task will be placed in Backlog (outside active sprint)
+            </span>
+          </div>
+        )}
+
         {error && (
           <div className="rounded-lg bg-rose-50 border border-rose-200 p-3 text-xs font-semibold text-rose-700">
             {error}
@@ -292,4 +321,5 @@ CreateTaskModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   onSubmit: PropTypes.func.isRequired,
   initialStatus: PropTypes.string,
+  targetSprint: PropTypes.object,
 };

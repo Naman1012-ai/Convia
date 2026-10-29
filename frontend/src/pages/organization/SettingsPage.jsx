@@ -427,7 +427,7 @@ export default function SettingsPage() {
 
   if (orgLoading || !primaryReady) {
     return (
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="w-full py-8">
         <LoadingSkeleton variant="profile" />
       </div>
     );
@@ -452,7 +452,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       {/* Context Quick-Bar & Section Navigation */}
       <div className="space-y-4">
         {/* Workspace Context Summary Card */}

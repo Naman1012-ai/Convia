@@ -1025,7 +1025,7 @@ export default function CommunityPage() {
         {/* ======================================================== */}
         {/* ZONE 2 (CENTER): Main Discussion Stream (DOMINANT)       */}
         {/* ======================================================== */}
-        <main className="flex-1 min-w-0 max-w-4xl flex flex-col h-full overflow-hidden bg-white/70 sm:rounded-2xl border border-slate-200/80 shadow-xs relative mx-auto">
+        <main className="flex-1 min-w-0 w-full flex flex-col h-full overflow-hidden bg-white/70 sm:rounded-2xl border border-slate-200/80 shadow-xs relative">
           {/* Pinned Toolbar inside Chat Box: Quick Topic Chips + Sort */}
           <div className="shrink-0 px-3 sm:px-4 py-2 border-b border-slate-200/80 bg-white/95 backdrop-blur-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-10">
             {/* Quick Topic Chips */}

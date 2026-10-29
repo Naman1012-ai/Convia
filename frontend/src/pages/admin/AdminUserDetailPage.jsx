@@ -72,7 +72,7 @@ export default function AdminUserDetailPage() {
 
   if (loading || !data || !data.user) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
@@ -177,7 +177,7 @@ export default function AdminUserDetailPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       {/* Top Navigation */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-4">
         <Button

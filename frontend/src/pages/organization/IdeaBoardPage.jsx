@@ -72,7 +72,7 @@ function IdeaBoardContent() {
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
+    <div className="w-full space-y-6 overflow-x-hidden pb-12">
       {/* 1. WORKSPACE DASHBOARD KPI STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 w-full">
         {/* Card 1: Total Proposals */}

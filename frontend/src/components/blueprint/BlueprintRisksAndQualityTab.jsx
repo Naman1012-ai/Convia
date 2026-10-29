@@ -162,7 +162,7 @@ export function BlueprintRisksAndQualityTab({
 
                 {/* Interactive Gate Actions */}
                 <div className="pt-2 border-t border-slate-900/80">
-                  {isBlocked && onUpdateQualityGate && (
+                  {isLeader && isBlocked && onUpdateQualityGate && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -175,7 +175,7 @@ export function BlueprintRisksAndQualityTab({
                     </button>
                   )}
 
-                  {isInProg && onUpdateQualityGate && (
+                  {isLeader && isInProg && onUpdateQualityGate && (
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
@@ -201,7 +201,7 @@ export function BlueprintRisksAndQualityTab({
                     </div>
                   )}
 
-                  {status === 'pending' && onUpdateQualityGate && (
+                  {isLeader && status === 'pending' && onUpdateQualityGate && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -219,7 +219,7 @@ export function BlueprintRisksAndQualityTab({
                       <span className="flex items-center gap-1 font-bold">
                         <CheckCircle2 className="h-3.5 w-3.5" /> {isWaived ? 'Waived' : 'Verified'}
                       </span>
-                      {onUpdateQualityGate && (
+                      {isLeader && onUpdateQualityGate && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -267,7 +267,7 @@ export function BlueprintRisksAndQualityTab({
               ))}
             </div>
 
-            {onAddRisk && (
+            {isLeader && onAddRisk && (
               <Button
                 variant="primary"
                 size="sm"
@@ -348,7 +348,7 @@ export function BlueprintRisksAndQualityTab({
 
                   {/* 1-Click Mitigation Action */}
                   <div className="flex items-center gap-2">
-                    {onUpdateRisk && !isMitigated && (
+                    {isLeader && onUpdateRisk && !isMitigated && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -361,7 +361,7 @@ export function BlueprintRisksAndQualityTab({
                       </button>
                     )}
 
-                    {onUpdateRisk && isMitigated && (
+                    {isLeader && onUpdateRisk && isMitigated && (
                       <button
                         type="button"
                         onClick={(e) => {

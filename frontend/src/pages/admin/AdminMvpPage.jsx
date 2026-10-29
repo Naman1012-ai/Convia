@@ -49,14 +49,14 @@ export default function AdminMvpPage() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 w-full pb-16">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2.5">

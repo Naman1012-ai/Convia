@@ -204,6 +204,38 @@ export const rtdbService = {
     }
   },
 
+  updateMultiple: async (updates) => {
+    try {
+      if (!updates || typeof updates !== 'object') {
+        throw new Error('Updates payload must be a non-null object.');
+      }
+      for (const key of Object.keys(updates)) {
+        if (typeof key !== 'string' || key.trim() === '') {
+          throw new Error('Invalid RTDB multi-path update key: empty string or non-string key detected.');
+        }
+        if (key.includes('[object Object]')) {
+          throw new Error(`Invalid RTDB multi-path update key: '[object Object]' detected in path '${key}'.`);
+        }
+      }
+      const sanitizedUpdates = sanitizeForRtdb(updates);
+      const instance = getDbInstance();
+      if (instance) {
+        await instance.ref().update(sanitizedUpdates);
+        return true;
+      }
+      const url = `${databaseURL}/.json`;
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sanitizedUpdates),
+      });
+      return res.ok;
+    } catch (err) {
+      console.error('🚨 [Backend RTDB updateMultiple Error]:', err.message);
+      throw err;
+    }
+  },
+
   removeData: async (path) => {
     try {
       const cleanPath = String(path || '').replace(/^\/|\/$/g, '');

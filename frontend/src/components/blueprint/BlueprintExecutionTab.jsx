@@ -35,6 +35,7 @@ export function BlueprintExecutionTab({
   isSyncingTasks = false,
   onApplyScopeTradeoff,
   isApplyingScopeTradeoff = false,
+  isLeader = false,
 }) {
   const [subView, setSubView] = useState('waves'); // 'waves' | 'graph' | 'tasks' | 'features' | 'workflow' | 'timeline'
   const [taskFilter, setTaskFilter] = useState('all');
@@ -354,7 +355,7 @@ export function BlueprintExecutionTab({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {onSyncTasks && (
+              {isLeader && onSyncTasks && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -581,7 +582,7 @@ export function BlueprintExecutionTab({
       {subView === 'tradeoff' && (
         <BlueprintScopeTradeoffSimulator
           content={content}
-          onApplyTradeoff={onApplyScopeTradeoff}
+          onApplyTradeoff={isLeader ? onApplyScopeTradeoff : null}
           isApplying={isApplyingScopeTradeoff}
         />
       )}

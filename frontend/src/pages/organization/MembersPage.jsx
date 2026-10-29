@@ -16,7 +16,7 @@ export default function MembersPage() {
   if (!org) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 overflow-x-hidden">
+    <div className="w-full space-y-6 overflow-x-hidden pb-12">
       {/* Team Roster Card */}
       <Card>
         <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">

@@ -18,6 +18,7 @@ import { LoadingSkeleton } from '../../components/feedback/LoadingSkeleton';
 import { EmptyState } from '../../components/feedback/EmptyState';
 import { ConfirmDialog } from '../../components/feedback/ConfirmDialog';
 import { normalizeBlueprintForDisplay } from '../../utils/blueprintCompatibility';
+import { safeArray } from '../../utils/safeRender';
 
 // Blueprint 2.0 Modular Subcomponents (Phase 8)
 import { BlueprintHeader } from '../../components/blueprint/BlueprintHeader';
@@ -94,7 +95,9 @@ export default function BlueprintPage() {
     setDismissedStale(true);
     try {
       sessionStorage.setItem(`dismissed_staleness_${orgId}`, 'true');
-    } catch {}
+    } catch {
+      // ignore storage access restrictions
+    }
   };
 
   // Phase 11: Approval Gate States
@@ -498,7 +501,7 @@ export default function BlueprintPage() {
 
   // Handlers for Operations
   const handleStartEdit = () => {
-    if (!blueprint?.content) return;
+    if (!isLeader || !blueprint?.content) return;
     setEditForm(JSON.parse(JSON.stringify(blueprint.content)));
     setIsEditing(true);
   };
@@ -523,7 +526,7 @@ export default function BlueprintPage() {
   }, [orgId, user?.uid, blueprint?.updatedAt, blueprint?.version]);
 
   const handleSaveEdit = async () => {
-    if (!orgId || !user?.uid || !editForm) return;
+    if (!isLeader || !orgId || !user?.uid || !editForm) return;
 
     setIsSaving(true);
     try {
@@ -545,7 +548,7 @@ export default function BlueprintPage() {
 
   // Phase 9: Handle Explicit Version Activation
   const handleActivateVersion = async (targetVersionKey) => {
-    if (!orgId || !user?.uid || !targetVersionKey) return;
+    if (!isLeader || !orgId || !user?.uid || !targetVersionKey) return;
 
     setIsActivatingVersion(true);
     try {
@@ -562,7 +565,7 @@ export default function BlueprintPage() {
 
   // Phase 11: Handle Formal Approval Gate
   const handleOpenApprovalModal = async () => {
-    if (!orgId || !user?.uid) return;
+    if (!isLeader || !orgId || !user?.uid) return;
     setIsApprovalModalOpen(true);
     try {
       const res = await aiBlueprintService.checkApprovalReadiness(
@@ -577,7 +580,7 @@ export default function BlueprintPage() {
   };
 
   const handleApproveBlueprint = async (reviewNotes = '') => {
-    if (!orgId || !user?.uid) return;
+    if (!isLeader || !orgId || !user?.uid) return;
     const targetVer = selectedVersionKey || activeVersion;
     setIsApproving(true);
     try {
@@ -597,7 +600,7 @@ export default function BlueprintPage() {
   };
 
   const handleAssignTask = async (taskId, targetUserId, targetUserName) => {
-    if (!orgId || !user?.uid || !taskId) return;
+    if (!isLeader || !orgId || !user?.uid || !taskId) return;
 
     setAssigningTaskId(taskId);
     try {
@@ -612,7 +615,7 @@ export default function BlueprintPage() {
   };
 
   const handleApproveDecision = async (decisionId) => {
-    if (!orgId || !user?.uid || !decisionId) return;
+    if (!isLeader || !orgId || !user?.uid || !decisionId) return;
     setProcessingDecisionId(decisionId);
     try {
       await aiBlueprintService.approveDecision(orgId, user.uid, decisionId);
@@ -626,7 +629,7 @@ export default function BlueprintPage() {
   };
 
   const handleRejectDecision = async (decisionId) => {
-    if (!orgId || !user?.uid || !decisionId) return;
+    if (!isLeader || !orgId || !user?.uid || !decisionId) return;
     setProcessingDecisionId(decisionId);
     try {
       await aiBlueprintService.rejectDecision(orgId, user.uid, decisionId);
@@ -640,7 +643,7 @@ export default function BlueprintPage() {
   };
 
   const handleApproveChangeRecommendation = async (recommendationId) => {
-    if (!orgId || !user?.uid || !recommendationId) return;
+    if (!isLeader || !orgId || !user?.uid || !recommendationId) return;
     setProcessingRecommendationId(recommendationId);
     try {
       await aiBlueprintService.approveChangeRecommendation(orgId, user.uid, recommendationId);
@@ -654,7 +657,7 @@ export default function BlueprintPage() {
   };
 
   const handleRejectChangeRecommendation = async (recommendationId) => {
-    if (!orgId || !user?.uid || !recommendationId) return;
+    if (!isLeader || !orgId || !user?.uid || !recommendationId) return;
     setProcessingRecommendationId(recommendationId);
     try {
       await aiBlueprintService.rejectChangeRecommendation(orgId, user.uid, recommendationId);
@@ -669,7 +672,7 @@ export default function BlueprintPage() {
 
   // Interactive Quality Gate Updates
   const handleUpdateQualityGate = async (gateId, updates) => {
-    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    if (!isLeader || !orgId || !user?.uid || !displayedBlueprint?.content) return;
     const currentBp = displayedBlueprint;
     const currentContent = JSON.parse(JSON.stringify(currentBp.content));
     const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
@@ -714,7 +717,7 @@ export default function BlueprintPage() {
 
   // Interactive Risk Updates
   const handleUpdateRisk = async (riskId, updates) => {
-    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    if (!isLeader || !orgId || !user?.uid || !displayedBlueprint?.content) return;
     const currentBp = displayedBlueprint;
     const currentContent = JSON.parse(JSON.stringify(currentBp.content));
     const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
@@ -763,7 +766,7 @@ export default function BlueprintPage() {
 
   // Add Custom Risk
   const handleAddRisk = async (newRisk) => {
-    if (!orgId || !user?.uid || !displayedBlueprint?.content) return;
+    if (!isLeader || !orgId || !user?.uid || !displayedBlueprint?.content) return;
     const currentBp = displayedBlueprint;
     const currentContent = JSON.parse(JSON.stringify(currentBp.content));
     const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
@@ -804,7 +807,7 @@ export default function BlueprintPage() {
 
   // Dynamic Scope Tradeoff Application
   const handleApplyScopeTradeoff = async ({ deferredTaskIds = [] }) => {
-    if (!orgId || !user?.uid || !displayedBlueprint?.content || !deferredTaskIds.length) return;
+    if (!isLeader || !orgId || !user?.uid || !displayedBlueprint?.content || !deferredTaskIds.length) return;
     const currentBp = displayedBlueprint;
     const currentContent = JSON.parse(JSON.stringify(currentBp.content));
     const rawV2 = currentContent.rawV2Content || currentContent.__v2Content || currentContent;
@@ -844,7 +847,7 @@ export default function BlueprintPage() {
   };
 
   const handleSyncBlueprintTasks = async () => {
-    if (!orgId || !user?.uid) return;
+    if (!isLeader || !orgId || !user?.uid) return;
     setIsSyncingTasks(true);
     try {
       const targetVer = selectedVersionKey || activeVersion;
@@ -902,7 +905,7 @@ export default function BlueprintPage() {
   };
 
   const handleGenerateBlueprint = async () => {
-    if (!orgId || !user?.uid) return;
+    if (!isLeader || !orgId || !user?.uid) return;
 
     setShowRegenWarningModal(false);
     setIsGenerating(true);
@@ -926,6 +929,7 @@ export default function BlueprintPage() {
   };
 
   const handleRegenButtonClick = () => {
+    if (!isLeader) return;
     if (blueprint?.lastModifiedSource === 'manual' || isEditing) {
       setShowRegenWarningModal(true);
     } else {
@@ -1036,7 +1040,7 @@ export default function BlueprintPage() {
 
   if (loadingOrg || loadingIdea || loadingBlueprint) {
     return (
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <LoadingSkeleton className="h-28 w-full rounded-3xl" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <LoadingSkeleton className="h-32 rounded-2xl" />
@@ -1053,7 +1057,7 @@ export default function BlueprintPage() {
 
   if (!targetMvpId && !mvpIdea) {
     return (
-      <div className="p-8 max-w-4xl mx-auto text-center space-y-6">
+      <div className="p-8 w-full text-center space-y-6">
         <EmptyState
           icon={<Sparkles className="h-8 w-8 text-primary-500" />}
           title="No MVP Idea Selected Yet"
@@ -1086,7 +1090,7 @@ export default function BlueprintPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn pb-24">
+    <div className="w-full space-y-6 animate-fadeIn pb-24">
       {/* PHASE 9: PROJECT STATE SHIFT & STALENESS NOTICE */}
       {stalenessInfo?.isStale && !dismissedStale && (
         <div className="p-4 rounded-2xl bg-amber-950/60 border border-amber-800/80 text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg animate-fadeIn">
@@ -1109,15 +1113,17 @@ export default function BlueprintPage() {
             >
               Dismiss
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Sparkles className="h-3.5 w-3.5" />}
-              onClick={handleRegenButtonClick}
-              className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-7 py-0.5 px-3 shadow-sm"
-            >
-              Regenerate
-            </Button>
+            {isLeader && (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+                onClick={handleRegenButtonClick}
+                className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold h-7 py-0.5 px-3 shadow-sm"
+              >
+                Regenerate
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -1154,6 +1160,7 @@ export default function BlueprintPage() {
         onOpenApprovalModal={handleOpenApprovalModal}
         approvalStatus={displayedBlueprint?.approvalStatus || blueprint?.approvalStatus || 'pending_approval'}
         lifecycleState={displayedBlueprint?.lifecycleState || blueprint?.lifecycleState || 'ready_for_review'}
+        isLeader={isLeader}
       />
 
       {/* 2. GENERATION PROGRESS / ERROR RECOVERY */}
@@ -1182,19 +1189,26 @@ export default function BlueprintPage() {
           <div className="space-y-2 max-w-lg mx-auto">
             <h3 className="text-xl font-black text-white">AI Blueprint Not Generated Yet</h3>
             <p className="text-xs text-slate-400 leading-relaxed font-medium">
-              This proposal has been selected as the Workspace MVP. Click below to generate an AI blueprint and compile a complete technical project control center.
+              This proposal has been selected as the Workspace MVP. {isLeader ? 'Click below to generate an AI blueprint and compile a complete technical project control center.' : 'The technical control center will be compiled once generated by the Team Captain or Workspace Owner.'}
             </p>
           </div>
 
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Sparkles className="h-5 w-5 text-primary-200" />}
-            onClick={handleGenerateBlueprint}
-            className="bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm shadow-lg px-8 mx-auto"
-          >
-            Generate AI Blueprint
-          </Button>
+          {isLeader ? (
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<Sparkles className="h-5 w-5 text-primary-200" />}
+              onClick={handleGenerateBlueprint}
+              className="bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm shadow-lg px-8 mx-auto"
+            >
+              Generate AI Blueprint
+            </Button>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs text-slate-400 font-medium mx-auto">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>Awaiting generation by Team Captain or Workspace Owner</span>
+            </div>
+          )}
         </Card>
       )}
 
@@ -1246,6 +1260,7 @@ export default function BlueprintPage() {
               onSyncTasks={handleSyncBlueprintTasks}
               isSyncingTasks={isSyncingTasks}
               onApplyScopeTradeoff={handleApplyScopeTradeoff}
+              isLeader={isLeader}
             />
           )}
 
@@ -1257,6 +1272,7 @@ export default function BlueprintPage() {
               onAssignTask={handleAssignTask}
               assigningTaskId={assigningTaskId}
               onInspectEntity={handleInspectEntity}
+              isLeader={isLeader}
             />
           )}
 
@@ -1283,6 +1299,7 @@ export default function BlueprintPage() {
               onRejectRecommendation={handleRejectChangeRecommendation}
               processingRecommendationId={processingRecommendationId}
               onInspectEntity={handleInspectEntity}
+              isLeader={isLeader}
             />
           )}
 
@@ -1297,6 +1314,7 @@ export default function BlueprintPage() {
               onActivateVersion={handleActivateVersion}
               isActivatingVersion={isActivatingVersion}
               currentBlueprint={blueprint}
+              isLeader={isLeader}
             />
           )}
         </div>

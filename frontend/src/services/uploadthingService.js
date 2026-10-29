@@ -137,7 +137,7 @@ export const uploadthingService = {
         }
 
         const serverData = await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
+          const xhr = new window.XMLHttpRequest();
           xhr.open('POST', uploadUrl, true);
 
           if (idToken) {
@@ -170,7 +170,9 @@ export const uploadthingService = {
               try {
                 const resJson = JSON.parse(xhr.responseText);
                 if (resJson?.error?.message) msg = resJson.error.message;
-              } catch {}
+              } catch {
+                // Ignore parsing failure and keep HTTP status message
+              }
               reject(new Error(msg));
             }
           };

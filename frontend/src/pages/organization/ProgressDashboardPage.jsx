@@ -30,7 +30,7 @@ function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="space-y-6 w-full">
         <LoadingSkeleton variant="card" count={3} />
       </div>
     );
@@ -38,7 +38,7 @@ function DashboardContent() {
 
   if (!stats) {
     return (
-      <div className="max-w-5xl mx-auto py-8">
+      <div className="w-full py-8">
         <EmptyState
           icon={<AlertOctagon className="h-8 w-8 text-primary-500" />}
           title="Dashboard Unavailable"
@@ -70,7 +70,7 @@ function DashboardContent() {
     taskSummary?.total > 0 ? Math.round((taskSummary.completed / taskSummary.total) * 100) : 0;
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 overflow-x-hidden">
+    <div className="w-full space-y-8 overflow-x-hidden pb-12">
       {/* 1. Project Overview Hero Banner */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-primary-950 text-white p-8 rounded-3xl border border-slate-700/60 shadow-2xl backdrop-blur-md">
         <div className="absolute top-0 right-0 h-40 w-40 bg-primary-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
